@@ -1,0 +1,12 @@
+/* global resets */
+*{ box-sizing:border-box; }
+html,body,#root{ height:100%; margin:0; padding:0; }
+body{
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: #f7fffb;
+  color: #132022;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+a{ color:inherit; }
+button{ font-family:inherit; }
