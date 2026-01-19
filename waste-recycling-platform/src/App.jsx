@@ -45,7 +45,7 @@ function App() {
           zIndex: 9999,
           padding: '12px 24px',
           background: '#333',
-          color: '#fff',
+          color: '#123',
           border: 'none',
           borderRadius: '30px',
           cursor: 'pointer',
