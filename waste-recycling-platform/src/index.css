@@ -1,0 +1,24 @@
+/* src/index.css */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  /* Quan trọng: Xóa bỏ dòng display: flex; place-items: center; nếu có */
+  display: block; 
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  /* Đảm bảo không bị căn giữa kiểu cũ */
+  text-align: left; 
+}
