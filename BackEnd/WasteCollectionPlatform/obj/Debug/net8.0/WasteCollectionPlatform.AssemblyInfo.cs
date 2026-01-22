@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WasteCollectionPlatform")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5bc5f93dfbb5f1b07b1864fba518abe4cec6733c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ef49d1f2a7e1ea4b0124fa6adde09a3fab258301")]
 [assembly: System.Reflection.AssemblyProductAttribute("WasteCollectionPlatform")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WasteCollectionPlatform")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

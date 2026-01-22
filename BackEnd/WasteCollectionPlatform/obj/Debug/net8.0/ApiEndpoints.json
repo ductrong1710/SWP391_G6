@@ -1,5 +1,21 @@
 [
   {
+    "ContainingType": "WasteCollectionPlatform.Controllers.AuthController",
+    "Method": "Login",
+    "RelativePath": "api/Auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "WasteCollectionPlatform.Controllers.AuthController\u002BLoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "WasteCollectionPlatform.Controllers.WeatherForecastController",
     "Method": "Get",
     "RelativePath": "WeatherForecast",
