@@ -68,6 +68,17 @@ namespace WasteCollectionPlatform
                 });
             });
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReactApp",
+                    policy =>
+                    {
+                        policy.WithOrigins("http://localhost:5173") // Địa chỉ Frontend của bạn
+                              .AllowAnyHeader()
+                              .AllowAnyMethod();
+                    });
+            });
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -79,6 +90,7 @@ namespace WasteCollectionPlatform
             app.UseHttpsRedirection();
 
             // 3. Kích hoạt Middleware (Thứ tự rất quan trọng!)
+            app.UseCors("AllowReactApp");
             app.UseAuthentication(); // Phải đặt TRƯỚC UseAuthorization
             app.UseAuthorization();
 
