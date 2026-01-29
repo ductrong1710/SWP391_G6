@@ -2,7 +2,6 @@ using BusinessLogicLayer.DTOs.WasteReport;
 using BusinessLogicLayer.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace WasteCollectionPlatform.Controllers
 {
@@ -10,7 +9,6 @@ namespace WasteCollectionPlatform.Controllers
     [Route("api/waste-reports")]
     public class WasteReportsController : ControllerBase
     {
-        private const string CitizenRoleId = "1";
         private readonly IWasteReportService _service;
 
         public WasteReportsController(IWasteReportService service)
@@ -30,7 +28,7 @@ namespace WasteCollectionPlatform.Controllers
         // POST /api/waste-reports
         // Citizen only
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> Create([FromForm] CreateWasteReportForm form)
         {
@@ -38,12 +36,6 @@ namespace WasteCollectionPlatform.Controllers
             if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
                 return Unauthorized(new { message = "Invalid or missing UserId claim" });
-            }
-
-            var roleIdClaim = User.FindFirst("RoleId")?.Value;
-            if (!string.Equals(roleIdClaim, CitizenRoleId, StringComparison.Ordinal))
-            {
-                return Forbid();
             }
 
             try
@@ -76,6 +68,7 @@ namespace WasteCollectionPlatform.Controllers
         {
             if (image == null || image.Length <= 0)
             {
+                // Service layer will enforce "Image is required"
                 return string.Empty;
             }
 
