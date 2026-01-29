@@ -9,7 +9,6 @@ namespace DataAccessLayer.Repositories.Interface
     public interface IUnitOfWork : IDisposable
     {
         IUserRepository Users { get; }
-        IWasteReportRepository WasteReports { get; }
         IWasteTypeRepository WasteTypes { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

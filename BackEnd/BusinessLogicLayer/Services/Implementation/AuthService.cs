@@ -19,13 +19,15 @@ namespace BusinessLogicLayer.Services.Service
         private readonly IConfiguration _configuration;
         private readonly IMemoryCache _cache;
         private readonly IEmailService _emailService;
+        private readonly AppDbContext _context;
 
-        public AuthService(
+        public AuthService(AppDbContext context,
             IUnitOfWork uow,
             IConfiguration configuration,
             IMemoryCache cache,
             IEmailService emailService)
         {
+            _context = context;
             _uow = uow;
             _configuration = configuration;
             _cache = cache;
@@ -117,39 +119,40 @@ namespace BusinessLogicLayer.Services.Service
 
 
 
-        public async Task<User?> AuthenticateAsync(string email, string password)
+        public User? Authenticate(string email, string password)
         {
-            // 1. Tìm user qua Repository
-            var user = await _uow.Users.GetByEmailAsync(email);
-            if (user == null) return null;
+            // 1. Tìm user
+            var user = _context.Users.FirstOrDefault(u => u.Email == email);
 
-            // 2. Verify hashed password (BCrypt)
+            // 2. Kiểm tra mật khẩu (Nên dùng Hash trong thực tế)
+            if (user == null)
+            {
+                return null;
+            }
             if (!BCrypt.Net.BCrypt.Verify(password, user.Password))
             {
                 return null;
             }
-
-            // 3. Kiểm tra status
             if (user.Status != "Active")
             {
                 return null;
             }
 
+            // 3. Trả về user nếu hợp lệ
             return user;
         }
 
         public string GenerateJwtToken(User user)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
-            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
 
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("UserId", user.UserId.ToString()),
-                new Claim("FullName", user.FullName ?? ""),
-                new Claim(ClaimTypes.Role, user.Role?.RoleName ?? ""), // cho [Authorize(Roles="...")]
+                new Claim("FullName", user.FullName),
                 new Claim("RoleId", user.RoleId.ToString())
             };
 
@@ -158,9 +161,7 @@ namespace BusinessLogicLayer.Services.Service
                 audience: jwtSettings["Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(3),
-                signingCredentials: new SigningCredentials(
-                    new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
+                signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);

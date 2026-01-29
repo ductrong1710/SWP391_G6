@@ -24,7 +24,6 @@ namespace BusinessLogicLayer
             services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
             services.AddScoped<IEmailService, EmailService>();
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
-            services.AddScoped<IWasteReportService, WasteReportService>();
             services.AddScoped<IWasteTypeService, WasteTypeService>();
 
             return services;

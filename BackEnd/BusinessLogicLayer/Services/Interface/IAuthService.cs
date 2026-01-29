@@ -7,7 +7,7 @@ namespace BusinessLogicLayer.Services.Interface
     {
         Task RegisterCitizenAsync(RegisterRequestDto request);
         Task<User> VerifyOtpAndCreateUserAsync(string email, string otp);
-        Task<User?> AuthenticateAsync(string email, string password);
+        User? Authenticate(string email, string password);
         string GenerateJwtToken(User user);
     }
 }

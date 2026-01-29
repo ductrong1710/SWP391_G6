@@ -29,7 +29,6 @@ namespace DataAccessLayer
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
             // Sau này thêm các repository khác: IWasteReportRepository, IRewardRepository,...
-            services.AddScoped<IWasteReportRepository, WasteReportRepository>();
             services.AddScoped<IWasteTypeRepository, WasteTypeRepository>();
 
             return services;

@@ -13,18 +13,15 @@ namespace DataAccessLayer.Repositories.Implementation
         private readonly AppDbContext _context;
 
         public IUserRepository Users { get; }
-        public IWasteReportRepository WasteReports { get; }
         public IWasteTypeRepository WasteTypes { get; }
 
         public UnitOfWork(
             AppDbContext context,
             IUserRepository userRepository,
-            IWasteReportRepository wasteReportRepository,
             IWasteTypeRepository wasteTypeRepository)
         {
             _context = context;
             Users = userRepository;
-            WasteReports = wasteReportRepository;
             WasteTypes = wasteTypeRepository;
         }
 
