@@ -24,6 +24,7 @@ namespace BusinessLogicLayer
             services.AddScoped<IEmailService, EmailService>();
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
             services.AddScoped<IWasteTypeService, WasteTypeService>();
+            services.AddScoped<IWasteReportService, WasteReportService>();
 
             return services;
         }

@@ -14,15 +14,18 @@ namespace DataAccessLayer.Repositories.Implementation
 
         public IUserRepository Users { get; }
         public IWasteTypeRepository WasteTypes { get; }
+        public IWasteReportRepository WasteReports { get; }
 
         public UnitOfWork(
             AppDbContext context,
             IUserRepository userRepository,
-            IWasteTypeRepository wasteTypeRepository)
+            IWasteTypeRepository wasteTypeRepository,
+            IWasteReportRepository wasteReportRepository)
         {
             _context = context;
             Users = userRepository;
             WasteTypes = wasteTypeRepository;
+            WasteReports = wasteReportRepository;
         }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
