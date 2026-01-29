@@ -46,12 +46,14 @@ namespace WasteCollectionPlatform
             {
                 c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
                 {
-                    Description = "Nhập token theo định dạng: Bearer {token}",
+                    Description = "Nhập JWT token",
                     Name = "Authorization",
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-                    Scheme = "Bearer"
+                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http, 
+                    Scheme = "bearer",                                      
+                    BearerFormat = "JWT"
                 });
+
                 c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
                 {
                     {
@@ -63,10 +65,11 @@ namespace WasteCollectionPlatform
                                 Id = "Bearer"
                             }
                         },
-                        new string[] {}
+                        Array.Empty<string>()
                     }
                 });
             });
+
 
             builder.Services.AddCors(options =>
             {
