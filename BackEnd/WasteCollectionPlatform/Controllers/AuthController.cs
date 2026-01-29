@@ -1,4 +1,7 @@
-﻿using BusinessLogicLayer;
+﻿using BusinessLogicLayer.DTOs.Auth;
+using BusinessLogicLayer.DTOs.User;
+using BusinessLogicLayer.Services.Interface;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WasteCollectionPlatform.Controllers
@@ -9,7 +12,6 @@ namespace WasteCollectionPlatform.Controllers
     {
         private readonly IAuthService _authService;
 
-        // Inject IAuthService thay vì DbContext
         public AuthController(IAuthService authService)
         {
             _authService = authService;
@@ -21,6 +23,9 @@ namespace WasteCollectionPlatform.Controllers
             public string Password { get; set; }
         }
 
+        /// <summary>
+        /// Login and get JWT token
+        /// </summary>
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
@@ -42,5 +47,25 @@ namespace WasteCollectionPlatform.Controllers
                 user = new { user.UserId, user.FullName, user.Email, user.RoleId }
             });
         }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterRequestDto request)
+        {
+            await _authService.RegisterCitizenAsync(request);
+            return Ok(new { message = "OTP sent to email" });
+        }
+
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp(VerifyOtpRequestDto request)
+        {
+            var user = await _authService.VerifyOtpAndCreateUserAsync(
+                request.Email,
+                request.Otp
+            );
+
+            return Ok(new { message = "Register successful", user.UserId });
+        }
+
+
     }
 }

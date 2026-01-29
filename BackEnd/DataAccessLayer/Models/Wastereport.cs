@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DataAccessLayer.Models;
@@ -19,7 +19,7 @@ public partial class Wastereport
 
     public string? Description { get; set; }
 
-    public string? Status { get; set; }
+    public string Status { get; set; } = "Pending";
 
     public DateTime? CreatedAt { get; set; }
 

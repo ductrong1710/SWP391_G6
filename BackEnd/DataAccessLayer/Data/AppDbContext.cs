@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using DataAccessLayer.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace DataAccessLayer;
+namespace DataAccessLayer.Data;
 
 public partial class AppDbContext : DbContext
 {
