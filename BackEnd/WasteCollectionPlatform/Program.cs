@@ -1,10 +1,8 @@
-﻿using System.Text;
+﻿using BusinessLogicLayer;
 using DataAccessLayer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using WasteCollectionPlatform;
-using BusinessLogicLayer;
+using System.Text;
 
 namespace WasteCollectionPlatform
 {
@@ -12,13 +10,13 @@ namespace WasteCollectionPlatform
     {
         public static void Main(string[] args)
         {
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
             var builder = WebApplication.CreateBuilder(args);
 
             // 1. Cấu hình DB Context
-            builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            // 2. Cấu hình JWT Authentication
+            builder.Services.AddMemoryCache();
+            builder.Services.AddDataAccessLayer(builder.Configuration);
+            builder.Services.AddBusinessLogicLayer(builder.Configuration);
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
