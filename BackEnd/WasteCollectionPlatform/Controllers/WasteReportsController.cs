@@ -66,7 +66,7 @@ namespace WasteCollectionPlatform.Controllers
 
         // PUT /api/waste-reports/{id}/approve
         [HttpPut("{id:int}/approve")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Collector")]
         public async Task<IActionResult> Approve(int id)
         {
             try
@@ -86,7 +86,7 @@ namespace WasteCollectionPlatform.Controllers
 
         // PUT /api/waste-reports/{id}/reject
         [HttpPut("{id:int}/reject")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Collector")]
         public async Task<IActionResult> Reject(int id)
         {
             try
