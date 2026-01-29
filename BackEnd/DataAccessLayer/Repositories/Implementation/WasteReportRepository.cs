@@ -24,6 +24,17 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Wastereports
                 .CountAsync(x => x.SubmittedBy == userId && x.CreatedAt >= sinceUtc);
         }
+
+        public async Task<Wastereport?> GetByIdAsync(int reportId)
+        {
+            return await _context.Wastereports
+                .FirstOrDefaultAsync(x => x.ReportId == reportId);
+        }
+
+        public void Update(Wastereport entity)
+        {
+            _context.Wastereports.Update(entity);
+        }
     }
 }
 

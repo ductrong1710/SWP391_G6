@@ -69,6 +69,56 @@ namespace BusinessLogicLayer.Services.Implementation
                 CreatedAt = entity.CreatedAt ?? nowUtc
             };
         }
+
+        public async Task<WasteReportStatusResponseDto> ApproveAsync(int reportId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            // Only allow transition from Pending
+            if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only Pending reports can be approved");
+            }
+
+            report.Status = "Approved";
+            _uow.WasteReports.Update(report);
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportStatusResponseDto
+            {
+                Id = report.ReportId,
+                Status = report.Status
+            };
+        }
+
+        public async Task<WasteReportStatusResponseDto> RejectAsync(int reportId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            // Only allow transition from Pending
+            if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only Pending reports can be rejected");
+            }
+
+            report.Status = "Rejected";
+            _uow.WasteReports.Update(report);
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportStatusResponseDto
+            {
+                Id = report.ReportId,
+                Status = report.Status
+            };
+        }
     }
 }
 

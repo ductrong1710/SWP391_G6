@@ -5,6 +5,8 @@ namespace BusinessLogicLayer.Services.Interface
     public interface IWasteReportService
     {
         Task<WasteReportCreatedResponseDto> CreateAsync(int userId, CreateWasteReportDto dto);
+        Task<WasteReportStatusResponseDto> ApproveAsync(int reportId);
+        Task<WasteReportStatusResponseDto> RejectAsync(int reportId);
     }
 }
 

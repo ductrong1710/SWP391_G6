@@ -64,6 +64,46 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        // PUT /api/waste-reports/{id}/approve
+        [HttpPut("{id:int}/approve")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Approve(int id)
+        {
+            try
+            {
+                var updated = await _service.ApproveAsync(id);
+                return Ok(updated);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // PUT /api/waste-reports/{id}/reject
+        [HttpPut("{id:int}/reject")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Reject(int id)
+        {
+            try
+            {
+                var updated = await _service.RejectAsync(id);
+                return Ok(updated);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         private static async Task<string> SaveImageAsync(IFormFile? image)
         {
             if (image == null || image.Length <= 0)
