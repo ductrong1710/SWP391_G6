@@ -18,7 +18,6 @@ namespace BusinessLogicLayer
         {
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAuthService, AuthService>();
-            // sau này: IAuthService, IRewardService, IReportService,...
             services.AddFluentValidationAutoValidation();
             services.AddValidatorsFromAssemblyContaining<CreateUserValidator>();
             services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();

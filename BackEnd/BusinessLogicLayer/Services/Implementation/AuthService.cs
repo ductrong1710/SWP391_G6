@@ -124,12 +124,7 @@ namespace BusinessLogicLayer.Services.Service
             // 1. Tìm user
             var user = _context.Users.FirstOrDefault(u => u.Email == email);
 
-            // 2. Kiểm tra mật khẩu (Nên dùng Hash trong thực tế)
-            if (user == null)
-            {
-                return null;
-            }
-            if (!BCrypt.Net.BCrypt.Verify(password, user.Password))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
             {
                 return null;
             }
