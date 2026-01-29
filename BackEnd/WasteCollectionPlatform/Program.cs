@@ -1,7 +1,8 @@
-﻿using BusinessLogicLayer;
+using BusinessLogicLayer;
 using DataAccessLayer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 
 namespace WasteCollectionPlatform
@@ -32,7 +33,8 @@ namespace WasteCollectionPlatform
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+                    RoleClaimType = ClaimTypes.Role
                 };
             });
 
@@ -86,6 +88,7 @@ namespace WasteCollectionPlatform
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();
 
             // 3. Kích hoạt Middleware (Thứ tự rất quan trọng!)
             app.UseCors("AllowReactApp");

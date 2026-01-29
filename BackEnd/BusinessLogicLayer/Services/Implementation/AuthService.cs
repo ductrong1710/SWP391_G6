@@ -1,4 +1,4 @@
-﻿using BusinessLogicLayer.CacheModels;
+using BusinessLogicLayer.CacheModels;
 using BusinessLogicLayer.DTOs.Auth;
 using BusinessLogicLayer.Services.Interface;
 using DataAccessLayer.Data;
@@ -142,13 +142,19 @@ namespace BusinessLogicLayer.Services.Service
             var jwtSettings = _configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
 
+            var roleName = _context.Roles
+                .Where(r => r.RoleId == user.RoleId)
+                .Select(r => r.RoleName)
+                .FirstOrDefault() ?? string.Empty;
+
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("UserId", user.UserId.ToString()),
                 new Claim("FullName", user.FullName),
-                new Claim("RoleId", user.RoleId.ToString())
+                new Claim("RoleId", user.RoleId.ToString()),
+                new Claim(ClaimTypes.Role, roleName)
             };
 
             var token = new JwtSecurityToken(
