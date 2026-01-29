@@ -1,0 +1,124 @@
+using BusinessLogicLayer.DTOs.WasteReport;
+using BusinessLogicLayer.Services.Interface;
+using DataAccessLayer.Models;
+using DataAccessLayer.Repositories.Interface;
+
+namespace BusinessLogicLayer.Services.Implementation
+{
+    public class WasteReportService : IWasteReportService
+    {
+        private const int MaxReportsPerMinute = 2;
+        private readonly IUnitOfWork _uow;
+
+        public WasteReportService(IUnitOfWork uow)
+        {
+            _uow = uow;
+        }
+
+        public async Task<WasteReportCreatedResponseDto> CreateAsync(int userId, CreateWasteReportDto dto)
+        {
+            // BR-03 validations in service layer
+            if (string.IsNullOrWhiteSpace(dto.Image))
+            {
+                throw new ArgumentException("Image is required");
+            }
+
+            if (dto.Latitude < -90 || dto.Latitude > 90)
+            {
+                throw new ArgumentException("Latitude must be between -90 and 90");
+            }
+
+            if (dto.Longitude < -180 || dto.Longitude > 180)
+            {
+                throw new ArgumentException("Longitude must be between -180 and 180");
+            }
+
+            var wasteType = await _uow.WasteTypes.GetByIdAsync(dto.WasteTypeId);
+            if (wasteType == null)
+            {
+                throw new ArgumentException("WasteTypeId is invalid");
+            }
+
+            var sinceUtc = DateTime.UtcNow.AddMinutes(-1);
+            var recentCount = await _uow.WasteReports.CountByUserSinceAsync(userId, sinceUtc);
+            if (recentCount >= MaxReportsPerMinute)
+            {
+                throw new InvalidOperationException("Rate limit exceeded: max 2 waste reports per minute");
+            }
+
+            var nowUtc = DateTime.UtcNow;
+            var entity = new Wastereport
+            {
+                SubmittedBy = userId,
+                WasteTypeId = dto.WasteTypeId,
+                ImageUrl = dto.Image,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
+                Description = dto.Description,
+                Status = "Pending",
+                CreatedAt = nowUtc
+            };
+
+            await _uow.WasteReports.AddAsync(entity);
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportCreatedResponseDto
+            {
+                Id = entity.ReportId,
+                Status = entity.Status ?? "Pending",
+                CreatedAt = entity.CreatedAt ?? nowUtc
+            };
+        }
+
+        public async Task<WasteReportStatusResponseDto> ApproveAsync(int reportId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            // Only allow transition from Pending
+            if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only Pending reports can be approved");
+            }
+
+            report.Status = "Approved";
+            _uow.WasteReports.Update(report);
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportStatusResponseDto
+            {
+                Id = report.ReportId,
+                Status = report.Status
+            };
+        }
+
+        public async Task<WasteReportStatusResponseDto> RejectAsync(int reportId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            // Only allow transition from Pending
+            if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only Pending reports can be rejected");
+            }
+
+            report.Status = "Rejected";
+            _uow.WasteReports.Update(report);
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportStatusResponseDto
+            {
+                Id = report.ReportId,
+                Status = report.Status
+            };
+        }
+    }
+}
+
