@@ -1,4 +1,4 @@
-﻿using DataAccessLayer.Data;
+using DataAccessLayer.Data;
 using DataAccessLayer.Repositories.Interface;
 using System;
 using System.Collections.Generic;
@@ -14,15 +14,18 @@ namespace DataAccessLayer.Repositories.Implementation
 
         public IUserRepository Users { get; }
         public IWasteReportRepository WasteReports { get; }
+        public IWasteTypeRepository WasteTypes { get; }
 
         public UnitOfWork(
             AppDbContext context,
             IUserRepository userRepository,
-            IWasteReportRepository wasteReportRepository)
+            IWasteReportRepository wasteReportRepository,
+            IWasteTypeRepository wasteTypeRepository)
         {
             _context = context;
             Users = userRepository;
             WasteReports = wasteReportRepository;
+            WasteTypes = wasteTypeRepository;
         }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

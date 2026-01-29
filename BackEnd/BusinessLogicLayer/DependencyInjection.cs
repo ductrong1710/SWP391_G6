@@ -1,4 +1,4 @@
-﻿using BusinessLogicLayer.Identity;
+using BusinessLogicLayer.Identity;
 using BusinessLogicLayer.Services.Implementation;
 using BusinessLogicLayer.Services.Interface;
 using BusinessLogicLayer.Services.Service;
@@ -25,6 +25,7 @@ namespace BusinessLogicLayer
             services.AddScoped<IEmailService, EmailService>();
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
             services.AddScoped<IWasteReportService, WasteReportService>();
+            services.AddScoped<IWasteTypeService, WasteTypeService>();
 
             return services;
         }
