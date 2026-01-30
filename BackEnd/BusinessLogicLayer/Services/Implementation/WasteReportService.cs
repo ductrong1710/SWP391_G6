@@ -119,6 +119,59 @@ namespace BusinessLogicLayer.Services.Implementation
                 Status = report.Status
             };
         }
+
+        public async Task<IEnumerable<WasteReportDto>> GetAllAsync(int? userId)
+        {
+            IEnumerable<Wastereport> reports;
+
+            if (userId.HasValue)
+            {
+                // Citizen: chỉ xem report của mình
+                reports = await _uow.WasteReports.GetByUserIdAsync(userId.Value);
+            }
+            else
+            {
+                // Admin: xem tất cả
+                reports = await _uow.WasteReports.GetAllAsync();
+            }
+
+            return reports.Select(MapToDto);
+        }
+
+        public async Task<WasteReportDto?> GetByIdAsync(int reportId, int? userId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                return null;
+            }
+
+            // Nếu là Citizen, chỉ cho xem report của mình
+            if (userId.HasValue && report.SubmittedBy != userId.Value)
+            {
+                return null;
+            }
+
+            return MapToDto(report);
+        }
+
+        private static WasteReportDto MapToDto(Wastereport report)
+        {
+            return new WasteReportDto
+            {
+                ReportId = report.ReportId,
+                SubmittedBy = report.SubmittedBy,
+                SubmittedByName = report.SubmittedByNavigation?.FullName ?? string.Empty,
+                WasteTypeId = report.WasteTypeId,
+                WasteTypeName = report.WasteType?.Name ?? string.Empty,
+                ImageUrl = report.ImageUrl,
+                Latitude = report.Latitude,
+                Longitude = report.Longitude,
+                Description = report.Description,
+                Status = report.Status,
+                CreatedAt = report.CreatedAt
+            };
+        }
     }
 }
 

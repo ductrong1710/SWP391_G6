@@ -28,12 +28,33 @@ namespace DataAccessLayer.Repositories.Implementation
         public async Task<Wastereport?> GetByIdAsync(int reportId)
         {
             return await _context.Wastereports
+                .Include(x => x.SubmittedByNavigation)
+                .Include(x => x.WasteType)
                 .FirstOrDefaultAsync(x => x.ReportId == reportId);
         }
 
         public void Update(Wastereport entity)
         {
             _context.Wastereports.Update(entity);
+        }
+
+        public async Task<IEnumerable<Wastereport>> GetAllAsync()
+        {
+            return await _context.Wastereports
+                .Include(x => x.SubmittedByNavigation)
+                .Include(x => x.WasteType)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Wastereport>> GetByUserIdAsync(int userId)
+        {
+            return await _context.Wastereports
+                .Include(x => x.SubmittedByNavigation)
+                .Include(x => x.WasteType)
+                .Where(x => x.SubmittedBy == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
         }
     }
 }

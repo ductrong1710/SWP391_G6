@@ -7,6 +7,8 @@ namespace BusinessLogicLayer.Services.Interface
         Task<WasteReportCreatedResponseDto> CreateAsync(int userId, CreateWasteReportDto dto);
         Task<WasteReportStatusResponseDto> ApproveAsync(int reportId);
         Task<WasteReportStatusResponseDto> RejectAsync(int reportId);
+        Task<IEnumerable<WasteReportDto>> GetAllAsync(int? userId);
+        Task<WasteReportDto?> GetByIdAsync(int reportId, int? userId);
     }
 }
 

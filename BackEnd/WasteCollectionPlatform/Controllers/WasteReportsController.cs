@@ -25,6 +25,59 @@ namespace WasteCollectionPlatform.Controllers
             public int WasteTypeId { get; set; }
         }
 
+        // GET /api/waste-reports
+        // Admin: xem tất cả, Citizen: xem của mình
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> GetAll()
+        {
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
+
+            int? userId = null;
+            if (!isAdmin)
+            {
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
+                {
+                    return Unauthorized(new { message = "Invalid or missing UserId claim" });
+                }
+                userId = parsedUserId;
+            }
+
+            var reports = await _service.GetAllAsync(userId);
+            return Ok(reports);
+        }
+
+        // GET /api/waste-reports/{id}
+        // Admin: xem tất cả, Citizen: xem của mình
+        [HttpGet("{id:int}")]
+        [Authorize]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
+
+            int? userId = null;
+            if (!isAdmin)
+            {
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
+                {
+                    return Unauthorized(new { message = "Invalid or missing UserId claim" });
+                }
+                userId = parsedUserId;
+            }
+
+            var report = await _service.GetByIdAsync(id, userId);
+            if (report == null)
+            {
+                return NotFound(new { message = "Waste report not found" });
+            }
+
+            return Ok(report);
+        }
+
         // POST /api/waste-reports
         // Citizen only
         [HttpPost]
