@@ -76,7 +76,7 @@ namespace WasteCollectionPlatform
                 options.AddPolicy("AllowReactApp",
                     policy =>
                     {
-                        policy.WithOrigins("http://localhost:5173") // Địa chỉ Frontend của bạn
+                        policy.WithOrigins("http://localhost:5178") // Địa chỉ Frontend của bạn
                               .AllowAnyHeader()
                               .AllowAnyMethod();
                     });
