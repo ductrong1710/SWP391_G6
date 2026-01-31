@@ -1,13 +1,13 @@
 // src/components/CollectorHeader.jsx
 import React, { useState } from 'react';
+import { authService } from '../services/authService';
 
 const CollectorHeader = ({ activeTab, setActiveTab }) => {
-  // State để bật tắt menu
   const [showDropdown, setShowDropdown] = useState(false);
+  const user = authService.getCurrentUser();
 
   const handleLogout = () => {
-    // Giả lập logout: reload lại trang
-    window.location.reload();
+    authService.logout(); // Sử dụng authService
   };
 
   return (
@@ -32,31 +32,25 @@ const CollectorHeader = ({ activeTab, setActiveTab }) => {
         </button>
       </div>
 
-      {/* --- PHẦN PROFILE & DROPDOWN --- */}
       <div className="col-profile-wrapper" style={{ position: 'relative' }}>
-        
-        {/* Nút bấm vào Avatar/Tên */}
         <div 
           className="col-profile" 
           onClick={() => setShowDropdown(!showDropdown)}
         >
           <div className="col-avatar-placeholder"></div>
-          <span className="col-username">Mike Wilson</span>
+          <span className="col-username">{user?.fullName || 'Collector'}</span>
           <span className="col-chevron">▼</span>
         </div>
 
-        {/* Menu Dropdown (Chỉ hiện khi showDropdown = true) */}
         {showDropdown && (
           <div className="col-dropdown-menu fade-in">
-             {/* Header của Menu */}
              <div className="dd-header">
-                <div className="dd-name">Mike Wilson</div>
+                <div className="dd-name">{user?.fullName || 'Collector'}</div>
                 <div className="dd-role">Collector</div>
              </div>
              
              <div className="dd-divider"></div>
              
-             {/* Các mục chọn */}
              <button 
                className="dd-item" 
                onClick={() => { setActiveTab('settings'); setShowDropdown(false); }}
