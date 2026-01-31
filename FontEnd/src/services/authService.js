@@ -55,27 +55,28 @@ export const authService = {
   isAuthenticated: () => {
     return !!localStorage.getItem('token');
   },
+
   // Kiểm tra quyền truy cập
-hasRole: (roleId) => {
-  const user = authService.getCurrentUser();
-  return user?.roleId === roleId;
-},
+  hasRole: (roleId) => {
+    const user = authService.getCurrentUser();
+    return user?.roleId === roleId;
+  },
 
-// Kiểm tra nếu có một trong các role được cho phép
-hasAnyRole: (roleIds) => {
-  const user = authService.getCurrentUser();
-  return roleIds.includes(user?.roleId);
-},
+  // Kiểm tra nếu có một trong các role được cho phép
+  hasAnyRole: (roleIds) => {
+    const user = authService.getCurrentUser();
+    return roleIds.includes(user?.roleId);
+  },
 
-// Lấy role ID
-getRoleId: () => {
-  const user = authService.getCurrentUser();
-  return user?.roleId;
-},
+  // Lấy role ID
+  getRoleId: () => {
+    const user = authService.getCurrentUser();
+    return user?.roleId;
+  },
 
-// Lấy role Name (nếu có trong response)
-getRoleName: () => {
-  const user = authService.getCurrentUser();
-  return user?.roleName || 'citizen';
-},
+  // Lấy role Name (nếu có trong response)
+  getRoleName: () => {
+    const user = authService.getCurrentUser();
+    return user?.roleName || 'citizen';
+  },
 };
