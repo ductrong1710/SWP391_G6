@@ -155,6 +155,60 @@ namespace BusinessLogicLayer.Services.Implementation
             return MapToDto(report);
         }
 
+        public async Task<WasteReportDto> UpdateAsync(int reportId, int userId, UpdateWasteReportDto dto)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            // Chỉ cho phép user sở hữu report update
+            if (report.SubmittedBy != userId)
+            {
+                throw new UnauthorizedAccessException("You can only update your own reports");
+            }
+
+            // Chỉ cho phép update khi status = Pending
+            if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only Pending reports can be updated");
+            }
+
+            // Validate GPS
+            if (dto.Latitude < -90 || dto.Latitude > 90)
+            {
+                throw new ArgumentException("Latitude must be between -90 and 90");
+            }
+
+            if (dto.Longitude < -180 || dto.Longitude > 180)
+            {
+                throw new ArgumentException("Longitude must be between -180 and 180");
+            }
+
+            // Validate wasteTypeId
+            var wasteType = await _uow.WasteTypes.GetByIdAsync(dto.WasteTypeId);
+            if (wasteType == null)
+            {
+                throw new ArgumentException("WasteTypeId is invalid");
+            }
+
+            // Update fields (không update status, userId, createdAt)
+            if (!string.IsNullOrWhiteSpace(dto.Image))
+            {
+                report.ImageUrl = dto.Image;
+            }
+            report.Latitude = dto.Latitude;
+            report.Longitude = dto.Longitude;
+            report.Description = dto.Description;
+            report.WasteTypeId = dto.WasteTypeId;
+
+            _uow.WasteReports.Update(report);
+            await _uow.SaveChangesAsync();
+
+            return MapToDto(report);
+        }
+
         private static WasteReportDto MapToDto(Wastereport report)
         {
             return new WasteReportDto

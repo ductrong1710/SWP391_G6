@@ -25,6 +25,15 @@ namespace WasteCollectionPlatform.Controllers
             public int WasteTypeId { get; set; }
         }
 
+        public class UpdateWasteReportForm
+        {
+            public IFormFile? Image { get; set; }
+            public decimal Latitude { get; set; }
+            public decimal Longitude { get; set; }
+            public string? Description { get; set; }
+            public int WasteTypeId { get; set; }
+        }
+
         // GET /api/waste-reports
         // Admin: xem tất cả, Citizen: xem của mình
         [HttpGet]
@@ -114,6 +123,53 @@ namespace WasteCollectionPlatform.Controllers
             catch (InvalidOperationException ex) when (ex.Message.Contains("Rate limit", StringComparison.OrdinalIgnoreCase))
             {
                 return StatusCode(StatusCodes.Status429TooManyRequests, new { message = ex.Message });
+            }
+        }
+
+        // PUT /api/waste-reports/{id}
+        // Citizen: update own report (only when Pending)
+        [HttpPut("{id:int}")]
+        [Authorize(Roles = "Citizen")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> Update(int id, [FromForm] UpdateWasteReportForm form)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var imageUrl = await SaveImageAsync(form.Image);
+
+                var dto = new UpdateWasteReportDto
+                {
+                    Image = imageUrl,
+                    Latitude = form.Latitude,
+                    Longitude = form.Longitude,
+                    Description = form.Description,
+                    WasteTypeId = form.WasteTypeId
+                };
+
+                var updated = await _service.UpdateAsync(id, userId, dto);
+                return Ok(updated);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
 
