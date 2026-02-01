@@ -20,6 +20,18 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
+        /// Lấy danh sách tất cả users (Admin only)
+        /// </summary>
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userService.GetAllAsync();
+            return Ok(users);
+        }
+
+        /// <summary>
         /// Create a new user (Admin/Enterprise only)
         /// </summary>
         /// <param name="request">User creation data</param>
