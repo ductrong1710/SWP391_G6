@@ -204,14 +204,14 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        // PUT /api/waste-reports/{id}/approve
-        [HttpPut("{id:int}/approve")]
+        // PUT /api/waste-reports/{id}/accept
+        [HttpPut("{id:int}/accept")]
         [Authorize(Roles = "Enterprise")]
-        public async Task<IActionResult> Approve(int id)
+        public async Task<IActionResult> Accept(int id)
         {
             try
             {
-                var updated = await _service.ApproveAsync(id);
+                var updated = await _service.AcceptAsync(id);
                 return Ok(updated);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))

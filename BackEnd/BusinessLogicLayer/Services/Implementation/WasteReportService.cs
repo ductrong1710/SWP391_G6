@@ -70,7 +70,7 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
-        public async Task<WasteReportStatusResponseDto> ApproveAsync(int reportId)
+        public async Task<WasteReportStatusResponseDto> AcceptAsync(int reportId)
         {
             var report = await _uow.WasteReports.GetByIdAsync(reportId);
             if (report == null)
@@ -81,10 +81,10 @@ namespace BusinessLogicLayer.Services.Implementation
             // Only allow transition from Pending
             if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Only Pending reports can be approved");
+                throw new InvalidOperationException("Only Pending reports can be accepted");
             }
 
-            report.Status = "Approved";
+            report.Status = "Accepted";
             _uow.WasteReports.Update(report);
             await _uow.SaveChangesAsync();
 
