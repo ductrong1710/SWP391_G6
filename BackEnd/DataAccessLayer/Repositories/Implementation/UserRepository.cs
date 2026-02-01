@@ -1,4 +1,4 @@
-﻿using DataAccessLayer.Data;
+using DataAccessLayer.Data;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 using Microsoft.EntityFrameworkCore;
@@ -52,6 +52,11 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Users
                 .Include(u => u.Role)
                 .ToListAsync();
+        }
+
+        public void Update(User user)
+        {
+            _context.Users.Update(user);
         }
     }
 }
