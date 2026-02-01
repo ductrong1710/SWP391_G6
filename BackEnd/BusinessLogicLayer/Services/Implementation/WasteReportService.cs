@@ -209,6 +209,37 @@ namespace BusinessLogicLayer.Services.Implementation
             return MapToDto(report);
         }
 
+        public async Task<WasteReportStatusResponseDto> CancelAsync(int reportId, int userId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            // Chỉ cho phép user sở hữu report cancel
+            if (report.SubmittedBy != userId)
+            {
+                throw new UnauthorizedAccessException("You can only cancel your own reports");
+            }
+
+            // Chỉ cho phép cancel khi status = Pending
+            if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only Pending reports can be cancelled");
+            }
+
+            report.Status = "Cancelled";
+            _uow.WasteReports.Update(report);
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportStatusResponseDto
+            {
+                Id = report.ReportId,
+                Status = report.Status
+            };
+        }
+
         private static WasteReportDto MapToDto(Wastereport report)
         {
             return new WasteReportDto

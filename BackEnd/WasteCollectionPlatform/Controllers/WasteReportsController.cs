@@ -173,6 +173,37 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        // PUT /api/waste-reports/{id}/cancel
+        // Citizen: cancel own report (only when Pending)
+        [HttpPut("{id:int}/cancel")]
+        [Authorize(Roles = "Citizen")]
+        public async Task<IActionResult> Cancel(int id)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var updated = await _service.CancelAsync(id, userId);
+                return Ok(updated);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         // PUT /api/waste-reports/{id}/approve
         [HttpPut("{id:int}/approve")]
         [Authorize(Roles = "Collector")]
