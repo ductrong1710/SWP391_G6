@@ -32,6 +32,22 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
+        /// Lấy user theo ID
+        /// </summary>
+        [HttpGet("{id:int}")]
+        [Authorize]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetUserById(int id)
+        {
+            var user = await _userService.GetByIdAsync(id);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(user);
+        }
+
+        /// <summary>
         /// Create a new user (Admin/Enterprise only)
         /// </summary>
         /// <param name="request">User creation data</param>
