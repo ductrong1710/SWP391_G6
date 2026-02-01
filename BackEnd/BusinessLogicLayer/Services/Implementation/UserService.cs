@@ -28,7 +28,7 @@ namespace BusinessLogicLayer.Services.Implementation
             if (await _uow.Users.EmailExistsAsync(request.Email))
                 throw new InvalidOperationException("Email already exists");
 
-            if (await _uow.Users.PhoneExistsAsync(request.Phone))
+            if (!string.IsNullOrWhiteSpace(request.Phone) && await _uow.Users.PhoneExistsAsync(request.Phone))
                 throw new InvalidOperationException("Phone already exists");
 
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -63,6 +63,60 @@ namespace BusinessLogicLayer.Services.Implementation
         {
             var users = await _uow.Users.GetAllAsync();
             return users.Select(MapToDto);
+        }
+
+        public async Task<UserResponseDto> UpdateUserAsync(int id, UpdateUserRequestDto request)
+        {
+            var user = await _uow.Users.GetByIdAsync(id);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+
+            // Validate email unique (exclude current user)
+            if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
+            {
+                if (await _uow.Users.EmailExistsExceptAsync(request.Email, id))
+                    throw new InvalidOperationException("Email already exists");
+            }
+
+            // Validate phone unique (exclude current user)
+            if (!string.IsNullOrWhiteSpace(request.Phone) && request.Phone != user.Phone)
+            {
+                if (await _uow.Users.PhoneExistsExceptAsync(request.Phone, id))
+                    throw new InvalidOperationException("Phone already exists");
+            }
+
+            // Update fields
+            if (!string.IsNullOrWhiteSpace(request.FullName))
+                user.FullName = request.FullName;
+
+            if (!string.IsNullOrWhiteSpace(request.Email))
+                user.Email = request.Email;
+
+            if (!string.IsNullOrWhiteSpace(request.Phone))
+                user.Phone = request.Phone;
+
+            if (request.RoleId > 0)
+                user.RoleId = request.RoleId;
+
+            if (!string.IsNullOrWhiteSpace(request.Status))
+                user.Status = request.Status;
+
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync();
+
+            // Reload to get updated Role
+            var updated = await _uow.Users.GetByIdAsync(id);
+            return MapToDto(updated!);
+        }
+
+        public async Task DeleteUserAsync(int id)
+        {
+            var user = await _uow.Users.GetByIdAsync(id);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+
+            _uow.Users.Delete(user);
+            await _uow.SaveChangesAsync();
         }
 
         public async Task ChangePasswordAsync(int userId, ChangePasswordDto dto)

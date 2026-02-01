@@ -16,5 +16,8 @@ namespace DataAccessLayer.Repositories.Interface
         Task AddAsync(User user);
         Task<IEnumerable<User>> GetAllAsync();
         void Update(User user);
+        void Delete(User user);
+        Task<bool> EmailExistsExceptAsync(string email, int excludeUserId);
+        Task<bool> PhoneExistsExceptAsync(string phone, int excludeUserId);
     }
 }

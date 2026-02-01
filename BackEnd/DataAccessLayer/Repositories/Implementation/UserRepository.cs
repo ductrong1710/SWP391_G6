@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 namespace DataAccessLayer.Repositories.Implementation
 {
     public class UserRepository : IUserRepository
@@ -57,6 +58,23 @@ namespace DataAccessLayer.Repositories.Implementation
         public void Update(User user)
         {
             _context.Users.Update(user);
+        }
+
+        public void Delete(User user)
+        {
+            _context.Users.Remove(user);
+        }
+
+        public async Task<bool> EmailExistsExceptAsync(string email, int excludeUserId)
+        {
+            return await _context.Users
+                .AnyAsync(u => u.Email == email && u.UserId != excludeUserId);
+        }
+
+        public async Task<bool> PhoneExistsExceptAsync(string phone, int excludeUserId)
+        {
+            return await _context.Users
+                .AnyAsync(u => u.Phone == phone && u.UserId != excludeUserId);
         }
     }
 }
