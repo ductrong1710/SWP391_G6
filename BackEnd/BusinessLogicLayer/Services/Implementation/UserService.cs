@@ -1,4 +1,4 @@
-﻿using BusinessLogicLayer.DTOs.User;
+using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
@@ -63,6 +63,38 @@ namespace BusinessLogicLayer.Services.Implementation
         {
             var users = await _uow.Users.GetAllAsync();
             return users.Select(MapToDto);
+        }
+
+        public async Task ChangePasswordAsync(int userId, ChangePasswordDto dto)
+        {
+            // Validate input
+            if (string.IsNullOrWhiteSpace(dto.OldPassword))
+                throw new ArgumentException("Old password is required");
+
+            if (string.IsNullOrWhiteSpace(dto.NewPassword))
+                throw new ArgumentException("New password is required");
+
+            if (dto.NewPassword != dto.ConfirmPassword)
+                throw new ArgumentException("New password and confirm password do not match");
+
+            // Get user
+            var user = await _uow.Users.GetByIdAsync(userId);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+
+            // Verify old password
+            if (!BCrypt.Net.BCrypt.Verify(dto.OldPassword, user.Password))
+                throw new ArgumentException("Old password is incorrect");
+
+            // Check new password is different from old password
+            if (BCrypt.Net.BCrypt.Verify(dto.NewPassword, user.Password))
+                throw new ArgumentException("New password must be different from old password");
+
+            // Hash and update new password
+            user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync();
         }
 
         private static UserResponseDto MapToDto(User user)

@@ -1,6 +1,7 @@
-﻿using BusinessLogicLayer.DTOs.Auth;
+using BusinessLogicLayer.DTOs.Auth;
 using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,10 +12,12 @@ namespace WasteCollectionPlatform.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
         }
 
         public class LoginRequest
@@ -66,6 +69,32 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(new { message = "Register successful", user.UserId });
         }
 
+        /// <summary>
+        /// Change password for authenticated user
+        /// </summary>
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
 
+            try
+            {
+                await _userService.ChangePasswordAsync(userId, dto);
+                return Ok(new { message = "Password changed successfully" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
     }
 }
