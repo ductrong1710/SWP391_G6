@@ -8,6 +8,8 @@ namespace BusinessLogicLayer.Services.Implementation
     public class WasteReportService : IWasteReportService
     {
         private const int MaxReportsPerMinute = 2;
+        private const int DuplicateRadiusMeters = 30; // 30 mét
+        private const int DuplicateTimeWindowMinutes = 30; // 30 phút
         private readonly IUnitOfWork _uow;
 
         public WasteReportService(IUnitOfWork uow)
@@ -46,7 +48,31 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Rate limit exceeded: max 2 waste reports per minute");
             }
 
+            // Check duplicate: cùng loại rác, trong bán kính 100m, trong 30 phút
             var nowUtc = DateTime.UtcNow;
+            var duplicateCheckSince = nowUtc.AddMinutes(-DuplicateTimeWindowMinutes);
+            
+            // 1 degree ≈ 111km, 100m ≈ 0.0009 degree (bounding box)
+            var latDelta = 0.001m;
+            var lonDelta = 0.001m;
+
+            var nearbyReports = await _uow.WasteReports.FindNearbyReportsAsync(
+                dto.WasteTypeId,
+                dto.Latitude,
+                dto.Longitude,
+                latDelta,
+                lonDelta,
+                duplicateCheckSince
+            );
+
+            // Tính khoảng cách chính xác bằng Haversine
+            var isDuplicate = nearbyReports.Any(r => 
+                CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude) 
+                <= DuplicateRadiusMeters
+            );
+
+            var status = isDuplicate ? "Duplicate" : "Pending";
+
             var entity = new Wastereport
             {
                 SubmittedBy = userId,
@@ -55,7 +81,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
                 Description = dto.Description,
-                Status = "Pending",
+                Status = status,
                 CreatedAt = nowUtc
             };
 
@@ -65,7 +91,7 @@ namespace BusinessLogicLayer.Services.Implementation
             return new WasteReportCreatedResponseDto
             {
                 Id = entity.ReportId,
-                Status = entity.Status ?? "Pending",
+                Status = entity.Status,
                 CreatedAt = entity.CreatedAt ?? nowUtc
             };
         }
@@ -256,6 +282,31 @@ namespace BusinessLogicLayer.Services.Implementation
                 Status = report.Status,
                 CreatedAt = report.CreatedAt
             };
+        }
+
+        /// <summary>
+        /// Tính khoảng cách giữa 2 điểm GPS bằng Haversine formula (đơn vị: mét)
+        /// </summary>
+        private static double CalculateDistanceMeters(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double EarthRadiusKm = 6371;
+
+            var dLat = DegreesToRadians(lat2 - lat1);
+            var dLon = DegreesToRadians(lon2 - lon1);
+
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            var distanceKm = EarthRadiusKm * c;
+
+            return distanceKm * 1000; // km → mét
+        }
+
+        private static double DegreesToRadians(double degrees)
+        {
+            return degrees * Math.PI / 180;
         }
     }
 }

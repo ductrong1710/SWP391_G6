@@ -56,6 +56,26 @@ namespace DataAccessLayer.Repositories.Implementation
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Wastereport>> FindNearbyReportsAsync(
+            int wasteTypeId,
+            decimal latitude,
+            decimal longitude,
+            decimal latDelta,
+            decimal lonDelta,
+            DateTime sinceUtc)
+        {
+            return await _context.Wastereports
+                .Where(x => x.WasteTypeId == wasteTypeId
+                    && x.CreatedAt >= sinceUtc
+                    && x.Latitude >= latitude - latDelta
+                    && x.Latitude <= latitude + latDelta
+                    && x.Longitude >= longitude - lonDelta
+                    && x.Longitude <= longitude + lonDelta
+                    && x.Status != "Cancelled")
+                .OrderBy(x => x.CreatedAt)
+                .ToListAsync();
+        }
     }
 }
 
