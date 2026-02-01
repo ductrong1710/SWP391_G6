@@ -28,12 +28,53 @@ namespace DataAccessLayer.Repositories.Implementation
         public async Task<Wastereport?> GetByIdAsync(int reportId)
         {
             return await _context.Wastereports
+                .Include(x => x.SubmittedByNavigation)
+                .Include(x => x.WasteType)
                 .FirstOrDefaultAsync(x => x.ReportId == reportId);
         }
 
         public void Update(Wastereport entity)
         {
             _context.Wastereports.Update(entity);
+        }
+
+        public async Task<IEnumerable<Wastereport>> GetAllAsync()
+        {
+            return await _context.Wastereports
+                .Include(x => x.SubmittedByNavigation)
+                .Include(x => x.WasteType)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Wastereport>> GetByUserIdAsync(int userId)
+        {
+            return await _context.Wastereports
+                .Include(x => x.SubmittedByNavigation)
+                .Include(x => x.WasteType)
+                .Where(x => x.SubmittedBy == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Wastereport>> FindNearbyReportsAsync(
+            int wasteTypeId,
+            decimal latitude,
+            decimal longitude,
+            decimal latDelta,
+            decimal lonDelta,
+            DateTime sinceUtc)
+        {
+            return await _context.Wastereports
+                .Where(x => x.WasteTypeId == wasteTypeId
+                    && x.CreatedAt >= sinceUtc
+                    && x.Latitude >= latitude - latDelta
+                    && x.Latitude <= latitude + latDelta
+                    && x.Longitude >= longitude - lonDelta
+                    && x.Longitude <= longitude + lonDelta
+                    && x.Status != "Cancelled")
+                .OrderBy(x => x.CreatedAt)
+                .ToListAsync();
         }
     }
 }

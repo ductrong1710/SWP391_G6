@@ -1,4 +1,4 @@
-﻿using BusinessLogicLayer.DTOs.Auth;
+using BusinessLogicLayer.DTOs.Auth;
 using DataAccessLayer.Models;
 
 namespace BusinessLogicLayer.Services.Interface
@@ -9,5 +9,7 @@ namespace BusinessLogicLayer.Services.Interface
         Task<User> VerifyOtpAndCreateUserAsync(string email, string otp);
         User? Authenticate(string email, string password);
         string GenerateJwtToken(User user);
+        Task ForgotPasswordAsync(ForgotPasswordRequestDto request);
+        Task ResetPasswordAsync(ResetPasswordRequestDto request);
     }
 }
