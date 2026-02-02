@@ -19,9 +19,7 @@ namespace WasteCollectionPlatform.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Lấy danh sách tất cả users (Admin only)
-        /// </summary>
+        
         [HttpGet]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
@@ -31,9 +29,6 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(users);
         }
 
-        /// <summary>
-        /// Lấy user theo ID
-        /// </summary>
         [HttpGet("{id:int}")]
         [Authorize]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -47,16 +42,9 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(user);
         }
 
-        /// <summary>
-        /// Create a new user (Admin/Enterprise only)
-        /// </summary>
-        /// <param name="request">User creation data</param>
-        /// <returns>Created user</returns>
-        /// <response code="201">User created successfully</response>
-        /// <response code="400">Invalid request data</response>
-        /// <response code="409">Email or phone already exists</response>
+        
         [HttpPost]
-        //[Authorize(Roles = "Administrator,EnterpriseAdmin")]
+        //[Authorize(Roles = "Administrator,Enterprise")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -90,9 +78,7 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Update user (Admin only)
-        /// </summary>
+        
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -131,9 +117,6 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Delete user (Admin only)
-        /// </summary>
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

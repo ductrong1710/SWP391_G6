@@ -95,7 +95,7 @@ namespace WasteCollectionPlatform
 
             // 3. Kích hoạt Middleware (Thứ tự rất quan trọng!)
             app.UseCors("AllowReactApp");
-            app.UseAuthentication(); // Phải đặt TRƯỚC UseAuthorization
+            app.UseAuthentication(); 
             app.UseAuthorization();
 
             app.MapControllers();
