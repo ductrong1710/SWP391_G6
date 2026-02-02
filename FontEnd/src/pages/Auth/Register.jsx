@@ -5,7 +5,7 @@ import './Auth.css';
 
 const Register = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Form đăng ký, 2: Nhập OTP
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     email: '',
     fullName: '',
@@ -16,6 +16,8 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -25,13 +27,11 @@ const Register = () => {
     setError('');
   };
 
-  // Bước 1: Gửi thông tin đăng ký
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Validate
     if (formData.password !== formData.confirmPassword) {
       setError('Mật khẩu xác nhận không khớp');
       setLoading(false);
@@ -47,7 +47,7 @@ const Register = () => {
     try {
       await authService.register(formData);
       setSuccess('OTP đã được gửi đến email của bạn!');
-      setStep(2); // Chuyển sang bước nhập OTP
+      setStep(2);
     } catch (err) {
       console.error('Register error:', err);
       setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
@@ -56,7 +56,6 @@ const Register = () => {
     }
   };
 
-  // Bước 2: Xác thực OTP
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -84,21 +83,28 @@ const Register = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h2>🌱 Waste Collection Platform</h2>
-          <p>
-            {step === 1 ? 'Tạo tài khoản mới' : 'Xác thực Email'}
-          </p>
+    <div className="register-container">
+      <div className="login-form-container register-form-centered">
+        {/* Logo & Brand */}
+        <div className="login-brand">
+          <div className="brand-icon">🍃</div>
+          <span className="brand-name">EcoCollect</span>
         </div>
 
+        {/* Welcome Text */}
+        <div className="welcome-text">
+          <h2>{step === 1 ? 'Create Account' : 'Verify Email'}</h2>
+          <p>{step === 1 ? 'Join our eco-friendly community' : 'Enter the OTP sent to your email'}</p>
+        </div>
+
+        {/* Error Alert */}
         {error && (
           <div className="alert alert-error">
             ❌ {error}
           </div>
         )}
 
+        {/* Success Alert */}
         {success && (
           <div className="alert alert-success">
             ✅ {success}
@@ -106,9 +112,10 @@ const Register = () => {
         )}
 
         {step === 1 ? (
-          <form onSubmit={handleRegister} className="auth-form">
+          <form onSubmit={handleRegister} className="login-form">
+            {/* Full Name Input */}
             <div className="form-group">
-              <label htmlFor="fullName">Họ và tên</label>
+              <label htmlFor="fullName">Full Name</label>
               <input
                 type="text"
                 id="fullName"
@@ -120,6 +127,7 @@ const Register = () => {
               />
             </div>
 
+            {/* Email Input */}
             <div className="form-group">
               <label htmlFor="email">Email</label>
               <input
@@ -133,55 +141,80 @@ const Register = () => {
               />
             </div>
 
+            {/* Password Input */}
             <div className="form-group">
-              <label htmlFor="password">Mật khẩu</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                minLength={6}
-              />
+              <label htmlFor="password">Password</label>
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className="toggle-password-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
             </div>
 
+            {/* Confirm Password Input */}
             <div className="form-group">
-              <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-              />
+              <label htmlFor="confirmPassword">Confirm Password</label>
+              <div className="password-input-wrapper">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="toggle-password-btn"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary"
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="btn-login"
               disabled={loading}
             >
-              {loading ? '⏳ Đang xử lý...' : '📧 Gửi mã OTP'}
+              {loading ? 'Processing...' : '📧 Send OTP'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyOtp} className="auth-form">
+          <form onSubmit={handleVerifyOtp} className="login-form">
+            {/* OTP Info */}
             <div className="otp-info">
-              <p>Mã OTP đã được gửi đến email:</p>
-              <strong>{formData.email}</strong>
+              <p>Verification code sent to:</p>
+              <strong className="otp-email">{formData.email}</strong>
             </div>
 
+            {/* OTP Input */}
             <div className="form-group">
-              <label htmlFor="otp">Mã OTP (6 số)</label>
+              <label htmlFor="otp">Enter OTP Code</label>
               <input
                 type="text"
                 id="otp"
                 name="otp"
-                placeholder="123456"
+                placeholder="000000"
                 value={otp}
                 onChange={(e) => {
                   setOtp(e.target.value);
@@ -190,43 +223,37 @@ const Register = () => {
                 required
                 maxLength={6}
                 pattern="[0-9]{6}"
-                style={{ 
-                  textAlign: 'center', 
-                  fontSize: '24px', 
-                  letterSpacing: '8px' 
-                }}
+                className="otp-input"
               />
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary"
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="btn-login"
               disabled={loading}
             >
-              {loading ? '⏳ Đang xác thực...' : '✓ Xác nhận OTP'}
+              {loading ? 'Verifying...' : '✓ Verify OTP'}
             </button>
 
+            {/* Back Button */}
             <button
               type="button"
-              className="btn-secondary"
+              className="btn-back"
               onClick={() => setStep(1)}
               disabled={loading}
             >
-              ← Quay lại
+              ← Go Back
             </button>
           </form>
         )}
 
-        <div className="auth-footer">
-          <p>
-            Đã có tài khoản? {' '}
-            <span 
-              className="link"
-              onClick={() => navigate('/login')}
-            >
-              Đăng nhập
-            </span>
-          </p>
+        {/* Sign In Link */}
+        <div className="signup-link">
+          Already have an account? {' '}
+          <span className="link-green" onClick={() => navigate('/login')}>
+            Sign In
+          </span>
         </div>
       </div>
     </div>
