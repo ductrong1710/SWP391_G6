@@ -2,11 +2,6 @@ using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BusinessLogicLayer.Services.Implementation
 {
@@ -21,7 +16,6 @@ namespace BusinessLogicLayer.Services.Implementation
 
         public async Task<UserResponseDto> CreateUserAsync(CreateUserRequestDto request)
         {
-            // Validate basic
             if (string.IsNullOrWhiteSpace(request.Email))
                 throw new ArgumentException("Email is required");
 
@@ -47,7 +41,6 @@ namespace BusinessLogicLayer.Services.Implementation
             await _uow.Users.AddAsync(user);
             await _uow.SaveChangesAsync();
 
-            // Lấy lại user có Role để map
             var created = await _uow.Users.GetByIdAsync(user.UserId);
 
             return MapToDto(created!);
@@ -71,21 +64,18 @@ namespace BusinessLogicLayer.Services.Implementation
             if (user == null)
                 throw new InvalidOperationException("User not found");
 
-            // Validate email unique (exclude current user)
             if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
             {
                 if (await _uow.Users.EmailExistsExceptAsync(request.Email, id))
                     throw new InvalidOperationException("Email already exists");
             }
 
-            // Validate phone unique (exclude current user)
             if (!string.IsNullOrWhiteSpace(request.Phone) && request.Phone != user.Phone)
             {
                 if (await _uow.Users.PhoneExistsExceptAsync(request.Phone, id))
                     throw new InvalidOperationException("Phone already exists");
             }
 
-            // Update fields
             if (!string.IsNullOrWhiteSpace(request.FullName))
                 user.FullName = request.FullName;
 
@@ -104,7 +94,6 @@ namespace BusinessLogicLayer.Services.Implementation
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
 
-            // Reload to get updated Role
             var updated = await _uow.Users.GetByIdAsync(id);
             return MapToDto(updated!);
         }
@@ -121,7 +110,6 @@ namespace BusinessLogicLayer.Services.Implementation
 
         public async Task ChangePasswordAsync(int userId, ChangePasswordDto dto)
         {
-            // Validate input
             if (string.IsNullOrWhiteSpace(dto.OldPassword))
                 throw new ArgumentException("Old password is required");
 
@@ -131,20 +119,16 @@ namespace BusinessLogicLayer.Services.Implementation
             if (dto.NewPassword != dto.ConfirmPassword)
                 throw new ArgumentException("New password and confirm password do not match");
 
-            // Get user
             var user = await _uow.Users.GetByIdAsync(userId);
             if (user == null)
                 throw new InvalidOperationException("User not found");
 
-            // Verify old password
             if (!BCrypt.Net.BCrypt.Verify(dto.OldPassword, user.Password))
                 throw new ArgumentException("Old password is incorrect");
 
-            // Check new password is different from old password
             if (BCrypt.Net.BCrypt.Verify(dto.NewPassword, user.Password))
                 throw new ArgumentException("New password must be different from old password");
 
-            // Hash and update new password
             user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
 
             _uow.Users.Update(user);

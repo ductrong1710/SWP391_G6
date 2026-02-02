@@ -1,7 +1,5 @@
 using BusinessLogicLayer.DTOs.WasteType;
 using DataAccessLayer.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace BusinessLogicLayer.Services.Interface
 {
