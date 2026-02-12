@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -103,9 +103,12 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("confirmed_at");
-            entity.Property(e => e.ImageUrl)
-                .HasMaxLength(500)
-                .HasColumnName("image_url");
+            entity.Property(e => e.BeforeImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("before_image_url");
+            entity.Property(e => e.AfterImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("after_image_url");
             entity.Property(e => e.Note)
                 .HasMaxLength(255)
                 .HasColumnName("note");
@@ -165,6 +168,15 @@ public partial class PostgresContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Assigned'::character varying")
                 .HasColumnName("status");
+            entity.Property(e => e.StartedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("started_at");
+            entity.Property(e => e.ArrivedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("arrived_at");
+            entity.Property(e => e.BeforeImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("before_image_url");
 
             entity.HasOne(d => d.AssignedByNavigation).WithMany(p => p.CollectorassignmentAssignedByNavigations)
                 .HasForeignKey(d => d.AssignedBy)
