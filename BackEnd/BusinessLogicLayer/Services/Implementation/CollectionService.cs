@@ -16,6 +16,57 @@ namespace BusinessLogicLayer.Services.Implementation
             _uow = uow;
         }
 
+        public async Task<DeclineAssignmentResponseDto> DeclineAssignmentAsync(int assignmentId, int collectorId, DeclineAssignmentDto dto)
+        {
+            // Get assignment
+            var assignment = await _uow.CollectorAssignments.GetByIdAsync(assignmentId);
+            if (assignment == null)
+            {
+                throw new InvalidOperationException("Assignment not found");
+            }
+
+            // Validate collector is the assigned collector
+            if (assignment.AssignedCollector != collectorId)
+            {
+                throw new UnauthorizedAccessException("You can only decline your own assignments");
+            }
+
+            // Validate status is "Assigned" (not started yet)
+            if (!string.Equals(assignment.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Can only decline assignment when status is 'Assigned'. Cannot decline after starting collection.");
+            }
+
+            // Validate reason is provided
+            if (string.IsNullOrWhiteSpace(dto.Reason))
+            {
+                throw new ArgumentException("Reason is required to decline assignment");
+            }
+
+            // Update assignment status to "Declined"
+            assignment.Status = "Declined";
+            _uow.CollectorAssignments.Update(assignment);
+
+            // Update collection request status back to "Pending" so Enterprise can reassign
+            var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
+            if (request != null)
+            {
+                request.Status = "Pending";
+                _uow.CollectionRequests.Update(request);
+            }
+
+            await _uow.SaveChangesAsync();
+
+            return new DeclineAssignmentResponseDto
+            {
+                AssignmentId = assignment.AssignmentId,
+                RequestId = assignment.RequestId,
+                Status = assignment.Status,
+                Reason = dto.Reason,
+                DeclinedAt = DateTime.UtcNow
+            };
+        }
+
         public async Task<StartCollectionResponseDto> StartCollectionAsync(int assignmentId, int collectorId)
         {
             // Get assignment with details

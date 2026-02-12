@@ -7,6 +7,7 @@ namespace BusinessLogicLayer.Services.Interface
     /// </summary>
     public interface ICollectionService
     {
+        Task<DeclineAssignmentResponseDto> DeclineAssignmentAsync(int assignmentId, int collectorId, DeclineAssignmentDto dto);
         Task<StartCollectionResponseDto> StartCollectionAsync(int assignmentId, int collectorId);
         Task<CompleteCollectionResponseDto> CompleteCollectionAsync(int assignmentId, int collectorId, CompleteCollectionDto dto);
     }

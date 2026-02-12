@@ -17,6 +17,46 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
+        /// Collector: Decline assignment (refuse to collect)
+        /// </summary>
+        [HttpPut("{assignmentId:int}/decline")]
+        [Authorize(Roles = "Collector")]
+        public async Task<IActionResult> DeclineAssignment(int assignmentId, [FromBody] DeclineAssignmentDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var collectorId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var result = await _service.DeclineAssignmentAsync(assignmentId, collectorId, dto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Collector: Start collection (change status to OnTheWay)
         /// </summary>
         [HttpPut("{assignmentId:int}/start")]
