@@ -14,5 +14,9 @@ namespace BusinessLogicLayer.Services.Interface
         Task<IEnumerable<MyAssignmentDto>> GetMyAssignmentsAsync(int collectorId);
         Task<MyAssignmentDto?> GetAssignmentDetailAsync(int assignmentId, int collectorId);
         Task<IEnumerable<CollectionRequestDto>> GetAllCollectionRequestsAsync();
+
+        // Assignment view methods
+        Task<IEnumerable<AssignmentDto>> GetAllAssignmentsByEnterpriseAsync(int enterpriseId);
+        Task<IEnumerable<AssignmentHistoryDto>> GetAssignmentHistoryByRequestAsync(int requestId, int enterpriseId);
     }
 }

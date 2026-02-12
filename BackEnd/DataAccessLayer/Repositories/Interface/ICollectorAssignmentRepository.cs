@@ -13,5 +13,6 @@ namespace DataAccessLayer.Repositories.Interface
         // View methods
         Task<IEnumerable<Collectorassignment>> GetByCollectorIdAsync(int collectorId);
         Task<Collectorassignment?> GetByIdWithDetailsAsync(int assignmentId);
+        Task<IEnumerable<Collectorassignment>> GetByEnterpriseIdAsync(int enterpriseId);
     }
 }

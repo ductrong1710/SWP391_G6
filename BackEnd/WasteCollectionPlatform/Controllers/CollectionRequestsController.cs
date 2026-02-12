@@ -148,6 +148,62 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
+        /// Enterprise: Get all assignments created by this enterprise (across all requests)
+        /// </summary>
+        [HttpGet("assignments")]
+        [Authorize(Roles = "Enterprise")]
+        public async Task<IActionResult> GetAllMyAssignments()
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var assignments = await _service.GetAllAssignmentsByEnterpriseAsync(enterpriseId);
+                return Ok(assignments);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Enterprise: Get assignment history for a specific collection request
+        /// </summary>
+        [HttpGet("{requestId:int}/assignments")]
+        [Authorize(Roles = "Enterprise")]
+        public async Task<IActionResult> GetAssignmentHistory(int requestId)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var history = await _service.GetAssignmentHistoryByRequestAsync(requestId, enterpriseId);
+                return Ok(history);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Enterprise assigns a collector to a collection request
         /// </summary>
         [HttpPost("{requestId:int}/assign")]
