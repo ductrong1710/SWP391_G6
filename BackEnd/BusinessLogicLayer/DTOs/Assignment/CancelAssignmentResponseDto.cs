@@ -1,5 +1,8 @@
-namespace BusinessLogicLayer.DTOs.CollectionRequest
+namespace BusinessLogicLayer.DTOs.Assignment
 {
+    /// <summary>
+    /// Response DTO after cancelling an assignment
+    /// </summary>
     public class CancelAssignmentResponseDto
     {
         public int AssignmentId { get; set; }
