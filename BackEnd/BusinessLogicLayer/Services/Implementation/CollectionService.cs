@@ -114,6 +114,91 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
+        public async Task<ReportIssueResponseDto> ReportIssueAsync(int assignmentId, int collectorId, ReportIssueDto dto)
+        {
+            // Get assignment with details
+            var assignment = await _uow.CollectorAssignments.GetByIdWithDetailsAsync(assignmentId);
+            if (assignment == null)
+            {
+                throw new InvalidOperationException("Assignment not found");
+            }
+
+            // Validate collector is the assigned collector
+            if (assignment.AssignedCollector != collectorId)
+            {
+                throw new UnauthorizedAccessException("You can only report issues for your own assignments");
+            }
+
+            // Validate status is "OnTheWay" (collector must have started the collection)
+            if (!string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Can only report issue when status is 'OnTheWay'. Please start collection first.");
+            }
+
+            // Validate issue type
+            if (string.IsNullOrWhiteSpace(dto.IssueType))
+            {
+                throw new ArgumentException("Issue type is required");
+            }
+
+            // Validate description
+            if (string.IsNullOrWhiteSpace(dto.Description))
+            {
+                throw new ArgumentException("Description is required to report issue");
+            }
+
+            // Validate issue type is valid
+            var validIssueTypes = new[] 
+            { 
+                CollectionIssueTypes.WasteNotFound,
+                CollectionIssueTypes.WrongAddress,
+                CollectionIssueTypes.WasteTypeMismatch,
+                CollectionIssueTypes.CitizenUnavailable,
+                CollectionIssueTypes.Other
+            };
+
+            if (!validIssueTypes.Contains(dto.IssueType, StringComparer.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Invalid issue type. Valid types: {string.Join(", ", validIssueTypes)}");
+            }
+
+            // Save proof image if provided
+            string? proofImageUrl = null;
+            if (dto.ProofImage != null && dto.ProofImage.Length > 0)
+            {
+                proofImageUrl = await SaveIssueProofImageAsync(dto.ProofImage);
+            }
+
+            // Update assignment status to "Issue"
+            assignment.Status = "Issue";
+            _uow.CollectorAssignments.Update(assignment);
+
+            // Update collection request status to "Issue"
+            var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
+            if (request != null)
+            {
+                request.Status = "Issue";
+                _uow.CollectionRequests.Update(request);
+            }
+
+            await _uow.SaveChangesAsync();
+
+            // Note: Issue details (type, description, image) should be stored in a separate table
+            // For now, we're just changing the status. Enterprise will need to contact collector
+            // or create a CollectionIssue table in future
+
+            return new ReportIssueResponseDto
+            {
+                AssignmentId = assignment.AssignmentId,
+                RequestId = assignment.RequestId,
+                Status = assignment.Status,
+                IssueType = dto.IssueType,
+                Description = dto.Description,
+                ProofImageUrl = proofImageUrl,
+                ReportedAt = DateTime.UtcNow
+            };
+        }
+
         public async Task<CompleteCollectionResponseDto> CompleteCollectionAsync(int assignmentId, int collectorId, CompleteCollectionDto dto)
         {
             // Get assignment with details
@@ -217,6 +302,28 @@ namespace BusinessLogicLayer.Services.Implementation
             }
 
             return $"/uploads/collection-proofs/{fileName}";
+        }
+
+        private static async Task<string> SaveIssueProofImageAsync(Microsoft.AspNetCore.Http.IFormFile image)
+        {
+            if (image == null || image.Length <= 0)
+            {
+                throw new ArgumentException("Invalid image file");
+            }
+
+            var ext = Path.GetExtension(image.FileName);
+            var fileName = $"{Guid.NewGuid():N}{ext}";
+
+            var root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "issue-proofs");
+            Directory.CreateDirectory(root);
+
+            var fullPath = Path.Combine(root, fileName);
+            await using (var stream = new FileStream(fullPath, FileMode.Create))
+            {
+                await image.CopyToAsync(stream);
+            }
+
+            return $"/uploads/issue-proofs/{fileName}";
         }
     }
 }

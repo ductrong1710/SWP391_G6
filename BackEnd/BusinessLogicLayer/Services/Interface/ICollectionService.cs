@@ -9,6 +9,7 @@ namespace BusinessLogicLayer.Services.Interface
     {
         Task<DeclineAssignmentResponseDto> DeclineAssignmentAsync(int assignmentId, int collectorId, DeclineAssignmentDto dto);
         Task<StartCollectionResponseDto> StartCollectionAsync(int assignmentId, int collectorId);
+        Task<ReportIssueResponseDto> ReportIssueAsync(int assignmentId, int collectorId, ReportIssueDto dto);
         Task<CompleteCollectionResponseDto> CompleteCollectionAsync(int assignmentId, int collectorId, CompleteCollectionDto dto);
     }
 }
