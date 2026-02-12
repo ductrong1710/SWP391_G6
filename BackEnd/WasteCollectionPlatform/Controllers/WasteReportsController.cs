@@ -203,9 +203,15 @@ namespace WasteCollectionPlatform.Controllers
         [Authorize(Roles = "Enterprise")]
         public async Task<IActionResult> Accept(int id)
         {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
             try
             {
-                var updated = await _service.AcceptAsync(id);
+                var updated = await _service.AcceptAsync(id, enterpriseId);
                 return Ok(updated);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))

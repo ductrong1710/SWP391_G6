@@ -11,6 +11,7 @@ namespace DataAccessLayer.Repositories.Interface
         IUserRepository Users { get; }
         IWasteTypeRepository WasteTypes { get; }
         IWasteReportRepository WasteReports { get; }
+        ICollectionRequestRepository CollectionRequests { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }
