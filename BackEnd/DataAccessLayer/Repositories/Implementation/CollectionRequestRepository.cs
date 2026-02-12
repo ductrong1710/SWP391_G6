@@ -39,5 +39,47 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             _context.Collectionrequests.Update(entity);
         }
+
+        // View methods
+        public async Task<IEnumerable<Collectionrequest>> GetByEnterpriseIdAsync(int enterpriseId)
+        {
+            return await _context.Collectionrequests
+                .Include(x => x.Enterprise)
+                .Include(x => x.Report)
+                    .ThenInclude(r => r.WasteType)
+                .Include(x => x.Report.SubmittedByNavigation)
+                .Include(x => x.Collectorassignments.Where(a => a.Status == "Assigned"))
+                    .ThenInclude(a => a.AssignedCollectorNavigation)
+                .Where(x => x.EnterpriseId == enterpriseId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<Collectionrequest?> GetByIdWithDetailsAsync(int requestId)
+        {
+            return await _context.Collectionrequests
+                .Include(x => x.Enterprise)
+                .Include(x => x.Report)
+                    .ThenInclude(r => r.WasteType)
+                .Include(x => x.Report.SubmittedByNavigation)
+                .Include(x => x.Collectorassignments)
+                    .ThenInclude(a => a.AssignedCollectorNavigation)
+                .Include(x => x.Collectorassignments)
+                    .ThenInclude(a => a.AssignedByNavigation)
+                .FirstOrDefaultAsync(x => x.RequestId == requestId);
+        }
+
+        public async Task<IEnumerable<Collectionrequest>> GetAllWithDetailsAsync()
+        {
+            return await _context.Collectionrequests
+                .Include(x => x.Enterprise)
+                .Include(x => x.Report)
+                    .ThenInclude(r => r.WasteType)
+                .Include(x => x.Report.SubmittedByNavigation)
+                .Include(x => x.Collectorassignments.Where(a => a.Status == "Assigned"))
+                    .ThenInclude(a => a.AssignedCollectorNavigation)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+        }
     }
 }

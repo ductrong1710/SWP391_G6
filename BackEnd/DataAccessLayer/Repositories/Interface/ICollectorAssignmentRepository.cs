@@ -9,5 +9,9 @@ namespace DataAccessLayer.Repositories.Interface
         Task<IEnumerable<Collectorassignment>> GetByRequestIdAsync(int requestId);
         Task<Collectorassignment?> GetActiveByRequestIdAsync(int requestId);
         void Update(Collectorassignment entity);
+
+        // View methods
+        Task<IEnumerable<Collectorassignment>> GetByCollectorIdAsync(int collectorId);
+        Task<Collectorassignment?> GetByIdWithDetailsAsync(int assignmentId);
     }
 }
