@@ -92,7 +92,7 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
-        public async Task<WasteReportStatusResponseDto> AcceptAsync(int reportId)
+        public async Task<WasteReportStatusResponseDto> AcceptAsync(int reportId, int enterpriseId)
         {
             var report = await _uow.WasteReports.GetByIdAsync(reportId);
             if (report == null)
@@ -105,8 +105,27 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Only Pending reports can be accepted");
             }
 
+            // Check nếu đã có collection request cho report này
+            var existingRequest = await _uow.CollectionRequests.GetByReportIdAsync(reportId);
+            if (existingRequest != null)
+            {
+                throw new InvalidOperationException("Collection request already exists for this report");
+            }
+
+            // Update report status
             report.Status = "Accepted";
             _uow.WasteReports.Update(report);
+
+            // Tự động tạo collection request
+            var collectionRequest = new Collectionrequest
+            {
+                ReportId = reportId,
+                EnterpriseId = enterpriseId,
+                Status = "Pending",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _uow.CollectionRequests.AddAsync(collectionRequest);
             await _uow.SaveChangesAsync();
 
             return new WasteReportStatusResponseDto
