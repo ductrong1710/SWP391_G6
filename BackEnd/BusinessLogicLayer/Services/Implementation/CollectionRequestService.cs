@@ -79,5 +79,72 @@ namespace BusinessLogicLayer.Services.Implementation
                 AssignedAt = assignment.AssignedAt
             };
         }
+
+        public async Task<CollectorAssignmentResponseDto> ReassignCollectorAsync(int requestId, int enterpriseId, ReassignCollectorDto dto)
+        {
+            // Validate collection request exists
+            var request = await _uow.CollectionRequests.GetByIdAsync(requestId);
+            if (request == null)
+            {
+                throw new InvalidOperationException("Collection request not found");
+            }
+
+            // Validate request belongs to this enterprise
+            if (request.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException("You can only reassign collectors for your own collection requests");
+            }
+
+            // Get active assignment
+            var activeAssignment = await _uow.CollectorAssignments.GetActiveByRequestIdAsync(requestId);
+            if (activeAssignment == null)
+            {
+                throw new InvalidOperationException("No active assignment found for this request");
+            }
+
+            // Validate can only reassign when status is "Assigned" (not started yet)
+            if (!string.Equals(activeAssignment.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Can only reassign collector when assignment status is 'Assigned'");
+            }
+
+            // Validate new collector exists and has Collector role
+            var newCollector = await _uow.Users.GetByIdAsync(dto.NewCollectorId);
+            if (newCollector == null)
+            {
+                throw new ArgumentException("New collector not found");
+            }
+
+            if (!string.Equals(newCollector.Role?.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("Selected user is not a Collector");
+            }
+
+            // Check if new collector is same as current
+            if (activeAssignment.AssignedCollector == dto.NewCollectorId)
+            {
+                throw new InvalidOperationException("New collector is the same as current collector");
+            }
+
+            // Update assignment
+            activeAssignment.AssignedCollector = dto.NewCollectorId;
+            activeAssignment.AssignedBy = enterpriseId;
+            activeAssignment.AssignedAt = DateTime.UtcNow;
+
+            _uow.CollectorAssignments.Update(activeAssignment);
+            await _uow.SaveChangesAsync();
+
+            return new CollectorAssignmentResponseDto
+            {
+                AssignmentId = activeAssignment.AssignmentId,
+                RequestId = activeAssignment.RequestId,
+                AssignedCollector = activeAssignment.AssignedCollector,
+                CollectorName = newCollector.FullName,
+                AssignedBy = activeAssignment.AssignedBy,
+                AssignedByName = request.Enterprise?.FullName,
+                Status = activeAssignment.Status,
+                AssignedAt = activeAssignment.AssignedAt
+            };
+        }
     }
 }

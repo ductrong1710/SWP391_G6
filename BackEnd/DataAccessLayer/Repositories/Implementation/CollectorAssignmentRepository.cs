@@ -37,5 +37,23 @@ namespace DataAccessLayer.Repositories.Implementation
                 .OrderByDescending(x => x.AssignedAt)
                 .ToListAsync();
         }
+
+        public async Task<Collectorassignment?> GetActiveByRequestIdAsync(int requestId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Request)
+                    .ThenInclude(r => r.Enterprise)
+                .Where(x => x.RequestId == requestId 
+                    && x.Status == "Assigned")
+                .OrderByDescending(x => x.AssignedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public void Update(Collectorassignment entity)
+        {
+            _context.Collectorassignments.Update(entity);
+        }
     }
 }
