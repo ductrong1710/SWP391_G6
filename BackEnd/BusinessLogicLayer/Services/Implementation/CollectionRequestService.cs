@@ -146,5 +146,65 @@ namespace BusinessLogicLayer.Services.Implementation
                 AssignedAt = activeAssignment.AssignedAt
             };
         }
+
+        public async Task<CancelAssignmentResponseDto> CancelAssignmentAsync(int assignmentId, int userId, string userRole)
+        {
+            // Get assignment
+            var assignment = await _uow.CollectorAssignments.GetByIdAsync(assignmentId);
+            if (assignment == null)
+            {
+                throw new InvalidOperationException("Assignment not found");
+            }
+
+            // Validate can only cancel when status is "Assigned" (not started yet)
+            if (!string.Equals(assignment.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Can only cancel assignment when status is 'Assigned'");
+            }
+
+            // Role-based authorization
+            if (string.Equals(userRole, "Enterprise", StringComparison.OrdinalIgnoreCase))
+            {
+                // Enterprise can only cancel assignments for their own requests
+                var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
+                if (request == null || request.EnterpriseId != userId)
+                {
+                    throw new UnauthorizedAccessException("You can only cancel assignments for your own collection requests");
+                }
+            }
+            else if (string.Equals(userRole, "Collector", StringComparison.OrdinalIgnoreCase))
+            {
+                // Collector can only cancel assignments assigned to them
+                if (assignment.AssignedCollector != userId)
+                {
+                    throw new UnauthorizedAccessException("You can only cancel assignments assigned to you");
+                }
+            }
+            else
+            {
+                throw new UnauthorizedAccessException("Only Enterprise or Collector can cancel assignments");
+            }
+
+            // Update assignment status
+            assignment.Status = "Cancelled";
+            _uow.CollectorAssignments.Update(assignment);
+
+            // Update collection request status back to Pending
+            var collectionRequest = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
+            if (collectionRequest != null)
+            {
+                collectionRequest.Status = "Pending";
+                _uow.CollectionRequests.Update(collectionRequest);
+            }
+
+            await _uow.SaveChangesAsync();
+
+            return new CancelAssignmentResponseDto
+            {
+                AssignmentId = assignment.AssignmentId,
+                RequestId = assignment.RequestId,
+                Status = assignment.Status
+            };
+        }
     }
 }

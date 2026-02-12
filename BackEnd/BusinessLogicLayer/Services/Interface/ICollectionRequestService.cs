@@ -6,5 +6,6 @@ namespace BusinessLogicLayer.Services.Interface
     {
         Task<CollectorAssignmentResponseDto> AssignCollectorAsync(int requestId, int enterpriseId, AssignCollectorDto dto);
         Task<CollectorAssignmentResponseDto> ReassignCollectorAsync(int requestId, int enterpriseId, ReassignCollectorDto dto);
+        Task<CancelAssignmentResponseDto> CancelAssignmentAsync(int assignmentId, int userId, string userRole);
     }
 }

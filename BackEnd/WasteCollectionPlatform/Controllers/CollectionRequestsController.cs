@@ -87,5 +87,44 @@ namespace WasteCollectionPlatform.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Cancel a collector assignment (Enterprise or Collector can cancel)
+        /// </summary>
+        [HttpPut("assignments/{assignmentId:int}/cancel")]
+        [Authorize(Roles = "Enterprise,Collector")]
+        public async Task<IActionResult> CancelAssignment(int assignmentId)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            if (string.IsNullOrWhiteSpace(userRole))
+            {
+                return Unauthorized(new { message = "Invalid or missing Role claim" });
+            }
+
+            try
+            {
+                var result = await _service.CancelAssignmentAsync(assignmentId, userId, userRole);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }
