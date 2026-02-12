@@ -2,6 +2,9 @@ using BusinessLogicLayer.DTOs.Assignment;
 
 namespace BusinessLogicLayer.Services.Interface
 {
+    /// <summary>
+    /// Service for assignment management (Enterprise perspective)
+    /// </summary>
     public interface IAssignmentService
     {
         // Assignment operations

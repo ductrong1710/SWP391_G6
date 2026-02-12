@@ -17,6 +17,7 @@ namespace DataAccessLayer.Repositories.Implementation
         public IWasteReportRepository WasteReports { get; }
         public ICollectionRequestRepository CollectionRequests { get; }
         public ICollectorAssignmentRepository CollectorAssignments { get; }
+        public ICollectionConfirmationRepository CollectionConfirmations { get; }
 
         public UnitOfWork(
             AppDbContext context,
@@ -24,7 +25,8 @@ namespace DataAccessLayer.Repositories.Implementation
             IWasteTypeRepository wasteTypeRepository,
             IWasteReportRepository wasteReportRepository,
             ICollectionRequestRepository collectionRequestRepository,
-            ICollectorAssignmentRepository collectorAssignmentRepository)
+            ICollectorAssignmentRepository collectorAssignmentRepository,
+            ICollectionConfirmationRepository collectionConfirmationRepository)
         {
             _context = context;
             Users = userRepository;
@@ -32,6 +34,7 @@ namespace DataAccessLayer.Repositories.Implementation
             WasteReports = wasteReportRepository;
             CollectionRequests = collectionRequestRepository;
             CollectorAssignments = collectorAssignmentRepository;
+            CollectionConfirmations = collectionConfirmationRepository;
         }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
