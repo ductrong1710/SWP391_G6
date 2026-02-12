@@ -26,6 +26,7 @@ namespace BusinessLogicLayer
             services.AddScoped<IWasteTypeService, WasteTypeService>();
             services.AddScoped<IWasteReportService, WasteReportService>();
             services.AddScoped<ICollectionRequestService, CollectionRequestService>();
+            services.AddScoped<IAssignmentService, AssignmentService>();
 
             return services;
         }

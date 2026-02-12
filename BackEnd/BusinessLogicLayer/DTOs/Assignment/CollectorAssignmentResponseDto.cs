@@ -1,5 +1,8 @@
-namespace BusinessLogicLayer.DTOs.CollectionRequest
+namespace BusinessLogicLayer.DTOs.Assignment
 {
+    /// <summary>
+    /// Response DTO after assigning or reassigning a collector
+    /// </summary>
     public class CollectorAssignmentResponseDto
     {
         public int AssignmentId { get; set; }

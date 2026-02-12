@@ -1,4 +1,4 @@
-namespace BusinessLogicLayer.DTOs.CollectionRequest
+namespace BusinessLogicLayer.DTOs.Assignment
 {
     /// <summary>
     /// DTO for collectors to view their assigned collections
