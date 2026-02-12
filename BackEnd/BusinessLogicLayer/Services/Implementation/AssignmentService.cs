@@ -223,6 +223,8 @@ namespace BusinessLogicLayer.Services.Implementation
                 AssignedByName = a.AssignedByNavigation?.FullName,
                 Status = a.Status,
                 AssignedAt = a.AssignedAt,
+                StartedAt = a.StartedAt,
+                CompletedAt = a.Collectionconfirmation?.ConfirmedAt,  // From confirmation
 
                 // Collection request info
                 RequestStatus = a.Request?.Status,
@@ -284,6 +286,8 @@ namespace BusinessLogicLayer.Services.Implementation
                 RequestId = a.RequestId,
                 Status = a.Status,
                 AssignedAt = a.AssignedAt,
+                StartedAt = a.StartedAt,
+                CompletedAt = a.Collectionconfirmation?.ConfirmedAt,  // From confirmation
 
                 // Enterprise info
                 EnterpriseId = a.Request?.EnterpriseId ?? 0,
@@ -326,6 +330,8 @@ namespace BusinessLogicLayer.Services.Implementation
                 RequestId = assignment.RequestId,
                 Status = assignment.Status,
                 AssignedAt = assignment.AssignedAt,
+                StartedAt = assignment.StartedAt,
+                CompletedAt = assignment.Collectionconfirmation?.ConfirmedAt,  // From confirmation
 
                 // Enterprise info
                 EnterpriseId = assignment.Request?.EnterpriseId ?? 0,

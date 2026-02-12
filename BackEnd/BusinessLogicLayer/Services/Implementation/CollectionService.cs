@@ -88,8 +88,10 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Can only start collection when status is 'Assigned'");
             }
 
-            // Update assignment status to "OnTheWay"
+            // Update assignment status to "OnTheWay" and set StartedAt
+            var startedAt = DateTime.UtcNow;
             assignment.Status = "OnTheWay";
+            assignment.StartedAt = startedAt;  // ✅ Track actual start time
             _uow.CollectorAssignments.Update(assignment);
 
             // Update collection request status to "InProgress"
@@ -107,7 +109,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 AssignmentId = assignment.AssignmentId,
                 RequestId = assignment.RequestId,
                 Status = assignment.Status,
-                StartedAt = DateTime.UtcNow,
+                StartedAt = startedAt,
                 Latitude = assignment.Request?.Report?.Latitude,
                 Longitude = assignment.Request?.Report?.Longitude,
                 Address = assignment.Request?.Report?.Description
@@ -227,6 +229,53 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException("Proof image is required to complete collection");
             }
 
+            // TIME VALIDATION: Ensure collection takes reasonable time
+            // Use StartedAt if available, otherwise fallback to AssignedAt
+            DateTime baselineTime;
+            if (assignment.StartedAt.HasValue)
+            {
+                baselineTime = assignment.StartedAt.Value;
+            }
+            else if (assignment.AssignedAt.HasValue)
+            {
+                baselineTime = assignment.AssignedAt.Value;
+            }
+            else
+            {
+                throw new InvalidOperationException("Cannot validate time: no baseline timestamp available");
+            }
+
+            var timeElapsed = DateTime.UtcNow - baselineTime;
+                
+                // Minimum time validation (5 minutes)
+                // Rationale: Realistically, collector needs time to:
+                // - Review assignment details (1 min)
+                // - Travel to location (2-3 min minimum)
+                // - Collect waste (1-2 min minimum)
+            var minimumDuration = TimeSpan.FromMinutes(5);
+            
+            if (timeElapsed < minimumDuration)
+            {
+                var remainingMinutes = Math.Ceiling((minimumDuration - timeElapsed).TotalMinutes);
+                throw new InvalidOperationException(
+                    $"Collection must take at least {minimumDuration.TotalMinutes} minutes. " +
+                    $"Please wait {remainingMinutes} more minute(s) before completing. " +
+                    $"This ensures quality and prevents fake completions."
+                );
+            }
+
+            // Maximum time warning (4 hours)
+            // If taking too long, might indicate an issue
+            var maximumDuration = TimeSpan.FromHours(4);
+            
+            if (timeElapsed > maximumDuration)
+            {
+                // Log warning but still allow completion
+                // Enterprise should review these cases
+                Console.WriteLine($"WARNING: Assignment {assignmentId} took {timeElapsed.TotalHours:F2} hours to complete. " +
+                                $"This is unusually long and should be reviewed.");
+            }
+
             // Save proof image
             var imageUrl = await SaveProofImageAsync(dto.ProofImage);
 
@@ -249,6 +298,7 @@ namespace BusinessLogicLayer.Services.Implementation
             await _uow.CollectionConfirmations.AddAsync(confirmation);
 
             // Update assignment status to "Completed"
+            // Note: CompletedAt is tracked in confirmation.ConfirmedAt
             assignment.Status = "Completed";
             _uow.CollectorAssignments.Update(assignment);
 

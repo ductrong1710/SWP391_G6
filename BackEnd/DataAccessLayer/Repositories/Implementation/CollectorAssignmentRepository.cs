@@ -24,6 +24,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
                 .Include(x => x.Request)
                 .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         }
@@ -33,6 +34,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
                 .Where(x => x.RequestId == requestId)
                 .OrderByDescending(x => x.AssignedAt)
                 .ToListAsync();
@@ -62,6 +64,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
@@ -77,6 +80,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
@@ -90,6 +94,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
