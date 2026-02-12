@@ -116,6 +116,58 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
+        public async Task<ArrivedAtLocationResponseDto> ArrivedAtLocationAsync(int assignmentId, int collectorId, ArrivedAtLocationDto dto)
+        {
+            // Get assignment with details
+            var assignment = await _uow.CollectorAssignments.GetByIdWithDetailsAsync(assignmentId);
+            if (assignment == null)
+            {
+                throw new InvalidOperationException("Assignment not found");
+            }
+
+            // Validate collector is the assigned collector
+            if (assignment.AssignedCollector != collectorId)
+            {
+                throw new UnauthorizedAccessException("You can only mark arrival for your own assignments");
+            }
+
+            // Validate status is "OnTheWay"
+            if (!string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Can only mark arrival when status is 'OnTheWay'. Please start collection first.");
+            }
+
+            // Validate before image is provided
+            if (dto.BeforeImage == null || dto.BeforeImage.Length == 0)
+            {
+                throw new ArgumentException("Before image is required when marking arrival");
+            }
+
+            // Save before image
+            var beforeImageUrl = await SaveProofImageAsync(dto.BeforeImage, "before");
+
+            // Update assignment status to "Arrived" and set ArrivedAt & BeforeImageUrl
+            var arrivedAt = DateTime.UtcNow;
+            assignment.Status = "Arrived";
+            assignment.ArrivedAt = arrivedAt;
+            assignment.BeforeImageUrl = beforeImageUrl;
+            _uow.CollectorAssignments.Update(assignment);
+
+            await _uow.SaveChangesAsync();
+
+            return new ArrivedAtLocationResponseDto
+            {
+                AssignmentId = assignment.AssignmentId,
+                RequestId = assignment.RequestId,
+                Status = assignment.Status,
+                ArrivedAt = arrivedAt,
+                BeforeImageUrl = beforeImageUrl,
+                Note = dto.Note,
+                Latitude = assignment.Request?.Report?.Latitude,
+                Longitude = assignment.Request?.Report?.Longitude
+            };
+        }
+
         public async Task<ReportIssueResponseDto> ReportIssueAsync(int assignmentId, int collectorId, ReportIssueDto dto)
         {
             // Get assignment with details
@@ -131,10 +183,11 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new UnauthorizedAccessException("You can only report issues for your own assignments");
             }
 
-            // Validate status is "OnTheWay" (collector must have started the collection)
-            if (!string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase))
+            // Validate status is "OnTheWay" or "Arrived" (collector must have started the collection)
+            if (!string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(assignment.Status, "Arrived", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Can only report issue when status is 'OnTheWay'. Please start collection first.");
+                throw new InvalidOperationException("Can only report issue when status is 'OnTheWay' or 'Arrived'. Please start collection first.");
             }
 
             // Validate issue type
@@ -216,23 +269,32 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new UnauthorizedAccessException("You can only complete your own assignments");
             }
 
-            // Validate status is "OnTheWay" or "Assigned" (allow skip start if needed)
-            if (!string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase) 
-                && !string.Equals(assignment.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
+            // Validate status is "Arrived" (must call Arrived first to upload before photo)
+            if (!string.Equals(assignment.Status, "Arrived", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Can only complete collection when status is 'OnTheWay' or 'Assigned'");
+                throw new InvalidOperationException("Can only complete collection when status is 'Arrived'. Please mark arrival first.");
             }
 
-            // Validate proof image is provided
-            if (dto.ProofImage == null || dto.ProofImage.Length == 0)
+            // Validate before image exists (should be uploaded during Arrived step)
+            if (string.IsNullOrWhiteSpace(assignment.BeforeImageUrl))
             {
-                throw new ArgumentException("Proof image is required to complete collection");
+                throw new InvalidOperationException("Before image not found. Please mark arrival and upload before photo first.");
+            }
+
+            // Validate after image is provided
+            if (dto.AfterImage == null || dto.AfterImage.Length == 0)
+            {
+                throw new ArgumentException("After image is required to complete collection");
             }
 
             // TIME VALIDATION: Ensure collection takes reasonable time
-            // Use StartedAt if available, otherwise fallback to AssignedAt
+            // Use ArrivedAt as baseline (actual collection start time)
             DateTime baselineTime;
-            if (assignment.StartedAt.HasValue)
+            if (assignment.ArrivedAt.HasValue)
+            {
+                baselineTime = assignment.ArrivedAt.Value;
+            }
+            else if (assignment.StartedAt.HasValue)
             {
                 baselineTime = assignment.StartedAt.Value;
             }
@@ -247,12 +309,12 @@ namespace BusinessLogicLayer.Services.Implementation
 
             var timeElapsed = DateTime.UtcNow - baselineTime;
                 
-                // Minimum time validation (5 minutes)
-                // Rationale: Realistically, collector needs time to:
-                // - Review assignment details (1 min)
-                // - Travel to location (2-3 min minimum)
-                // - Collect waste (1-2 min minimum)
-            var minimumDuration = TimeSpan.FromMinutes(5);
+                // Minimum time validation (2 minutes from arrival)
+                // Rationale: After arriving, collector needs time to:
+                // - Take before photo and assess situation (30 sec)
+                // - Collect waste properly (1-2 min minimum)
+                // - Clean up area (30 sec)
+            var minimumDuration = TimeSpan.FromMinutes(2);
             
             if (timeElapsed < minimumDuration)
             {
@@ -276,8 +338,8 @@ namespace BusinessLogicLayer.Services.Implementation
                                 $"This is unusually long and should be reviewed.");
             }
 
-            // Save proof image
-            var imageUrl = await SaveProofImageAsync(dto.ProofImage);
+            // Save after image (before image already saved during Arrived step)
+            var afterImageUrl = await SaveProofImageAsync(dto.AfterImage, "after");
 
             // Check if confirmation already exists
             var existingConfirmation = await _uow.CollectionConfirmations.GetByAssignmentIdAsync(assignmentId);
@@ -290,7 +352,8 @@ namespace BusinessLogicLayer.Services.Implementation
             var confirmation = new DataAccessLayer.Models.Collectionconfirmation
             {
                 AssignmentId = assignmentId,
-                ImageUrl = imageUrl,
+                BeforeImageUrl = assignment.BeforeImageUrl!,  // From Arrived step
+                AfterImageUrl = afterImageUrl,
                 Note = dto.Note,
                 ConfirmedAt = DateTime.UtcNow
             };
@@ -327,12 +390,13 @@ namespace BusinessLogicLayer.Services.Implementation
                 ConfirmationId = confirmation.ConfirmationId,
                 Status = assignment.Status,
                 CompletedAt = confirmation.ConfirmedAt,
-                ProofImageUrl = confirmation.ImageUrl,
+                BeforeImageUrl = confirmation.BeforeImageUrl,
+                AfterImageUrl = confirmation.AfterImageUrl,
                 Note = confirmation.Note
             };
         }
 
-        private static async Task<string> SaveProofImageAsync(Microsoft.AspNetCore.Http.IFormFile image)
+        private static async Task<string> SaveProofImageAsync(Microsoft.AspNetCore.Http.IFormFile image, string prefix = "proof")
         {
             if (image == null || image.Length <= 0)
             {
@@ -340,7 +404,7 @@ namespace BusinessLogicLayer.Services.Implementation
             }
 
             var ext = Path.GetExtension(image.FileName);
-            var fileName = $"{Guid.NewGuid():N}{ext}";
+            var fileName = $"{prefix}_{Guid.NewGuid():N}{ext}";  // before_xxx.jpg or after_xxx.jpg
 
             var root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "collection-proofs");
             Directory.CreateDirectory(root);

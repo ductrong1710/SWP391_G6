@@ -93,6 +93,46 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
+        /// Collector: Mark arrival at location and upload before photo
+        /// </summary>
+        [HttpPut("{assignmentId:int}/arrived")]
+        [Authorize(Roles = "Collector")]
+        public async Task<IActionResult> ArrivedAtLocation(int assignmentId, [FromForm] ArrivedAtLocationDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var collectorId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var result = await _service.ArrivedAtLocationAsync(assignmentId, collectorId, dto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Collector: Report issue/problem during collection
         /// </summary>
         [HttpPut("{assignmentId:int}/report-issue")]

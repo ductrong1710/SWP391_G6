@@ -224,7 +224,9 @@ namespace BusinessLogicLayer.Services.Implementation
                 Status = a.Status,
                 AssignedAt = a.AssignedAt,
                 StartedAt = a.StartedAt,
+                ArrivedAt = a.ArrivedAt,
                 CompletedAt = a.Collectionconfirmation?.ConfirmedAt,  // From confirmation
+                BeforeImageUrl = a.BeforeImageUrl,
 
                 // Collection request info
                 RequestStatus = a.Request?.Status,
@@ -287,7 +289,9 @@ namespace BusinessLogicLayer.Services.Implementation
                 Status = a.Status,
                 AssignedAt = a.AssignedAt,
                 StartedAt = a.StartedAt,
+                ArrivedAt = a.ArrivedAt,
                 CompletedAt = a.Collectionconfirmation?.ConfirmedAt,  // From confirmation
+                BeforeImageUrl = a.BeforeImageUrl,
 
                 // Enterprise info
                 EnterpriseId = a.Request?.EnterpriseId ?? 0,
@@ -331,7 +335,9 @@ namespace BusinessLogicLayer.Services.Implementation
                 Status = assignment.Status,
                 AssignedAt = assignment.AssignedAt,
                 StartedAt = assignment.StartedAt,
+                ArrivedAt = assignment.ArrivedAt,
                 CompletedAt = assignment.Collectionconfirmation?.ConfirmedAt,  // From confirmation
+                BeforeImageUrl = assignment.BeforeImageUrl,
 
                 // Enterprise info
                 EnterpriseId = assignment.Request?.EnterpriseId ?? 0,

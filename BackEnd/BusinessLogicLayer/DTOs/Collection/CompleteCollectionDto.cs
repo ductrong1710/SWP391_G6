@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Http;
 namespace BusinessLogicLayer.DTOs.Collection
 {
     /// <summary>
-    /// DTO for completing collection (with proof image)
+    /// DTO for completing collection (with after photo)
+    /// Note: Before photo is uploaded during "Arrived" step
     /// </summary>
     public class CompleteCollectionDto
     {
-        public IFormFile? ProofImage { get; set; }  // Ảnh chứng minh
-        public string? Note { get; set; }           // Ghi chú
+        public IFormFile? AfterImage { get; set; }   // Photo after collection (cleaned site)
+        public string? Note { get; set; }            // Additional notes
     }
 }
