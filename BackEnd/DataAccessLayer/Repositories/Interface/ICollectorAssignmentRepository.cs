@@ -7,5 +7,7 @@ namespace DataAccessLayer.Repositories.Interface
         Task AddAsync(Collectorassignment entity);
         Task<Collectorassignment?> GetByIdAsync(int assignmentId);
         Task<IEnumerable<Collectorassignment>> GetByRequestIdAsync(int requestId);
+        Task<Collectorassignment?> GetActiveByRequestIdAsync(int requestId);
+        void Update(Collectorassignment entity);
     }
 }

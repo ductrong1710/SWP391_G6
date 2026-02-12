@@ -51,5 +51,41 @@ namespace WasteCollectionPlatform.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Enterprise reassigns a different collector to a collection request
+        /// </summary>
+        [HttpPut("{requestId:int}/reassign")]
+        [Authorize(Roles = "Enterprise")]
+        public async Task<IActionResult> ReassignCollector(int requestId, [FromBody] ReassignCollectorDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var assignment = await _service.ReassignCollectorAsync(requestId, enterpriseId, dto);
+                return Ok(assignment);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }
