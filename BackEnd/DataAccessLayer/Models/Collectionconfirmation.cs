@@ -1,4 +1,4 @@
-﻿namespace DataAccessLayer.Models;
+namespace DataAccessLayer.Models;
 
 public partial class Collectionconfirmation
 {
@@ -6,7 +6,9 @@ public partial class Collectionconfirmation
 
     public int AssignmentId { get; set; }
 
-    public string ImageUrl { get; set; } = null!;
+    public string BeforeImageUrl { get; set; } = null!;  // Photo before collection (waste at site)
+
+    public string AfterImageUrl { get; set; } = null!;   // Photo after collection (cleaned site)
 
     public string? Note { get; set; }
 

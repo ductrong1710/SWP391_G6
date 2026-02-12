@@ -10,7 +10,8 @@ namespace BusinessLogicLayer.DTOs.Collection
         public int ConfirmationId { get; set; }
         public string? Status { get; set; }  // "Completed"
         public DateTime? CompletedAt { get; set; }
-        public string? ProofImageUrl { get; set; }
+        public string? BeforeImageUrl { get; set; }  // URL of before photo
+        public string? AfterImageUrl { get; set; }   // URL of after photo
         public string? Note { get; set; }
     }
 }

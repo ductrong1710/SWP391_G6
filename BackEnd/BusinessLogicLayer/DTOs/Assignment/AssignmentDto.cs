@@ -16,7 +16,9 @@ namespace BusinessLogicLayer.DTOs.Assignment
         public string? Status { get; set; }
         public DateTime? AssignedAt { get; set; }
         public DateTime? StartedAt { get; set; }
+        public DateTime? ArrivedAt { get; set; }  // When arrived at location
         public DateTime? CompletedAt { get; set; }  // From Collectionconfirmation.ConfirmedAt
+        public string? BeforeImageUrl { get; set; }  // Before photo (uploaded when arrived)
 
         // Collection request info
         public string? RequestStatus { get; set; }

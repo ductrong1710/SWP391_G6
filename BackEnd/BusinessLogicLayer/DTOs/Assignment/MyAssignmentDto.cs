@@ -9,8 +9,10 @@ namespace BusinessLogicLayer.DTOs.Assignment
         public int RequestId { get; set; }
         public string? Status { get; set; }
         public DateTime? AssignedAt { get; set; }
-        public DateTime? StartedAt { get; set; }  // When started collection
+        public DateTime? StartedAt { get; set; }  // When started heading to location
+        public DateTime? ArrivedAt { get; set; }  // When arrived at location
         public DateTime? CompletedAt { get; set; }  // When completed (from Collectionconfirmation.ConfirmedAt)
+        public string? BeforeImageUrl { get; set; }  // Before photo (uploaded when arrived)
 
         // Enterprise info
         public int EnterpriseId { get; set; }
