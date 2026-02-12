@@ -1,4 +1,4 @@
-﻿namespace DataAccessLayer.Models;
+namespace DataAccessLayer.Models;
 
 public partial class Collectorassignment
 {
@@ -13,6 +13,8 @@ public partial class Collectorassignment
     public string? Status { get; set; }
 
     public DateTime? AssignedAt { get; set; }
+
+    public DateTime? StartedAt { get; set; }  
 
     public virtual User AssignedByNavigation { get; set; } = null!;
 
