@@ -7,5 +7,6 @@ namespace DataAccessLayer.Repositories.Interface
         Task AddAsync(Collectionrequest entity);
         Task<Collectionrequest?> GetByIdAsync(int requestId);
         Task<Collectionrequest?> GetByReportIdAsync(int reportId);
+        void Update(Collectionrequest entity);
     }
 }

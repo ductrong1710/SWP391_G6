@@ -32,6 +32,7 @@ namespace DataAccessLayer
             services.AddScoped<IWasteTypeRepository, WasteTypeRepository>();
             services.AddScoped<IWasteReportRepository, WasteReportRepository>();
             services.AddScoped<ICollectionRequestRepository, CollectionRequestRepository>();
+            services.AddScoped<ICollectorAssignmentRepository, CollectorAssignmentRepository>();
 
             return services;
         }

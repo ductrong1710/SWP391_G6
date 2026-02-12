@@ -34,5 +34,10 @@ namespace DataAccessLayer.Repositories.Implementation
                 .Include(x => x.Report)
                 .FirstOrDefaultAsync(x => x.ReportId == reportId);
         }
+
+        public void Update(Collectionrequest entity)
+        {
+            _context.Collectionrequests.Update(entity);
+        }
     }
 }
