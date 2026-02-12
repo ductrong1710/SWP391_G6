@@ -402,5 +402,72 @@ namespace BusinessLogicLayer.Services.Implementation
                 AssignedAt = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignedAt
             }).ToList();
         }
+
+        // Assignment view methods
+        public async Task<IEnumerable<AssignmentDto>> GetAllAssignmentsByEnterpriseAsync(int enterpriseId)
+        {
+            var assignments = await _uow.CollectorAssignments.GetByEnterpriseIdAsync(enterpriseId);
+
+            return assignments.Select(a => new AssignmentDto
+            {
+                AssignmentId = a.AssignmentId,
+                RequestId = a.RequestId,
+                AssignedCollector = a.AssignedCollector,
+                CollectorName = a.AssignedCollectorNavigation?.FullName,
+                CollectorEmail = a.AssignedCollectorNavigation?.Email,
+                CollectorPhone = a.AssignedCollectorNavigation?.Phone,
+                AssignedBy = a.AssignedBy,
+                AssignedByName = a.AssignedByNavigation?.FullName,
+                Status = a.Status,
+                AssignedAt = a.AssignedAt,
+
+                // Collection request info
+                RequestStatus = a.Request?.Status,
+                RequestCreatedAt = a.Request?.CreatedAt,
+
+                // Waste report info
+                ReportId = a.Request?.ReportId ?? 0,
+                WasteTypeName = a.Request?.Report?.WasteType?.Name,
+                ReportImageUrl = a.Request?.Report?.ImageUrl,
+                Latitude = a.Request?.Report?.Latitude,
+                Longitude = a.Request?.Report?.Longitude,
+                ReportDescription = a.Request?.Report?.Description,
+                ReportStatus = a.Request?.Report?.Status,
+
+                // Citizen info
+                CitizenId = a.Request?.Report?.SubmittedBy ?? 0,
+                CitizenName = a.Request?.Report?.SubmittedByNavigation?.FullName
+            }).ToList();
+        }
+
+        public async Task<IEnumerable<AssignmentHistoryDto>> GetAssignmentHistoryByRequestAsync(int requestId, int enterpriseId)
+        {
+            // Validate request exists and belongs to this enterprise
+            var request = await _uow.CollectionRequests.GetByIdAsync(requestId);
+            if (request == null)
+            {
+                throw new InvalidOperationException("Collection request not found");
+            }
+
+            if (request.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException("You can only view assignments for your own collection requests");
+            }
+
+            // Get assignments for this request
+            var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(requestId);
+
+            return assignments.Select(a => new AssignmentHistoryDto
+            {
+                AssignmentId = a.AssignmentId,
+                AssignedCollector = a.AssignedCollector,
+                CollectorName = a.AssignedCollectorNavigation?.FullName,
+                CollectorPhone = a.AssignedCollectorNavigation?.Phone,
+                AssignedBy = a.AssignedBy,
+                AssignedByName = a.AssignedByNavigation?.FullName,
+                Status = a.Status,
+                AssignedAt = a.AssignedAt
+            }).ToList();
+        }
     }
 }

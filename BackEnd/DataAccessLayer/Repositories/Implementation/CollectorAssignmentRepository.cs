@@ -84,5 +84,20 @@ namespace DataAccessLayer.Repositories.Implementation
                 .Include(x => x.Request.Report.SubmittedByNavigation)
                 .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         }
+
+        public async Task<IEnumerable<Collectorassignment>> GetByEnterpriseIdAsync(int enterpriseId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Request)
+                    .ThenInclude(r => r.Enterprise)
+                .Include(x => x.Request.Report)
+                    .ThenInclude(r => r.WasteType)
+                .Include(x => x.Request.Report.SubmittedByNavigation)
+                .Where(x => x.Request.EnterpriseId == enterpriseId)
+                .OrderByDescending(x => x.AssignedAt)
+                .ToListAsync();
+        }
     }
 }
