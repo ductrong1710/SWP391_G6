@@ -121,22 +121,23 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Enterprise/Collector: Cancel assignment
+                /// <summary>
+        /// Enterprise: Cancel assignment
         /// </summary>
         /// <remarks>
-        /// Both Enterprise and Collector can cancel an assignment.
-        /// Enterprise can cancel at any time. Collector can only cancel if not yet started.
+        /// Enterprise can cancel an assignment at any time.
         /// Cancelled assignments set the collection request back to 'Pending' status.
+        /// 
+        /// Note: Collector should use Decline endpoint (/collections/{id}/decline) to refuse assignments.
         /// </remarks>
         /// <param name="assignmentId">The ID of the assignment to cancel</param>
         /// <response code="200">Returns the cancellation confirmation</response>
-        /// <response code="400">If the assignment cannot be cancelled (already completed, etc.)</response>
+        /// <response code="400">If the assignment cannot be cancelled</response>
         /// <response code="401">If the user is not authenticated</response>
         /// <response code="403">If the user is not authorized to cancel this assignment</response>
         /// <response code="404">If the assignment is not found</response>
         [HttpPut("{assignmentId:int}/cancel")]
-        [Authorize(Roles = "Enterprise,Collector")]
+        [Authorize(Roles = "Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
