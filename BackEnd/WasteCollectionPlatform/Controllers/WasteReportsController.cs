@@ -35,8 +35,13 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Citizen/Admin: Get all waste reports
+        /// </summary>
         [HttpGet]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll()
         {
             var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
@@ -58,8 +63,14 @@ namespace WasteCollectionPlatform.Controllers
         }
 
        
+        /// <summary>
+        /// Citizen/Admin: Get waste report details
+        /// </summary>
         [HttpGet("{id:int}")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
@@ -86,9 +97,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Citizen: Create new waste report
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Create([FromForm] CreateWasteReportForm form)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -124,9 +142,17 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Citizen: Update waste report
+        /// </summary>
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromForm] UpdateWasteReportForm form)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -170,8 +196,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Citizen: Cancel waste report
+        /// </summary>
         [HttpPut("{id:int}/cancel")]
         [Authorize(Roles = "Citizen")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Cancel(int id)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -199,8 +233,16 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Enterprise: Accept waste report and create collection request
+        /// </summary>
         [HttpPut("{id:int}/accept")]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Accept(int id)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -224,8 +266,16 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Enterprise: Reject waste report
+        /// </summary>
         [HttpPut("{id:int}/reject")]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Reject(int id)
         {
             try
