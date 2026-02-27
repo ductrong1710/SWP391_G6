@@ -1,16 +1,76 @@
 // src/pages/Admin/Users.jsx
 import React from 'react';
+import axios from "axios";
+import { useEffect, useState } from "react";
 
 const Users = () => {
+  const [reports, setReports] = useState([]);
+
+  // ================= FETCH API =================
+  const fetchReports = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:5021/api/waste-reports",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      setReports(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const acceptReport = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5021/api/waste-reports/${id}/accept`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      fetchReports();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const rejectReport = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5021/api/waste-reports/${id}/reject`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      fetchReports();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
   // Dữ liệu mẫu giống trong hình
   const users = [
-    { id: 1, name: "John Doe", email: "john@example.com", role: "Citizen", status: "Active", joined: "Jan 15, 2025", initials: "JO" },
-    { id: 2, name: "GreenWaste Inc.", email: "admin@greenwaste.com", role: "Enterprise", status: "Active", joined: "Dec 3, 2024", initials: "GR" },
-    { id: 3, name: "David Martinez", email: "david.m@collector.com", role: "Collector", status: "Active", joined: "Jan 8, 2025", initials: "DA" },
-    { id: 4, name: "Sarah Miller", email: "sarah@example.com", role: "Citizen", status: "Active", joined: "Jan 2, 2026", initials: "SA" },
-    { id: 5, name: "EcoRecycle Co.", email: "info@ecorecycle.com", role: "Enterprise", status: "Pending", joined: "Jan 6, 2026", initials: "EC" },
-    { id: 6, name: "Michael Chen", email: "mike@example.com", role: "Citizen", status: "Banned", joined: "Nov 20, 2024", initials: "MI" },
-    { id: 7, name: "Emma Wilson", email: "emma@collector.com", role: "Collector", status: "Active", joined: "Dec 15, 2024", initials: "EM" },
   ];
 
   return (
@@ -38,7 +98,7 @@ const Users = () => {
         <table className="admin-table">
           <thead>
             <tr>
-              <th style={{width: '30%'}}>User</th>
+              <th style={{ width: '30%' }}>User</th>
               <th>Role</th>
               <th>Status</th>
               <th>Joined</th>
@@ -46,33 +106,48 @@ const Users = () => {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
+            {reports.map((report) => (
+              <tr key={report.reportId}>
                 <td>
                   <div className="user-cell">
-                    <div className="user-avatar">{user.initials}</div>
+                    <div className="user-avatar">
+                      {report.submittedByName?.charAt(0)}
+                    </div>
                     <div className="user-info">
-                      <div className="u-name">{user.name}</div>
-                      <div className="u-email">{user.email}</div>
+                      <div className="u-name">{report.submittedByName}</div>
+                      <div className="u-email">{report.wasteTypeName}</div>
                     </div>
                   </div>
                 </td>
+
                 <td>
-                  <span className={`role-badge ${user.role.toLowerCase()}`}>
-                    {user.role === 'Citizen' && '👤'}
-                    {user.role === 'Enterprise' && '🏢'}
-                    {user.role === 'Collector' && '🚚'}
-                    {user.role}
+                  <span className="role-badge">
+                    {report.wasteTypeName}
                   </span>
                 </td>
+
                 <td>
-                  <span className={`status-badge ${user.status.toLowerCase()}`}>
-                    {user.status}
+                  <span className={`status-badge ${report.status?.toLowerCase()}`}>
+                    {report.status}
                   </span>
                 </td>
-                <td className="text-gray-sm">{user.joined}</td>
+
+                <td className="text-gray-sm">
+                  {new Date(report.createdAt).toLocaleDateString()}
+                </td>
+
                 <td className="text-right">
-                  <button className="btn-action-dots">⋮</button>
+                  {report.status === "Pending" && (
+                    <>
+                      <button onClick={() => acceptReport(report.reportId)}>
+                        ✅
+                      </button>
+
+                      <button onClick={() => rejectReport(report.reportId)}>
+                        ❌
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

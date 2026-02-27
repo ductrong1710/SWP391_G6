@@ -189,6 +189,39 @@
   color: #9ca3af;
 }
 
+/* Password Toggle Button */
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 50px !important;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px 8px;
+  color: #9ca3af;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.toggle-password-btn:hover {
+  color: #10b981;
+}
+
 .btn-login {
   padding: 16px;
   background: #10b981;
@@ -249,6 +282,73 @@
   background-color: #d1fae5;
   border: 1px solid #a7f3d0;
   color: #065f46;
+}
+
+/* OTP Verification Styles */
+.otp-info {
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.otp-info p {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.otp-email {
+  font-size: 16px;
+  color: #10b981;
+  word-break: break-all;
+}
+
+.otp-input {
+  text-align: center !important;
+  font-size: 24px !important;
+  letter-spacing: 8px !important;
+  font-weight: 600;
+}
+
+/* Secondary Button */
+.btn-back {
+  padding: 16px;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 12px;
+}
+
+.btn-back:hover:not(:disabled) {
+  background: #d1d5db;
+}
+
+.btn-back:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Register Container - Centered */
+.register-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 40px 20px;
+}
+
+.register-form-centered {
+  width: 100%;
+  max-width: 460px;
 }
 
 /* Responsive */

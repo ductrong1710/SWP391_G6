@@ -4,6 +4,12 @@ import React, { useState } from 'react';
 const Rewards = () => {
   const [activeFilter, setActiveFilter] = useState('All');
 
+  // --- 1. THÊM STATE QUẢN LÝ ĐIỂM (Khởi tạo 2450 như ví dụ) ---
+  const [userPoints, setUserPoints] = useState(2450);
+
+  // State quản lý Popup
+  const [selectedReward, setSelectedReward] = useState(null);
+
   const rewards = [
     { id: 1, title: "Starbucks $10 Gift Card", points: 500, category: "Food & Drink", img: "https://images.unsplash.com/photo-1559496417-e7f25cb247f3?auto=format&fit=crop&w=400&q=80", popular: true },
     { id: 2, title: "Cinema Ticket", points: 800, category: "Entertainment", img: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=400&q=80", popular: false },
@@ -18,6 +24,27 @@ const Rewards = () => {
   const filters = ['All', 'Food & Drink', 'Shopping', 'Entertainment', 'Charity'];
   const filteredRewards = activeFilter === 'All' ? rewards : rewards.filter(r => r.category === activeFilter);
 
+  // --- 2. CÁC HÀM XỬ LÝ SỰ KIỆN ---
+  const handleSelectReward = (reward) => {
+    setSelectedReward(reward);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedReward(null);
+  };
+
+  // --- HÀM XỬ LÝ ĐỔI QUÀ VÀ TRỪ ĐIỂM ---
+  const handleConfirmRedeem = () => {
+    if (userPoints >= selectedReward.points) {
+      const newPoints = userPoints - selectedReward.points;
+      setUserPoints(newPoints); // Cập nhật điểm mới
+      alert(`🎉 Đổi thành công: ${selectedReward.title}\nBạn đã bị trừ ${selectedReward.points} điểm.\nSố điểm còn lại: ${newPoints}`);
+      handleCloseModal();
+    } else {
+      alert("❌ Bạn không đủ điểm để đổi món quà này!");
+    }
+  };
+
   return (
     <div className="rewards-container fade-in">
       {/* Header */}
@@ -26,7 +53,8 @@ const Rewards = () => {
           <h2>Green Rewards Store</h2>
           <p className="subtitle">Exchange your green points for amazing rewards</p>
         </div>
-        <div className="my-points-badge">🍃 2,500 points</div>
+        {/* Hiển thị điểm từ State */}
+        <div className="my-points-badge">🍃 {userPoints} points</div>
       </div>
 
       {/* Filters */}
@@ -47,17 +75,72 @@ const Rewards = () => {
         {filteredRewards.map((item) => (
           <div className="reward-card" key={item.id}>
             {item.popular && <span className="badge-popular">Popular</span>}
-            <div className="card-img" style={{backgroundImage: `url(${item.img})`}}></div>
+            
+            <div 
+                className="card-img" 
+                style={{backgroundImage: `url(${item.img})`, cursor: 'pointer'}}
+                onClick={() => handleSelectReward(item)}
+            ></div>
+            
             <div className="card-body">
               <h3 className="reward-title">{item.title}</h3>
               <div className="reward-footer">
                 <span className="reward-points">🍃 {item.points}</span>
-                <button className="btn-redeem">Redeem</button>
+                <button className="btn-redeem" onClick={() => handleSelectReward(item)}>Redeem</button>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* --- 3. MODAL HIỆU ỨNG ZOOM --- */}
+      {selectedReward && (
+        <div className="reward-modal-overlay" onClick={handleCloseModal}>
+          <div className="reward-modal-content zoom-in-effect" onClick={(e) => e.stopPropagation()}>
+            
+            <div className="modal-image-wrapper">
+               <img src={selectedReward.img} alt={selectedReward.title} />
+               <div className="modal-points-badge">🍃 {selectedReward.points} pts</div>
+            </div>
+
+            <div className="modal-details">
+               <h3>Bạn có muốn đổi quà này?</h3>
+               <p className="gift-name">{selectedReward.title}</p>
+               
+               {/* Hiển thị thông báo số dư hoặc thiếu điểm */}
+               <div className="gift-note">
+                  {userPoints >= selectedReward.points ? (
+                    <span style={{color: '#059669', fontWeight: 'bold'}}>
+                      Số dư sau khi đổi: {userPoints - selectedReward.points} points
+                    </span>
+                  ) : (
+                    <span style={{color: '#dc2626', fontWeight: 'bold'}}>
+                      Bạn thiếu {selectedReward.points - userPoints} points để đổi quà này.
+                    </span>
+                  )}
+               </div>
+               
+               <div className="modal-actions">
+                  <button className="btn-disagree" onClick={handleCloseModal}>
+                    Không đồng ý
+                  </button>
+
+                  <button 
+                    className="btn-agree" 
+                    onClick={handleConfirmRedeem}
+                    // Vô hiệu hóa nút nếu không đủ điểm
+                    disabled={userPoints < selectedReward.points}
+                    style={{opacity: userPoints < selectedReward.points ? 0.5 : 1, cursor: userPoints < selectedReward.points ? 'not-allowed' : 'pointer'}}
+                  >
+                    Đồng ý đổi quà
+                  </button>
+               </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

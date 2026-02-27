@@ -1,75 +1,217 @@
 // src/pages/citizen/History.jsx
-import React from 'react';
+
+import axios from "axios";
+import { useEffect, useState } from "react";
 
 const History = () => {
-  // Dữ liệu mẫu nhiều hơn để xuất hiện thanh cuộn
-  const historyData = [
-    { id: 1, date: "Jan 18, 2026", type: "Plastic", weight: "2.5 kg", points: 50, status: "Verified" },
-    { id: 2, date: "Jan 15, 2026", type: "Paper", weight: "4.0 kg", points: 80, status: "Verified" },
-    { id: 3, date: "Jan 12, 2026", type: "Electronics", weight: "1.2 kg", points: 120, status: "Verified" },
-    { id: 4, date: "Jan 10, 2026", type: "Glass", weight: "3.0 kg", points: 45, status: "Disputed" },
-    { id: 5, date: "Jan 08, 2026", type: "Metal", weight: "5.5 kg", points: 165, status: "Verified" },
-    { id: 6, date: "Jan 05, 2026", type: "Plastic", weight: "1.8 kg", points: 36, status: "Verified" },
-    { id: 7, date: "Jan 03, 2026", type: "Paper", weight: "6.2 kg", points: 124, status: "Verified" },
-    { id: 8, date: "Dec 30, 2025", type: "Organic", weight: "8.0 kg", points: 40, status: "Verified" },
-    { id: 9, date: "Dec 28, 2025", type: "Metal", weight: "2.1 kg", points: 63, status: "Verified" },
-    { id: 10, date: "Dec 25, 2025", type: "Electronics", weight: "0.5 kg", points: 50, status: "Verified" },
-    { id: 11, date: "Dec 22, 2025", type: "Glass", weight: "4.5 kg", points: 67, status: "Verified" },
-    { id: 12, date: "Dec 20, 2025", type: "Plastic", weight: "3.3 kg", points: 66, status: "Disputed" },
-    { id: 13, date: "Dec 18, 2025", type: "Paper", weight: "2.0 kg", points: 40, status: "Verified" },
-    { id: 14, date: "Dec 15, 2025", type: "Metal", weight: "1.5 kg", points: 45, status: "Verified" },
-    { id: 15, date: "Dec 12, 2025", type: "Organic", weight: "5.0 kg", points: 25, status: "Verified" },
-    { id: 16, date: "Dec 10, 2025", type: "Electronics", weight: "2.2 kg", points: 220, status: "Verified" },
+  // Dữ liệu mẫu
+
+
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [historyData, setHistoryData] = useState([]);
+
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:5021/api/waste-reports",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      setHistoryData(res.data);
+    } catch (error) {
+      console.error("Fetch history error:", error);
+    }
+  };
+
+  const reasons = [
+    "Sai khối lượng rác (Incorrect Weight)",
+    "Chưa nhận được điểm (Points not received)",
+    "Nhân viên thu gom không đến (Collector didn't arrive)",
+    "Thái độ nhân viên không tốt (Rude behavior)",
+    "Khác (Other)"
   ];
+
+  const handleOpenReport = (item) => {
+    setSelectedItem(item);
+    setReportReason('');
+    setReportDetails('');
+  };
+
+  const handleClosePanel = () => {
+    setSelectedItem(null);
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportReason) {
+      alert("Vui lòng chọn lý do báo cáo!");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.post(
+        "http://localhost:5021/api/complaints",
+        {
+          collectionId: selectedItem.id,
+          reason: reportReason,
+          details: reportDetails
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      alert("✅ Đã gửi báo cáo thành công!");
+
+      handleClosePanel();
+
+      // 🔥 refresh lại lịch sử
+      fetchHistory();
+
+    } catch (error) {
+      console.error(error);
+      alert("❌ Gửi báo cáo thất bại!");
+    }
+  };
 
   return (
     <div className="citizen-page-container fade-in">
-      {/* Header */}
       <div className="cit-page-header">
         <h2>Activity History</h2>
         <p className="text-gray">View your past waste collection requests and report any issues</p>
       </div>
 
-      {/* Card chứa bảng */}
-      <div className="cit-card">
-        <h3 className="card-title">Collection Records</h3>
+      <div className="history-layout-split">
 
-        {/* Header của bảng (Cố định, không trượt) */}
-        <div className="history-table-header">
-           <span style={{width: '40px'}}></span> {/* Chỗ cho dấu mũi tên */}
-           <span style={{flex: 1}}>Date</span>
-           <span style={{flex: 1}}>Waste Type</span>
-           <span style={{flex: 1}}>Weight</span>
-           <span style={{flex: 1}}>Points</span>
-           <span style={{flex: 1}}>Status</span>
-           <span style={{width: '140px'}}>Actions</span>
-        </div>
+        {/* --- CỘT TRÁI --- */}
+        <div className={`history-left-panel ${selectedItem ? 'shrink' : ''}`}>
+          <div className="cit-card" style={{ height: '100%' }}>
+            <h3 className="card-title">My Waste Reports</h3>
 
-        {/* Danh sách cuộn (Scrollable List) */}
-        <div className="history-scroll-list">
-          {historyData.map((item) => (
-            <div key={item.id} className="history-row">
-               <span className="row-chevron">›</span>
-               <span style={{flex: 1, fontWeight: 500}}>{item.date}</span>
-               <span style={{flex: 1}}>{item.type}</span>
-               <span style={{flex: 1}}>{item.weight}</span>
-               <span style={{flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', color: '#10b981'}}>
-                 🍃 +{item.points}
-               </span>
-               <span style={{flex: 1}}>
-                  <span className={`status-badge ${item.status.toLowerCase()}`}>
-                    {item.status === 'Verified' && '✔ Verified'}
-                    {item.status === 'Disputed' && '⛔ Disputed'}
-                  </span>
-               </span>
-               <span style={{width: '140px'}}>
-                 {item.status === 'Verified' && (
-                   <button className="btn-report">⚠️ Report Issue</button>
-                 )}
-               </span>
+            <div className="history-table-header">
+              <span style={{ flex: 1, fontWeight: 600 }}>Date</span>
+              <span style={{ flex: 1 }}>Type</span>
+              <span style={{ flex: 1 }}>Weight</span>
+              <span style={{ flex: 1 }}>Points</span>
+              <span style={{ flex: 1 }}>Status</span>
+              <span style={{ width: '120px' }}>Action</span>
             </div>
-          ))}
+
+            <div className="history-scroll-list">
+              {historyData.map((item) => (
+                <div
+                  key={item.reportId}
+                  className={`history-row ${selectedItem?.reportId === item.reportId ? 'active-row' : ''
+                    }`}
+                >
+                  <span className="row-chevron">›</span>
+
+                  {/* Date */}
+                  <span style={{ flex: 1, fontWeight: 500 }}>
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </span>
+
+                  {/* Waste Type */}
+                  <span style={{ flex: 1 }}>
+                    {item.wasteTypeName}
+                  </span>
+
+                  {/* Weight (chưa có trong API) */}
+                  <span style={{ flex: 1 }}>
+                    -
+                  </span>
+
+                  {/* Points (chưa có trong API) */}
+                  <span style={{ flex: 1 }}>
+                    -
+                  </span>
+
+                  {/* Status */}
+                  <span style={{ flex: 1 }}>
+                    <span className={`status-badge ${item.status?.toLowerCase()}`}>
+                      {item.status}
+                    </span>
+                  </span>
+
+                  {/* Action */}
+                  <span style={{ width: '120px' }}>
+                    {item.status === "Verified" && (
+                      <button
+                        className="btn-report"
+                        onClick={() => handleOpenReport(item)}
+                      >
+                        ⚠️ Report
+                      </button>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {/* --- CỘT PHẢI (PANEL) --- */}
+        {selectedItem && (
+          <div className="history-right-panel">
+            <div className="panel-header">
+              <h3 className="panel-title">⚠️ Report Issue</h3>
+              <button onClick={handleClosePanel} className="btn-close-panel">✕</button>
+            </div>
+
+            <div className="panel-body">
+              <div className="report-summary">
+                <div>Đơn ngày: <strong>{selectedItem.date}</strong></div>
+                <div>Loại: {selectedItem.type} ({selectedItem.weight})</div>
+              </div>
+
+              <div className="form-group">
+                <label>Lý do khiếu nại <span style={{ color: 'red' }}>*</span></label>
+                <select
+                  className="report-input"
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                >
+                  <option value="">-- Chọn lý do --</option>
+                  {reasons.map((r, index) => <option key={index} value={r}>{r}</option>)}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '15px' }}>
+                <label>Chi tiết</label>
+                <textarea
+                  className="report-input"
+                  rows="4"
+                  placeholder="Mô tả cụ thể..."
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                ></textarea>
+              </div>
+            </div>
+
+            <div className="panel-footer">
+              <button onClick={handleSubmitReport} className="btn-submit-report">
+                Gửi báo cáo
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

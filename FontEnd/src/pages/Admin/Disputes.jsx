@@ -1,77 +1,102 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const Disputes = () => {
   // 1. Dữ liệu chi tiết cho từng vé
-  const ticketsData = [
-    { 
-      id: 'D-2026-0048', 
-      title: "Wrong Weight", 
-      date: "Jan 7, 2026, 2:30 PM", 
-      status: "Open", 
-      type: "weight", // Loại tranh chấp để hiển thị giao diện khác nhau
-      parties: {
-        citizen: { name: "John Doe", role: "Citizen", avatar: "JD", color: "citizen" },
-        enterprise: { name: "GreenWaste Inc.", role: "Enterprise", avatar: "GW", color: "enterprise" }
-      },
-      claim: {
-        desc: "Reported 5.2 kg, received points for only 3.1 kg",
-        citizenVal: "5.2 kg",
-        collectorVal: "3.1 kg"
-      },
-      hasEvidence: true,
-      chat: [
-        { sender: "Citizen", time: "2:30 PM", text: "The scale clearly shows 5.2 kg in my photo!", avatar: "C", color: "c-blue" },
-        { sender: "Enterprise", time: "3:15 PM", text: "Our collector's photo shows 3.1 kg on our certified scale.", avatar: "E", color: "c-purple" },
-        { sender: "Citizen", time: "4:00 PM", text: "I demand a review of the evidence.", avatar: "C", color: "c-blue" }
-      ]
-    },
-    { 
-      id: 'D-2026-0047', 
-      title: "Missed Collection", 
-      date: "Jan 6, 2026, 11:00 AM", 
-      status: "Open", 
-      type: "missed",
-      parties: {
-        citizen: { name: "Sarah Miller", role: "Citizen", avatar: "SM", color: "citizen" },
-        enterprise: { name: "EcoRecycle Co.", role: "Enterprise", avatar: "ER", color: "enterprise" }
-      },
-      claim: {
-        desc: "Collector never arrived at scheduled time",
-        citizenVal: null,
-        collectorVal: null
-      },
-      hasEvidence: false, // Không có ảnh bằng chứng
-      chat: [
-        { sender: "Citizen", time: "11:00 AM", text: "I waited all day but no one came.", avatar: "C", color: "c-blue" },
-        { sender: "Enterprise", time: "2:00 PM", text: "We are investigating the route logs.", avatar: "E", color: "c-purple" }
-      ]
-    },
-    { 
-      id: 'D-2026-0046', 
-      title: "Wrong Points", 
-      date: "Jan 5, 2026, 9:00 AM", 
-      status: "Resolved", 
-      type: "points",
-      parties: {
-        citizen: { name: "Michael Chen", role: "Citizen", avatar: "MC", color: "citizen" },
-        enterprise: { name: "GreenWaste Inc.", role: "Enterprise", avatar: "GW", color: "enterprise" }
-      },
-      claim: {
-        desc: "Points not added to wallet after collection",
-        citizenVal: null,
-        collectorVal: null
-      },
-      hasEvidence: false,
-      chat: []
-    },
-  ];
-
+  const [ticketsData, setTicketsData] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
   // 2. State lưu ID vé đang chọn (Mặc định chọn vé đầu tiên)
-  const [selectedId, setSelectedId] = useState(ticketsData[0].id);
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
 
+  const fetchComplaints = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:5021/api/complaints",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      setTicketsData(res.data);
+
+      if (res.data.length > 0) {
+        setSelectedId(res.data[0].id);
+      }
+
+    } catch (error) {
+      console.error("Fetch complaints error:", error);
+    }
+  };
+
+  const handleApprove = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5021/api/complaints/${id}/approve`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      alert("Complaint approved");
+      fetchComplaints();
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5021/api/complaints/${id}/reject`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      alert("Complaint rejected");
+      fetchComplaints();
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
   // Tìm vé đang chọn trong mảng dữ liệu
-  const activeTicket = ticketsData.find(t => t.id === selectedId);
+  const activeTicket =
+    ticketsData.find(t => t.id === selectedId) || {
+      id: "",
+      reason: "",
+      details: "",
+      createdAt: "",
+      status: "Pending",
+      claim: {
+        desc: "",
+        citizenVal: null,
+        collectorVal: null
+      },
+      chat: [],
+      hasEvidence: false
+    };
 
+
+  if (!activeTicket) return null;
   return (
     <div className="admin-disputes-page fade-in">
       <div className="admin-page-header">
@@ -87,24 +112,23 @@ const Disputes = () => {
           </div>
           <div className="ticket-list">
             {ticketsData.map((t) => (
-              <div 
-                key={t.id} 
-                // Thêm class active nếu ID trùng với selectedId
+              <div
+                key={t.id}
                 className={`ticket-item ${selectedId === t.id ? 'active' : ''}`}
-                // Sự kiện click để đổi vé
                 onClick={() => setSelectedId(t.id)}
               >
                 <div className="t-header">
                   <span className="t-title">
-                    {t.title === 'Wrong Weight' && '⚠️'} 
-                    {t.title === 'Missed Collection' && '🕒'} 
-                    {t.title === 'Wrong Points' && '🔢'} 
-                    {' ' + t.title}
+                    📝 {t.reason}
                   </span>
-                  <span className={`status-tag ${t.status.toLowerCase()}`}>{t.status}</span>
+                  <span className="status-tag">
+                    Pending
+                  </span>
                 </div>
-                <div className="t-id">{t.id}</div>
-                <div className="t-date">🕒 {t.date}</div>
+                <div className="t-id">ID: {t.id}</div>
+                <div className="t-date">
+                  🕒 {new Date(t.createdAt).toLocaleString()}
+                </div>
               </div>
             ))}
           </div>
@@ -115,57 +139,63 @@ const Disputes = () => {
           {/* Header Chi tiết */}
           <div className="detail-header">
             <div>
-              <h3>{activeTicket.title}</h3>
+              <h3>{activeTicket.reason}</h3>
               <div className="text-gray">{activeTicket.id}</div>
             </div>
-            <span className={`status-tag large ${activeTicket.status.toLowerCase()}`}>
-              {activeTicket.status}
+            <span className="status-tag large">
+              Pending
             </span>
           </div>
 
           <div className="divider"></div>
-
-          {/* VS Section (Các bên tranh chấp) */}
-          <div className="vs-section">
-            <div className="party-card">
-              <div className={`p-avatar ${activeTicket.parties.citizen.color}`}>
-                {activeTicket.parties.citizen.avatar}
-              </div>
-              <div>
-                <div className="p-name">{activeTicket.parties.citizen.name}</div>
-                <div className="p-role">{activeTicket.parties.citizen.role}</div>
-              </div>
-            </div>
-            <div className="vs-badge">VS</div>
-            <div className="party-card right">
-              <div>
-                <div className="p-name text-right">{activeTicket.parties.enterprise.name}</div>
-                <div className="p-role text-right">{activeTicket.parties.enterprise.role}</div>
-              </div>
-              <div className={`p-avatar ${activeTicket.parties.enterprise.color}`}>
-                {activeTicket.parties.enterprise.avatar}
-              </div>
+          <div className="section-block">
+            <h4 className="section-title">📄 Complaint Details</h4>
+            <div className="info-box-gray">
+              {activeTicket.details}
             </div>
           </div>
+
+          {/* VS Section */}
+          {activeTicket?.collectionId && (
+            <div className="vs-section">
+              <div className="party-card">
+                <div className="p-avatar blue">C</div>
+                <div>
+                  <div className="p-name">Citizen</div>
+                  <div className="p-role">Complaint Owner</div>
+                </div>
+              </div>
+
+              <div className="vs-badge">VS</div>
+
+              <div className="party-card right">
+                <div>
+                  <div className="p-name text-right">Enterprise</div>
+                  <div className="p-role text-right">Service Provider</div>
+                </div>
+                <div className="p-avatar green">E</div>
+              </div>
+            </div>
+          )}
 
           {/* Claim Details */}
           <div className="section-block">
             <h4 className="section-title">💸 Claim Details</h4>
             <div className="info-box-gray">
-               {activeTicket.claim.desc}
+              {activeTicket.claim?.desc}
             </div>
-            
+
             {/* Chỉ hiện bảng so sánh nếu có dữ liệu (Ví dụ: Wrong Weight) */}
             {activeTicket.claim.citizenVal && (
               <div className="comparison-grid">
-                 <div className="comp-box">
-                    <div className="c-label">Citizen Reported</div>
-                    <div className="c-val">{activeTicket.claim.citizenVal}</div>
-                 </div>
-                 <div className="comp-box">
-                    <div className="c-label">Collector Recorded</div>
-                    <div className="c-val">{activeTicket.claim.collectorVal}</div>
-                 </div>
+                <div className="comp-box">
+                  <div className="c-label">Citizen Reported</div>
+                  <div className="c-val">{activeTicket.claim.citizenVal}</div>
+                </div>
+                <div className="comp-box">
+                  <div className="c-label">Collector Recorded</div>
+                  <div className="c-val">{activeTicket.claim.collectorVal}</div>
+                </div>
               </div>
             )}
           </div>
@@ -191,7 +221,7 @@ const Disputes = () => {
           <div className="section-block">
             <h4 className="section-title">💬 Communication History</h4>
             <div className="chat-list">
-              {activeTicket.chat.map((msg, index) => (
+              {activeTicket.chat?.map((msg, index) => (
                 <div key={index} className="chat-item">
                   <div className={`chat-avatar ${msg.color}`}>{msg.avatar}</div>
                   <div className="chat-content">
@@ -210,9 +240,19 @@ const Disputes = () => {
 
           {/* Action Buttons */}
           <div className="detail-actions">
-            <button className="btn-outline">🔄 Refund Points</button>
-            <button className="btn-outline">🚫 Dismiss Claim</button>
-            <button className="btn-outline red">🔨 Penalize Party</button>
+            <button
+              className="btn-outline"
+              onClick={() => handleApprove(activeTicket.id)}
+            >
+              ✅ Approve
+            </button>
+
+            <button
+              className="btn-outline red"
+              onClick={() => handleReject(activeTicket.id)}
+            >
+              ❌ Reject
+            </button>
           </div>
 
         </div>
