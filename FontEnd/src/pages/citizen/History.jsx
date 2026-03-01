@@ -1,218 +1,317 @@
-// src/pages/citizen/History.jsx
-
-import axios from "axios";
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from 'react';
+import wasteReportService from '../../services/wasteReportService';
+// import '../styles/History.css';
 
 const History = () => {
-  // Dữ liệu mẫu
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [filter, setFilter] = useState('All');
 
-
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [reportReason, setReportReason] = useState('');
-  const [reportDetails, setReportDetails] = useState('');
-  const [historyData, setHistoryData] = useState([]);
-
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    fetchMyReports();
+  }, [filter]);
 
-  const fetchHistory = async () => {
+  const fetchMyReports = async () => {
     try {
-      const token = localStorage.getItem("token");
-
-      const res = await axios.get(
-        "http://localhost:5021/api/waste-reports",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      setHistoryData(res.data);
-    } catch (error) {
-      console.error("Fetch history error:", error);
+      setLoading(true);
+      setError('');
+      const allReports = await wasteReportService.getAllReports(token);
+      
+      // Lọc báo cáo của citizen hiện tại
+      let filtered = allReports;
+      
+      if (filter !== 'All') {
+        filtered = allReports.filter(report => report.status === filter);
+      }
+      
+      setReports(filtered);
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+      setError('❌ Không thể tải lịch sử báo cáo');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const reasons = [
-    "Sai khối lượng rác (Incorrect Weight)",
-    "Chưa nhận được điểm (Points not received)",
-    "Nhân viên thu gom không đến (Collector didn't arrive)",
-    "Thái độ nhân viên không tốt (Rude behavior)",
-    "Khác (Other)"
-  ];
-
-  const handleOpenReport = (item) => {
-    setSelectedItem(item);
-    setReportReason('');
-    setReportDetails('');
-  };
-
-  const handleClosePanel = () => {
-    setSelectedItem(null);
-  };
-
-  const handleSubmitReport = async () => {
-    if (!reportReason) {
-      alert("Vui lòng chọn lý do báo cáo!");
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-
-      await axios.post(
-        "http://localhost:5021/api/complaints",
-        {
-          collectionId: selectedItem.id,
-          reason: reportReason,
-          details: reportDetails
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      alert("✅ Đã gửi báo cáo thành công!");
-
-      handleClosePanel();
-
-      // 🔥 refresh lại lịch sử
-      fetchHistory();
-
-    } catch (error) {
-      console.error(error);
-      alert("❌ Gửi báo cáo thất bại!");
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Pending':
+        return { icon: '⏳', color: '#fef3c7', textColor: '#92400e', text: 'Chờ duyệt' };
+      case 'Accepted':
+        return { icon: '✅', color: '#d1fae5', textColor: '#065f46', text: 'Đã duyệt' };
+      case 'Rejected':
+        return { icon: '❌', color: '#fee2e2', textColor: '#991b1b', text: 'Bị từ chối' };
+      default:
+        return { icon: '❓', color: '#f3f4f6', textColor: '#6b7280', text: status };
     }
   };
 
   return (
-    <div className="citizen-page-container fade-in">
-      <div className="cit-page-header">
-        <h2>Activity History</h2>
-        <p className="text-gray">View your past waste collection requests and report any issues</p>
+    <div className="history-container">
+      <div className="history-header">
+        <h2>📜 Lịch Sử Báo Cáo Của Tôi</h2>
+        <p>Xem trạng thái duyệt của các báo cáo rác thải</p>
       </div>
 
-      <div className="history-layout-split">
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          borderRadius: '6px',
+          marginBottom: '15px',
+          borderLeft: '4px solid #ef4444'
+        }}>
+          {error}
+        </div>
+      )}
 
-        {/* --- CỘT TRÁI --- */}
-        <div className={`history-left-panel ${selectedItem ? 'shrink' : ''}`}>
-          <div className="cit-card" style={{ height: '100%' }}>
-            <h3 className="card-title">My Waste Reports</h3>
+      {/* BỘ LỌC */}
+      <div style={{
+        marginBottom: '20px',
+        display: 'flex',
+        gap: '10px',
+        flexWrap: 'wrap'
+      }}>
+        {['All', 'Pending', 'Accepted', 'Rejected'].map(status => (
+          <button
+            key={status}
+            onClick={() => setFilter(status)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: '1px solid #ccc',
+              backgroundColor: filter === status ? '#3b82f6' : 'white',
+              color: filter === status ? 'white' : '#333',
+              cursor: 'pointer',
+              fontWeight: filter === status ? 'bold' : 'normal',
+              transition: 'all 0.3s'
+            }}
+          >
+            {status === 'All' && '📋'} {status === 'Pending' && '⏳'} {status === 'Accepted' && '✅'} {status === 'Rejected' && '❌'} {status}
+          </button>
+        ))}
+      </div>
 
-            <div className="history-table-header">
-              <span style={{ flex: 1, fontWeight: 600 }}>Date</span>
-              <span style={{ flex: 1 }}>Type</span>
-              <span style={{ flex: 1 }}>Weight</span>
-              <span style={{ flex: 1 }}>Points</span>
-              <span style={{ flex: 1 }}>Status</span>
-              <span style={{ width: '120px' }}>Action</span>
-            </div>
+      {/* DANH SÁCH BÁO CÁO */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <p>⏳ Đang tải...</p>
+        </div>
+      ) : reports.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+          <p>📭 Bạn chưa có báo cáo nào</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          {reports.map((report) => {
+            const badge = getStatusBadge(report.status);
+            return (
+              <div
+                key={report.wastereportId}
+                onClick={() => {
+                  setSelectedReport(report);
+                  setShowModal(true);
+                }}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '100px 1fr auto',
+                  gap: '15px',
+                  padding: '15px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {/* ẢNH */}
+                {report.imageUrl && (
+                  <img
+                    src={report.imageUrl}
+                    alt="Report"
+                    style={{
+                      width: '100px',
+                      height: '100px',
+                      objectFit: 'cover',
+                      borderRadius: '6px'
+                    }}
+                  />
+                )}
 
-            <div className="history-scroll-list">
-              {historyData.map((item) => (
-                <div
-                  key={item.reportId}
-                  className={`history-row ${selectedItem?.reportId === item.reportId ? 'active-row' : ''
-                    }`}
-                >
-                  <span className="row-chevron">›</span>
-
-                  {/* Date */}
-                  <span style={{ flex: 1, fontWeight: 500 }}>
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </span>
-
-                  {/* Waste Type */}
-                  <span style={{ flex: 1 }}>
-                    {item.wasteTypeName}
-                  </span>
-
-                  {/* Weight (chưa có trong API) */}
-                  <span style={{ flex: 1 }}>
-                    -
-                  </span>
-
-                  {/* Points (chưa có trong API) */}
-                  <span style={{ flex: 1 }}>
-                    -
-                  </span>
-
-                  {/* Status */}
-                  <span style={{ flex: 1 }}>
-                    <span className={`status-badge ${item.status?.toLowerCase()}`}>
-                      {item.status}
-                    </span>
-                  </span>
-
-                  {/* Action */}
-                  <span style={{ width: '120px' }}>
-                    {item.status === "Verified" && (
-                      <button
-                        className="btn-report"
-                        onClick={() => handleOpenReport(item)}
-                      >
-                        ⚠️ Report
-                      </button>
-                    )}
-                  </span>
+                {/* THÔNG TIN */}
+                <div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#1f2937' }}>
+                    #{report.wastereportId} - {report.wastetype?.name || 'N/A'}
+                  </h3>
+                  <p style={{ margin: '4px 0', fontSize: '13px', color: '#666' }}>
+                    📍 Vị trí: {parseFloat(report.latitude).toFixed(4)}, {parseFloat(report.longitude).toFixed(4)}
+                  </p>
+                  <p style={{ margin: '4px 0', fontSize: '13px', color: '#666' }}>
+                    📅 {new Date(report.createdAt).toLocaleString('vi-VN')}
+                  </p>
+                  {report.description && (
+                    <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+                      {report.description.substring(0, 60)}...
+                    </p>
+                  )}
                 </div>
-              ))}
+
+                {/* TRẠNG THÁI */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  backgroundColor: badge.color,
+                  color: badge.textColor,
+                  borderRadius: '20px',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  fontSize: '13px'
+                }}>
+                  {badge.icon} {badge.text}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* MODAL CHI TIẾT */}
+      {showModal && selectedReport && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '25px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h2 style={{ marginTop: 0, marginBottom: '15px', color: '#1f2937' }}>
+              Chi Tiết Báo Cáo #{selectedReport.wastereportId}
+            </h2>
+
+            {selectedReport.imageUrl && (
+              <img
+                src={selectedReport.imageUrl}
+                alt="Report"
+                style={{
+                  width: '100%',
+                  maxHeight: '300px',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                  marginBottom: '15px'
+                }}
+              />
+            )}
+
+            <div style={{ backgroundColor: '#f9fafb', padding: '15px', borderRadius: '6px', marginBottom: '15px' }}>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>🗑️ Loại rác:</strong> {selectedReport.wastetype?.name || 'N/A'}
+              </p>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>📍 Vị trí:</strong> {selectedReport.latitude}, {selectedReport.longitude}
+              </p>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>📅 Ngày tạo:</strong> {new Date(selectedReport.createdAt).toLocaleString('vi-VN')}
+              </p>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>📝 Mô tả:</strong> {selectedReport.description || 'Không có mô tả'}
+              </p>
+
+              {(() => {
+                const badge = getStatusBadge(selectedReport.status);
+                return (
+                  <p style={{
+                    margin: '12px 0 0 0',
+                    padding: '8px 12px',
+                    backgroundColor: badge.color,
+                    color: badge.textColor,
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    fontSize: '13px'
+                  }}>
+                    {badge.icon} {badge.text}
+                  </p>
+                );
+              })()}
+
+              {selectedReport.status === 'Rejected' && selectedReport.rejectionReason && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '10px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  borderRadius: '4px',
+                  borderLeft: '3px solid #ef4444',
+                  fontSize: '13px'
+                }}>
+                  <strong>Lý do từ chối:</strong> {selectedReport.rejectionReason}
+                </div>
+              )}
+
+              {selectedReport.status === 'Accepted' && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '10px',
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  borderRadius: '4px',
+                  borderLeft: '3px solid #10b981',
+                  fontSize: '13px'
+                }}>
+                  <strong>✅ Báo cáo của bạn đã được duyệt!</strong> Đội thu gom sẽ xử lý sớm.
+                </div>
+              )}
             </div>
+
+            <button
+              onClick={() => setShowModal(false)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Đóng
+            </button>
           </div>
         </div>
-
-        {/* --- CỘT PHẢI (PANEL) --- */}
-        {selectedItem && (
-          <div className="history-right-panel">
-            <div className="panel-header">
-              <h3 className="panel-title">⚠️ Report Issue</h3>
-              <button onClick={handleClosePanel} className="btn-close-panel">✕</button>
-            </div>
-
-            <div className="panel-body">
-              <div className="report-summary">
-                <div>Đơn ngày: <strong>{selectedItem.date}</strong></div>
-                <div>Loại: {selectedItem.type} ({selectedItem.weight})</div>
-              </div>
-
-              <div className="form-group">
-                <label>Lý do khiếu nại <span style={{ color: 'red' }}>*</span></label>
-                <select
-                  className="report-input"
-                  value={reportReason}
-                  onChange={(e) => setReportReason(e.target.value)}
-                >
-                  <option value="">-- Chọn lý do --</option>
-                  {reasons.map((r, index) => <option key={index} value={r}>{r}</option>)}
-                </select>
-              </div>
-
-              <div className="form-group" style={{ marginTop: '15px' }}>
-                <label>Chi tiết</label>
-                <textarea
-                  className="report-input"
-                  rows="4"
-                  placeholder="Mô tả cụ thể..."
-                  value={reportDetails}
-                  onChange={(e) => setReportDetails(e.target.value)}
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="panel-footer">
-              <button onClick={handleSubmitReport} className="btn-submit-report">
-                Gửi báo cáo
-              </button>
-            </div>
-          </div>
-        )}
-
-      </div>
+      )}
     </div>
   );
 };

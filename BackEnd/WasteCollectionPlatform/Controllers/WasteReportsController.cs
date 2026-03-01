@@ -35,27 +35,31 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
-        [HttpGet]
-        [Authorize]
-        public async Task<IActionResult> GetAll()
+       [HttpGet]
+[Authorize]
+public async Task<IActionResult> GetAll()
+{
+    var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    
+    var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
+    var isEnterprise = string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase);
+
+    int? userId = null;
+    
+    // ✅ CHỈ Citizen/Collector mới filter theo userId
+    if (!isAdmin && !isEnterprise)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
         {
-            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-            var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
-
-            int? userId = null;
-            if (!isAdmin)
-            {
-                var userIdClaim = User.FindFirst("UserId")?.Value;
-                if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
-                {
-                    return Unauthorized(new { message = "Invalid or missing UserId claim" });
-                }
-                userId = parsedUserId;
-            }
-
-            var reports = await _service.GetAllAsync(userId);
-            return Ok(reports);
+            return Unauthorized(new { message = "Invalid or missing UserId claim" });
         }
+        userId = parsedUserId;
+    }
+
+    var reports = await _service.GetAllAsync(userId);  // ✅ Enterprise: userId = null → lấy tất cả
+    return Ok(reports);
+}
 
        
         [HttpGet("{id:int}")]
