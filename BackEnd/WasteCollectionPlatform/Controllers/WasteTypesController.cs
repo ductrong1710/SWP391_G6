@@ -18,8 +18,7 @@ namespace WasteCollectionPlatform.Controllers
             _service = service;
         }
 
-        // GET /api/waste-types
-        // Cho phép tất cả user đã đăng nhập xem danh sách WasteType
+       
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> GetAll()
@@ -28,8 +27,7 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(result);
         }
 
-        // GET /api/waste-types/{id}
-        // Cho phép tất cả user đã đăng nhập xem chi tiết WasteType
+       
         [HttpGet("{id:int}")]
         [Authorize]
         public async Task<IActionResult> GetById(int id)
@@ -43,8 +41,7 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(item);
         }
 
-        // POST /api/waste-types
-        // Chỉ Admin được Create
+        
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] CreateWasteTypeDto dto)
@@ -64,8 +61,7 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        // PUT /api/waste-types/{id}
-        // Chỉ Admin được Update
+        
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateWasteTypeDto dto)
@@ -89,8 +85,7 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        // DELETE /api/waste-types/{id}
-        // Chỉ Admin được Delete
+        
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)

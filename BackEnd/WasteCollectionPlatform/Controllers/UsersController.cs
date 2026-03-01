@@ -19,9 +19,13 @@ namespace WasteCollectionPlatform.Controllers
             _logger = logger;
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// Lấy danh sách tất cả users (Admin only)
         /// </summary>
+=======
+        
+>>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
         [HttpGet]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
@@ -31,9 +35,12 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(users);
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// Lấy user theo ID
         /// </summary>
+=======
+>>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
         [HttpGet("{id:int}")]
         [Authorize]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -47,6 +54,7 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(user);
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// Create a new user (Admin/Enterprise only)
         /// </summary>
@@ -55,8 +63,11 @@ namespace WasteCollectionPlatform.Controllers
         /// <response code="201">User created successfully</response>
         /// <response code="400">Invalid request data</response>
         /// <response code="409">Email or phone already exists</response>
+=======
+        
+>>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
         [HttpPost]
-        //[Authorize(Roles = "Administrator,EnterpriseAdmin")]
+        //[Authorize(Roles = "Administrator,Enterprise")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -90,9 +101,13 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// Update user (Admin only)
         /// </summary>
+=======
+        
+>>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -131,9 +146,12 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// Delete user (Admin only)
         /// </summary>
+=======
+>>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

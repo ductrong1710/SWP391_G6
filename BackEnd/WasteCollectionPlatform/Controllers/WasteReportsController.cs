@@ -34,8 +34,7 @@ namespace WasteCollectionPlatform.Controllers
             public int WasteTypeId { get; set; }
         }
 
-        // GET /api/waste-reports
-        // Admin: xem tất cả, Citizen: xem của mình
+        
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> GetAll()
@@ -58,8 +57,7 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(reports);
         }
 
-        // GET /api/waste-reports/{id}
-        // Admin: xem tất cả, Citizen: xem của mình
+       
         [HttpGet("{id:int}")]
         [Authorize]
         public async Task<IActionResult> GetById(int id)
@@ -87,8 +85,7 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(report);
         }
 
-        // POST /api/waste-reports
-        // Citizen only
+        
         [HttpPost]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
@@ -126,8 +123,7 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        // PUT /api/waste-reports/{id}
-        // Citizen: update own report (only when Pending)
+        
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
@@ -173,8 +169,7 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        // PUT /api/waste-reports/{id}/cancel
-        // Citizen: cancel own report (only when Pending)
+        
         [HttpPut("{id:int}/cancel")]
         [Authorize(Roles = "Citizen")]
         public async Task<IActionResult> Cancel(int id)
@@ -204,14 +199,19 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        // PUT /api/waste-reports/{id}/accept
         [HttpPut("{id:int}/accept")]
         [Authorize(Roles = "Enterprise")]
         public async Task<IActionResult> Accept(int id)
         {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
             try
             {
-                var updated = await _service.AcceptAsync(id);
+                var updated = await _service.AcceptAsync(id, enterpriseId);
                 return Ok(updated);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
@@ -224,7 +224,6 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        // PUT /api/waste-reports/{id}/reject
         [HttpPut("{id:int}/reject")]
         [Authorize(Roles = "Enterprise")]
         public async Task<IActionResult> Reject(int id)
@@ -248,7 +247,6 @@ namespace WasteCollectionPlatform.Controllers
         {
             if (image == null || image.Length <= 0)
             {
-                // Service layer will enforce "Image is required"
                 return string.Empty;
             }
 

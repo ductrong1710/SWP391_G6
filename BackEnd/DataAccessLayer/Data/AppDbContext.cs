@@ -1,5 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
 using DataAccessLayer.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,9 +38,7 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Wastetype> Wastetypes { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseNpgsql("Host=db.qvvcldnnmpcncpkuekyd.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=WasteCollection@13");
+    
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -104,9 +100,12 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("confirmed_at");
-            entity.Property(e => e.ImageUrl)
-                .HasMaxLength(500)
-                .HasColumnName("image_url");
+            entity.Property(e => e.BeforeImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("before_image_url");
+            entity.Property(e => e.AfterImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("after_image_url");
             entity.Property(e => e.Note)
                 .HasMaxLength(255)
                 .HasColumnName("note");
@@ -166,6 +165,15 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Assigned'::character varying")
                 .HasColumnName("status");
+            entity.Property(e => e.StartedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("started_at");
+            entity.Property(e => e.ArrivedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("arrived_at");
+            entity.Property(e => e.BeforeImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("before_image_url");
 
             entity.HasOne(d => d.AssignedByNavigation).WithMany(p => p.CollectorassignmentAssignedByNavigations)
                 .HasForeignKey(d => d.AssignedBy)

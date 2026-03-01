@@ -1,0 +1,108 @@
+using DataAccessLayer.Data;
+using DataAccessLayer.Models;
+using DataAccessLayer.Repositories.Interface;
+using Microsoft.EntityFrameworkCore;
+
+namespace DataAccessLayer.Repositories.Implementation
+{
+    public class CollectorAssignmentRepository : ICollectorAssignmentRepository
+    {
+        private readonly AppDbContext _context;
+
+        public CollectorAssignmentRepository(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task AddAsync(Collectorassignment entity)
+        {
+            await _context.Collectorassignments.AddAsync(entity);
+        }
+
+        public async Task<Collectorassignment?> GetByIdAsync(int assignmentId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
+                .Include(x => x.Request)
+                .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
+        }
+
+        public async Task<IEnumerable<Collectorassignment>> GetByRequestIdAsync(int requestId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
+                .Where(x => x.RequestId == requestId)
+                .OrderByDescending(x => x.AssignedAt)
+                .ToListAsync();
+        }
+
+        public async Task<Collectorassignment?> GetActiveByRequestIdAsync(int requestId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Request)
+                    .ThenInclude(r => r.Enterprise)
+                .Where(x => x.RequestId == requestId 
+                    && x.Status == "Assigned")
+                .OrderByDescending(x => x.AssignedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public void Update(Collectorassignment entity)
+        {
+            _context.Collectorassignments.Update(entity);
+        }
+
+        // View methods
+        public async Task<IEnumerable<Collectorassignment>> GetByCollectorIdAsync(int collectorId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
+                .Include(x => x.Request)
+                    .ThenInclude(r => r.Enterprise)
+                .Include(x => x.Request.Report)
+                    .ThenInclude(r => r.WasteType)
+                .Include(x => x.Request.Report.SubmittedByNavigation)
+                .Where(x => x.AssignedCollector == collectorId)
+                .OrderByDescending(x => x.AssignedAt)
+                .ToListAsync();
+        }
+
+        public async Task<Collectorassignment?> GetByIdWithDetailsAsync(int assignmentId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
+                .Include(x => x.Request)
+                    .ThenInclude(r => r.Enterprise)
+                .Include(x => x.Request.Report)
+                    .ThenInclude(r => r.WasteType)
+                .Include(x => x.Request.Report.SubmittedByNavigation)
+                .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
+        }
+
+        public async Task<IEnumerable<Collectorassignment>> GetByEnterpriseIdAsync(int enterpriseId)
+        {
+            return await _context.Collectorassignments
+                .Include(x => x.AssignedCollectorNavigation)
+                .Include(x => x.AssignedByNavigation)
+                .Include(x => x.Collectionconfirmation)  // For CompletedAt (ConfirmedAt)
+                .Include(x => x.Request)
+                    .ThenInclude(r => r.Enterprise)
+                .Include(x => x.Request.Report)
+                    .ThenInclude(r => r.WasteType)
+                .Include(x => x.Request.Report.SubmittedByNavigation)
+                .Where(x => x.Request.EnterpriseId == enterpriseId)
+                .OrderByDescending(x => x.AssignedAt)
+                .ToListAsync();
+        }
+    }
+}

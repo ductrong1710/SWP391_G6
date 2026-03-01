@@ -2,9 +2,6 @@ using BusinessLogicLayer.DTOs.WasteType;
 using BusinessLogicLayer.Services.Interface;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace BusinessLogicLayer.Services.Implementation
 {

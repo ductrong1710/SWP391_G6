@@ -2,7 +2,6 @@ using BusinessLogicLayer.DTOs.Auth;
 using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WasteCollectionPlatform.Controllers
@@ -26,13 +25,10 @@ namespace WasteCollectionPlatform.Controllers
             public string Password { get; set; }
         }
 
-        /// <summary>
-        /// Login and get JWT token
-        /// </summary>
+       
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            // 1. Gọi Service để xác thực
             var user = _authService.Authenticate(request.Email, request.Password);
 
             if (user == null)
@@ -40,7 +36,6 @@ namespace WasteCollectionPlatform.Controllers
                 return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
             }
 
-            // 2. Nếu OK, gọi Service để tạo Token
             var token = _authService.GenerateJwtToken(user);
 
             return Ok(new
@@ -69,9 +64,7 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(new { message = "Register successful", user.UserId });
         }
 
-        /// <summary>
-        /// Change password for authenticated user
-        /// </summary>
+        
         [HttpPut("change-password")]
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
@@ -97,9 +90,7 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Request forgot password - send OTP to email
-        /// </summary>
+        
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
         {
@@ -114,9 +105,7 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Reset password with OTP verification
-        /// </summary>
+        
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
         {

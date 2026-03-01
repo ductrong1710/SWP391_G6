@@ -8,8 +8,8 @@ namespace BusinessLogicLayer.Services.Implementation
     public class WasteReportService : IWasteReportService
     {
         private const int MaxReportsPerMinute = 2;
-        private const int DuplicateRadiusMeters = 30; // 30 mét
-        private const int DuplicateTimeWindowMinutes = 30; // 30 phút
+        private const int DuplicateRadiusMeters = 30; 
+        private const int DuplicateTimeWindowMinutes = 30; 
         private readonly IUnitOfWork _uow;
 
         public WasteReportService(IUnitOfWork uow)
@@ -19,7 +19,6 @@ namespace BusinessLogicLayer.Services.Implementation
 
         public async Task<WasteReportCreatedResponseDto> CreateAsync(int userId, CreateWasteReportDto dto)
         {
-            // BR-03 validations in service layer
             if (string.IsNullOrWhiteSpace(dto.Image))
             {
                 throw new ArgumentException("Image is required");
@@ -48,11 +47,9 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Rate limit exceeded: max 2 waste reports per minute");
             }
 
-            // Check duplicate: cùng loại rác, trong bán kính 100m, trong 30 phút
             var nowUtc = DateTime.UtcNow;
             var duplicateCheckSince = nowUtc.AddMinutes(-DuplicateTimeWindowMinutes);
             
-            // 1 degree ≈ 111km, 100m ≈ 0.0009 degree (bounding box)
             var latDelta = 0.001m;
             var lonDelta = 0.001m;
 
@@ -65,7 +62,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 duplicateCheckSince
             );
 
-            // Tính khoảng cách chính xác bằng Haversine
             var isDuplicate = nearbyReports.Any(r => 
                 CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude) 
                 <= DuplicateRadiusMeters
@@ -96,7 +92,7 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
-        public async Task<WasteReportStatusResponseDto> AcceptAsync(int reportId)
+        public async Task<WasteReportStatusResponseDto> AcceptAsync(int reportId, int enterpriseId)
         {
             var report = await _uow.WasteReports.GetByIdAsync(reportId);
             if (report == null)
@@ -104,14 +100,32 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("WasteReport not found");
             }
 
-            // Only allow transition from Pending
             if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only Pending reports can be accepted");
             }
 
+            // Check nếu đã có collection request cho report này
+            var existingRequest = await _uow.CollectionRequests.GetByReportIdAsync(reportId);
+            if (existingRequest != null)
+            {
+                throw new InvalidOperationException("Collection request already exists for this report");
+            }
+
+            // Update report status
             report.Status = "Accepted";
             _uow.WasteReports.Update(report);
+
+            // Tự động tạo collection request
+            var collectionRequest = new Collectionrequest
+            {
+                ReportId = reportId,
+                EnterpriseId = enterpriseId,
+                Status = "Pending",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _uow.CollectionRequests.AddAsync(collectionRequest);
             await _uow.SaveChangesAsync();
 
             return new WasteReportStatusResponseDto
@@ -129,7 +143,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("WasteReport not found");
             }
 
-            // Only allow transition from Pending
             if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only Pending reports can be rejected");
@@ -152,12 +165,10 @@ namespace BusinessLogicLayer.Services.Implementation
 
             if (userId.HasValue)
             {
-                // Citizen: chỉ xem report của mình
                 reports = await _uow.WasteReports.GetByUserIdAsync(userId.Value);
             }
             else
             {
-                // Admin: xem tất cả
                 reports = await _uow.WasteReports.GetAllAsync();
             }
 
@@ -172,7 +183,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 return null;
             }
 
-            // Nếu là Citizen, chỉ cho xem report của mình
             if (userId.HasValue && report.SubmittedBy != userId.Value)
             {
                 return null;
@@ -189,19 +199,16 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("WasteReport not found");
             }
 
-            // Chỉ cho phép user sở hữu report update
             if (report.SubmittedBy != userId)
             {
                 throw new UnauthorizedAccessException("You can only update your own reports");
             }
 
-            // Chỉ cho phép update khi status = Pending
             if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only Pending reports can be updated");
             }
 
-            // Validate GPS
             if (dto.Latitude < -90 || dto.Latitude > 90)
             {
                 throw new ArgumentException("Latitude must be between -90 and 90");
@@ -212,14 +219,12 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException("Longitude must be between -180 and 180");
             }
 
-            // Validate wasteTypeId
             var wasteType = await _uow.WasteTypes.GetByIdAsync(dto.WasteTypeId);
             if (wasteType == null)
             {
                 throw new ArgumentException("WasteTypeId is invalid");
             }
 
-            // Update fields (không update status, userId, createdAt)
             if (!string.IsNullOrWhiteSpace(dto.Image))
             {
                 report.ImageUrl = dto.Image;
@@ -243,13 +248,11 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("WasteReport not found");
             }
 
-            // Chỉ cho phép user sở hữu report cancel
             if (report.SubmittedBy != userId)
             {
                 throw new UnauthorizedAccessException("You can only cancel your own reports");
             }
 
-            // Chỉ cho phép cancel khi status = Pending
             if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only Pending reports can be cancelled");
@@ -284,9 +287,7 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
-        /// <summary>
-        /// Tính khoảng cách giữa 2 điểm GPS bằng Haversine formula (đơn vị: mét)
-        /// </summary>
+        
         private static double CalculateDistanceMeters(double lat1, double lon1, double lat2, double lon2)
         {
             const double EarthRadiusKm = 6371;
@@ -301,7 +302,7 @@ namespace BusinessLogicLayer.Services.Implementation
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             var distanceKm = EarthRadiusKm * c;
 
-            return distanceKm * 1000; // km → mét
+            return distanceKm * 1000; 
         }
 
         private static double DegreesToRadians(double degrees)
