@@ -95,7 +95,10 @@ const Dispatch = () => {
   const [success, setSuccess] = useState('');
   const [filterStatus, setFilterStatus] = useState('Pending');
   const [autoRefresh, setAutoRefresh] = useState(false); // tránh nhấp nháy khi trang rỗng
- const mountedRef = useRef(false);
+ const [collectors, setCollectors] = useState([]);
+const [showAssignModal, setShowAssignModal] = useState(false);
+const [selectedCollector, setSelectedCollector] = useState(null);
+  const mountedRef = useRef(false);
 
 useEffect(() => {
   mountedRef.current = true; // ✅ luôn bật lại khi mount/effect run
@@ -226,6 +229,75 @@ useEffect(() => {
     setSuccess('Đã làm mới dữ liệu.');
     setTimeout(() => setSuccess(''), 1600);
   };
+
+  const fetchCollectors = useCallback(async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const response = await axios.get(
+      `${API_BASE_URL}/api/collectors`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
+      }
+    );
+
+    const collectorList = Array.isArray(response.data) ? response.data : response.data?.data || [];
+    setCollectors(collectorList);
+  } catch (e) {
+    console.error('Error fetching collectors:', e);
+    setCollectors([]);
+  }
+}, []);
+
+useEffect(() => {
+  fetchCollectors();
+}, [fetchCollectors]);
+
+const assignCollectorToRequest = async () => {
+  if (!selectedReport || !selectedCollector) {
+    setError('Vui lòng chọn Collector');
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    setError('Thiếu token đăng nhập.');
+    return;
+  }
+
+  try {
+    setActionLoading(true);
+    const url = `${API_BASE_URL}/api/assignments`;
+    
+    console.log(`📤 POST ${url}`, {
+      requestId: selectedReport.id,
+      collectorId: selectedCollector.id || selectedCollector.userId
+    });
+
+    await axios.post(url, {
+      requestId: selectedReport.id,
+      collectorId: selectedCollector.id || selectedCollector.userId
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000
+    });
+
+    setSuccess(`Đã gán Collector ${selectedCollector.username} cho request #${selectedReport.id}.`);
+    setTimeout(() => setSuccess(''), 1800);
+
+    setShowAssignModal(false);
+    setSelectedCollector(null);
+    await fetchReports({ silent: true });
+
+  } catch (e) {
+    console.error(e);
+    setError(e.response?.data?.message || 'Không thể gán Collector.');
+  } finally {
+    setActionLoading(false);
+  }
+};
 
   const updateStatusApi = async (reportId, nextStatus) => {
     const token = localStorage.getItem('token');
@@ -418,9 +490,9 @@ useEffect(() => {
             </div>
 
             {selectedReport && (
-              <div className="details-panel">
-                <h2>Report Details</h2>
-                <div className="details-grid">
+  <div className="details-panel">
+    <h2>Report Details</h2>
+    <div className="details-grid">
                   <div className="detail-section">
                     <label>Report ID:</label>
                     <p className="detail-value">#{selectedReport.id}</p>
@@ -498,12 +570,76 @@ useEffect(() => {
                     </button>
                   </div>
                 )}
+
+                {String(selectedReport.status).toLowerCase() === 'accepted' && (
+      <div className="details-actions">
+        <button
+          className="btn-assign"
+          disabled={actionLoading}
+          onClick={() => setShowAssignModal(true)}
+        >
+          👤 Assign Collector
+        </button>
+      </div>
+    )}
               </div>
             )}
           </div>
         </div>
       )}
+
+        {showAssignModal && (
+        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Assign Collector</h3>
+            <p>Select a collector for request #{selectedReport?.id}</p>
+
+            <div className="collector-list">
+              {collectors.length === 0 ? (
+                <p>Không có Collector nào</p>
+              ) : (
+                collectors.map((collector) => (
+                  <div
+                    key={collector.id || collector.userId}
+                    className={`collector-option ${selectedCollector?.id === collector.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedCollector(collector)}
+                  >
+                    <div className="collector-avatar">
+                      {(collector.username || 'C').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="collector-name">{collector.username || collector.fullName || 'Unknown'}</div>
+                      <div className="collector-phone">{collector.phone || 'N/A'}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button
+                className="btn-cancel"
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedCollector(null);
+                }}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-assign-confirm"
+                onClick={assignCollectorToRequest}
+                disabled={actionLoading || !selectedCollector}
+              >
+                {actionLoading ? 'Assigning...' : 'Assign'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 };
 
