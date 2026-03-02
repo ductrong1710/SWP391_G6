@@ -34,21 +34,23 @@ namespace WasteCollectionPlatform.Controllers
             public int WasteTypeId { get; set; }
         }
 
-        
+
         /// <summary>
-        /// Citizen/Admin: Get all waste reports
+        /// Citizen/Admin/Enterprise: Get all waste reports
         /// </summary>
         [HttpGet]
-        [Authorize]
+        [Authorize(Roles = "Admin,Citizen,Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll()
         {
             var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
             var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
+            var isEnterprise = string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase);
 
             int? userId = null;
-            if (!isAdmin)
+
+            if (!isAdmin && !isEnterprise)
             {
                 var userIdClaim = User.FindFirst("UserId")?.Value;
                 if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
@@ -62,12 +64,11 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(reports);
         }
 
-       
         /// <summary>
-        /// Citizen/Admin: Get waste report details
+        /// Citizen/Admin/Enterprise: Get waste report details
         /// </summary>
         [HttpGet("{id:int}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Citizen,Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -75,9 +76,11 @@ namespace WasteCollectionPlatform.Controllers
         {
             var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
             var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
+            var isEnterprise = string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase);
 
             int? userId = null;
-            if (!isAdmin)
+
+            if (!isAdmin && !isEnterprise)
             {
                 var userIdClaim = User.FindFirst("UserId")?.Value;
                 if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
@@ -88,15 +91,14 @@ namespace WasteCollectionPlatform.Controllers
             }
 
             var report = await _service.GetByIdAsync(id, userId);
+
             if (report == null)
-            {
                 return NotFound(new { message = "Waste report not found" });
-            }
 
             return Ok(report);
         }
 
-        
+
         /// <summary>
         /// Citizen: Create new waste report
         /// </summary>
