@@ -26,7 +26,12 @@ namespace WasteCollectionPlatform.Controllers
         }
 
        
+        /// <summary>
+        /// Public: Login with email and password
+        /// </summary>
         [HttpPost("login")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult Login([FromBody] LoginRequest request)
         {
             var user = _authService.Authenticate(request.Email, request.Password);
@@ -46,14 +51,24 @@ namespace WasteCollectionPlatform.Controllers
             });
         }
 
+        /// <summary>
+        /// Public: Register new citizen account
+        /// </summary>
         [HttpPost("register")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Register(RegisterRequestDto request)
         {
             await _authService.RegisterCitizenAsync(request);
             return Ok(new { message = "OTP sent to email" });
         }
 
+        /// <summary>
+        /// Public: Verify OTP to complete registration
+        /// </summary>
         [HttpPost("verify-otp")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> VerifyOtp(VerifyOtpRequestDto request)
         {
             var user = await _authService.VerifyOtpAndCreateUserAsync(
@@ -65,8 +80,15 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Authenticated: Change password
+        /// </summary>
         [HttpPut("change-password")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -91,7 +113,12 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Public: Request password reset OTP
+        /// </summary>
         [HttpPost("forgot-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
         {
             try
@@ -106,7 +133,12 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Public: Reset password with OTP
+        /// </summary>
         [HttpPost("reset-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
         {
             try
