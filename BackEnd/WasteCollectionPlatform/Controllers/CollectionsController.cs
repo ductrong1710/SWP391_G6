@@ -17,10 +17,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Collector: Decline assignment (refuse to collect)
+        /// Collector: Decline assignment with reason
         /// </summary>
         [HttpPut("{assignmentId:int}/decline")]
         [Authorize(Roles = "Collector")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeclineAssignment(int assignmentId, [FromBody] DeclineAssignmentDto dto)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -57,10 +63,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Collector: Start collection (change status to OnTheWay)
+        /// Collector: Start collection (status OnTheWay)
         /// </summary>
         [HttpPut("{assignmentId:int}/start")]
         [Authorize(Roles = "Collector")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> StartCollection(int assignmentId)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -93,10 +105,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Collector: Mark arrival at location and upload before photo
+        /// Collector: Mark arrived and upload before photo
         /// </summary>
         [HttpPut("{assignmentId:int}/arrived")]
         [Authorize(Roles = "Collector")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ArrivedAtLocation(int assignmentId, [FromForm] ArrivedAtLocationDto dto)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -133,10 +151,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Collector: Report issue/problem during collection
+        /// Collector: Report issue during collection
         /// </summary>
         [HttpPut("{assignmentId:int}/report-issue")]
         [Authorize(Roles = "Collector")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ReportIssue(int assignmentId, [FromForm] ReportIssueDto dto)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -173,10 +197,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Collector: Complete collection with proof image
+        /// Collector: Complete collection and upload after photo
         /// </summary>
         [HttpPut("{assignmentId:int}/complete")]
         [Authorize(Roles = "Collector")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CompleteCollection(int assignmentId, [FromForm] CompleteCollectionDto dto)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;

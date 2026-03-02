@@ -16,10 +16,14 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Get all collection requests for the authenticated Enterprise
+        /// Enterprise: Get all my collection requests
         /// </summary>
         [HttpGet]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetMyCollectionRequests()
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -40,10 +44,15 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Get detailed information about a specific collection request
+        /// Enterprise: Get collection request details
         /// </summary>
         [HttpGet("{requestId:int}")]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetCollectionRequestDetail(int requestId)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -72,10 +81,14 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Admin: Get all collection requests in the system
+        /// Admin: Get all collection requests in system
         /// </summary>
         [HttpGet("all")]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllCollectionRequests()
         {
             try
@@ -90,10 +103,15 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Enterprise: Get assignment history for a specific collection request
+        /// Enterprise: Get assignment history for a request
         /// </summary>
         [HttpGet("{requestId:int}/assignments")]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAssignmentHistory(int requestId)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
