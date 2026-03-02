@@ -1,4 +1,4 @@
-﻿using BusinessLogicLayer.DTOs.User;
+using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,31 +19,28 @@ namespace WasteCollectionPlatform.Controllers
             _logger = logger;
         }
 
-<<<<<<< HEAD
-        /// <summary>
-        /// Lấy danh sách tất cả users (Admin only)
-        /// </summary>
-=======
         
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
+        /// <summary>
+        /// Admin: Get all users in system
+        /// </summary>
         [HttpGet]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userService.GetAllAsync();
             return Ok(users);
         }
 
-<<<<<<< HEAD
         /// <summary>
-        /// Lấy user theo ID
+        /// Authenticated: Get user by ID
         /// </summary>
-=======
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
         [HttpGet("{id:int}")]
         [Authorize]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetUserById(int id)
         {
@@ -54,20 +51,12 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(user);
         }
 
-<<<<<<< HEAD
-        /// <summary>
-        /// Create a new user (Admin/Enterprise only)
-        /// </summary>
-        /// <param name="request">User creation data</param>
-        /// <returns>Created user</returns>
-        /// <response code="201">User created successfully</response>
-        /// <response code="400">Invalid request data</response>
-        /// <response code="409">Email or phone already exists</response>
-=======
         
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
+        /// <summary>
+        /// Admin: Create new user account
+        /// </summary>
         [HttpPost]
-        //[Authorize(Roles = "Administrator,Enterprise")]
+        //[Authorize(Roles = "Administrator")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -101,17 +90,16 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-<<<<<<< HEAD
-        /// <summary>
-        /// Update user (Admin only)
-        /// </summary>
-=======
         
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
+        /// <summary>
+        /// Admin: Update user information
+        /// </summary>
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequestDto request)
@@ -146,15 +134,14 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-<<<<<<< HEAD
         /// <summary>
-        /// Delete user (Admin only)
+        /// Admin: Delete user account
         /// </summary>
-=======
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteUser(int id)
         {
