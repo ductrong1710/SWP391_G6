@@ -31,6 +31,9 @@ namespace DataAccessLayer
             // Sau này thêm các repository khác: IWasteReportRepository, IRewardRepository,...
             services.AddScoped<IWasteTypeRepository, WasteTypeRepository>();
             services.AddScoped<IWasteReportRepository, WasteReportRepository>();
+            services.AddScoped<ICollectionRequestRepository, CollectionRequestRepository>();
+            services.AddScoped<ICollectorAssignmentRepository, CollectorAssignmentRepository>();
+            services.AddScoped<ICollectionConfirmationRepository, CollectionConfirmationRepository>();
 
             return services;
         }

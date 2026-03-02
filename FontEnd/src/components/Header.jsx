@@ -1,24 +1,26 @@
 // src/components/Header.jsx
 import React, { useState } from 'react';
+import { authService } from '../services/authService';
 
 const Header = ({ activeTab, setActiveTab }) => {
-  // State để bật/tắt menu con
   const [showDropdown, setShowDropdown] = useState(false);
+  const user = authService.getCurrentUser(); // Lấy thông tin user
 
-  // Hàm chuyển tab và đóng menu
   const handleNavigation = (tabName) => {
     setActiveTab(tabName);
     setShowDropdown(false);
   };
 
+  const handleLogout = () => {
+    authService.logout(); // Sử dụng authService
+  };
+
   return (
     <header className="header">
-      {/* 1. Logo Brand */}
       <div className="brand" onClick={() => handleNavigation('home')} style={{cursor: 'pointer'}}>
         <span className="logo-icon">🍃</span> EcoCollect
       </div>
 
-      {/* 2. Navigation Menu */}
       <nav className="nav-links">
         <button 
           className={activeTab === 'home' ? 'active' : ''} 
@@ -33,39 +35,38 @@ const Header = ({ activeTab, setActiveTab }) => {
           📄 Create Report
         </button>
         <button 
-        className={activeTab === 'rewards' ? 'active' : ''} 
-        onClick={() => handleNavigation('rewards')}  >
-        🎁 Rewards
+          className={activeTab === 'rewards' ? 'active' : ''} 
+          onClick={() => handleNavigation('rewards')}
+        >
+          🎁 Rewards
         </button>
         <button
           className={activeTab === 'history' ? 'active' : ''} 
-        onClick={() => handleNavigation('history')}  >
-          ⏱ History</button>
+          onClick={() => handleNavigation('history')}
+        >
+          ⏱ History
+        </button>
       </nav>
 
-      {/* 3. User Info & Dropdown */}
       <div className="user-info">
         <span className="points-badge">🍃 2,450 pts</span>
         
-        {/* Khu vực Avatar có Dropdown */}
         <div className="user-dropdown-wrapper" style={{position: 'relative'}}>
           <div 
             className="user-avatar" 
             onClick={() => setShowDropdown(!showDropdown)}
           >
-            Jane Doe ▾
+            {user?.fullName || 'User'} ▾
           </div>
 
-          {/* Menu thả xuống */}
           {showDropdown && (
             <div className="custom-dropdown">
               <div className="dropdown-header-info">
-                <div className="dd-name">Jane Doe</div>
+                <div className="dd-name">{user?.fullName || 'User'}</div>
                 <div className="dd-role">Citizen</div>
               </div>
               
               <ul className="dropdown-list">
-                {/* Mục Profile đang được highlight màu xanh giống ảnh mẫu */}
                 <li 
                   className="dropdown-item active" 
                   onClick={() => handleNavigation('settings')}
@@ -81,7 +82,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 
                 <div className="dropdown-divider"></div>
                 
-                <li className="dropdown-item text-red">
+                <li className="dropdown-item text-red" onClick={handleLogout}>
                   ↪️ Logout
                 </li>
               </ul>

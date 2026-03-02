@@ -1,4 +1,4 @@
-﻿using DataAccessLayer.Data;
+using DataAccessLayer.Data;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 using Microsoft.EntityFrameworkCore;
@@ -53,6 +53,28 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Users
                 .Include(u => u.Role)
                 .ToListAsync();
+        }
+
+        public void Update(User user)
+        {
+            _context.Users.Update(user);
+        }
+
+        public void Delete(User user)
+        {
+            _context.Users.Remove(user);
+        }
+
+        public async Task<bool> EmailExistsExceptAsync(string email, int excludeUserId)
+        {
+            return await _context.Users
+                .AnyAsync(u => u.Email == email && u.UserId != excludeUserId);
+        }
+
+        public async Task<bool> PhoneExistsExceptAsync(string phone, int excludeUserId)
+        {
+            return await _context.Users
+                .AnyAsync(u => u.Phone == phone && u.UserId != excludeUserId);
         }
     }
 }

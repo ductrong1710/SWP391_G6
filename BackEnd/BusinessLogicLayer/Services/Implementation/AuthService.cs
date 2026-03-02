@@ -89,7 +89,6 @@ namespace BusinessLogicLayer.Services.Service
 
         public async Task<User> VerifyOtpAndCreateUserAsync(string email, string otp)
         {
-            // ✅ Chặn verify lại / gọi 2 lần
             if (await _uow.Users.EmailExistsAsync(email))
                 throw new InvalidOperationException("User already registered");
 
@@ -121,7 +120,6 @@ namespace BusinessLogicLayer.Services.Service
 
         public User? Authenticate(string email, string password)
         {
-            // 1. Tìm user
             var user = _context.Users.FirstOrDefault(u => u.Email == email);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
@@ -133,7 +131,6 @@ namespace BusinessLogicLayer.Services.Service
                 return null;
             }
 
-            // 3. Trả về user nếu hợp lệ
             return user;
         }
 
@@ -166,6 +163,60 @@ namespace BusinessLogicLayer.Services.Service
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public async Task ForgotPasswordAsync(ForgotPasswordRequestDto request)
+        {
+            var user = await _uow.Users.GetByEmailAsync(request.Email);
+            if (user == null)
+            {
+                throw new InvalidOperationException("Email not found");
+            }
+
+            var otp = new Random().Next(100000, 999999).ToString();
+
+            _cache.Set(
+                $"RESET_PASSWORD_OTP_{request.Email}",
+                otp,
+                TimeSpan.FromMinutes(5)
+            );
+
+            var html = LoadEmailTemplate("OtpVerification.html")
+                    .Replace("{{FullName}}", user.FullName)
+                    .Replace("{{OTP}}", otp);
+
+            await _emailService.SendEmailAsync(
+                request.Email,
+                "Reset Password OTP",
+                html,
+                isHtml: true
+            );
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+                throw new ArgumentException("New password is required");
+
+            if (request.NewPassword != request.ConfirmPassword)
+                throw new ArgumentException("New password and confirm password do not match");
+
+            if (!_cache.TryGetValue($"RESET_PASSWORD_OTP_{request.Email}", out string cachedOtp))
+                throw new InvalidOperationException("OTP expired or not found");
+
+            if (cachedOtp != request.Otp)
+                throw new InvalidOperationException("Invalid OTP");
+
+            var user = await _uow.Users.GetByEmailAsync(request.Email);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync();
+
+            _cache.Remove($"RESET_PASSWORD_OTP_{request.Email}");
         }
     }
 }

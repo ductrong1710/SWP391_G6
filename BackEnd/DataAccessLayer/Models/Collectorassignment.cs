@@ -1,6 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-
 namespace DataAccessLayer.Models;
 
 public partial class Collectorassignment
@@ -16,6 +13,13 @@ public partial class Collectorassignment
     public string? Status { get; set; }
 
     public DateTime? AssignedAt { get; set; }
+
+    public DateTime? StartedAt { get; set; }  // When collector starts collection (Status: OnTheWay)
+
+    public DateTime? ArrivedAt { get; set; }  // When collector arrived at location (Status: Arrived)
+
+    public string? BeforeImageUrl { get; set; }  // Photo before collection (uploaded when arrived)
+    // Note: CompletedAt is tracked in Collectionconfirmation.ConfirmedAt
 
     public virtual User AssignedByNavigation { get; set; } = null!;
 

@@ -1,4 +1,4 @@
-﻿using BusinessLogicLayer.DTOs.User;
+using BusinessLogicLayer.DTOs.User;
 
 namespace BusinessLogicLayer.Services.Interface
 {
@@ -7,5 +7,8 @@ namespace BusinessLogicLayer.Services.Interface
         Task<UserResponseDto> CreateUserAsync(CreateUserRequestDto request);
         Task<UserResponseDto?> GetByIdAsync(int id);
         Task<IEnumerable<UserResponseDto>> GetAllAsync();
+        Task<UserResponseDto> UpdateUserAsync(int id, UpdateUserRequestDto request);
+        Task DeleteUserAsync(int id);
+        Task ChangePasswordAsync(int userId, ChangePasswordDto dto);
     }
 }

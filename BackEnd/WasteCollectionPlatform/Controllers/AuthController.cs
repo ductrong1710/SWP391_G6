@@ -1,7 +1,7 @@
-﻿using BusinessLogicLayer.DTOs.Auth;
+using BusinessLogicLayer.DTOs.Auth;
 using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
-using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WasteCollectionPlatform.Controllers
@@ -11,10 +11,12 @@ namespace WasteCollectionPlatform.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
         }
 
         public class LoginRequest
@@ -23,13 +25,10 @@ namespace WasteCollectionPlatform.Controllers
             public string Password { get; set; }
         }
 
-        /// <summary>
-        /// Login and get JWT token
-        /// </summary>
+       
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            // 1. Gọi Service để xác thực
             var user = _authService.Authenticate(request.Email, request.Password);
 
             if (user == null)
@@ -37,7 +36,6 @@ namespace WasteCollectionPlatform.Controllers
                 return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
             }
 
-            // 2. Nếu OK, gọi Service để tạo Token
             var token = _authService.GenerateJwtToken(user);
 
             return Ok(new
@@ -66,6 +64,64 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(new { message = "Register successful", user.UserId });
         }
 
+        
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
 
+            try
+            {
+                await _userService.ChangePasswordAsync(userId, dto);
+                return Ok(new { message = "Password changed successfully" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+        {
+            try
+            {
+                await _authService.ForgotPasswordAsync(request);
+                return Ok(new { message = "OTP has been sent to your email" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
+        {
+            try
+            {
+                await _authService.ResetPasswordAsync(request);
+                return Ok(new { message = "Password has been reset successfully" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

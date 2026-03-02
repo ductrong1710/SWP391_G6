@@ -1,9 +1,10 @@
 // src/components/AdminHeader.jsx
 import React, { useState } from 'react';
+import { authService } from '../services/authService';
 
 const AdminHeader = ({ activeTab, setActiveTab }) => {
-  // State để bật tắt menu
   const [showDropdown, setShowDropdown] = useState(false);
+  const user = authService.getCurrentUser();
 
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: '⊞' },
@@ -13,8 +14,7 @@ const AdminHeader = ({ activeTab, setActiveTab }) => {
   ];
 
   const handleLogout = () => {
-    // Giả lập logout
-    window.location.reload(); 
+    authService.logout(); // Sử dụng authService
   };
 
   return (
@@ -36,31 +36,25 @@ const AdminHeader = ({ activeTab, setActiveTab }) => {
         ))}
       </div>
 
-      {/* --- PHẦN PROFILE & DROPDOWN --- */}
       <div className="admin-profile-wrapper" style={{ position: 'relative' }}>
-        
-        {/* Nút bấm vào Avatar */}
         <div 
           className="admin-profile" 
           onClick={() => setShowDropdown(!showDropdown)}
         >
           <div className="admin-avatar"></div>
-          <span className="admin-username">Admin</span>
+          <span className="admin-username">{user?.fullName || 'Admin'}</span>
           <span className="admin-chevron">▼</span>
         </div>
         
-        {/* Menu Dropdown (Chỉ hiện khi showDropdown = true) */}
         {showDropdown && (
           <div className="admin-dropdown fade-in">
-             {/* Header Info */}
              <div className="dd-header">
-                <div className="dd-name">System Admin</div>
-                <div className="dd-role">Super Administrator</div>
+                <div className="dd-name">{user?.fullName || 'Admin'}</div>
+                <div className="dd-role">Administrator</div>
              </div>
              
              <div className="dd-divider"></div>
 
-             {/* Các nút chọn */}
              <button 
                className="dd-item"
                onClick={() => { setActiveTab('settings'); setShowDropdown(false); }}

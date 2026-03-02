@@ -1,4 +1,4 @@
-﻿using DataAccessLayer.Models;
+using DataAccessLayer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,5 +15,9 @@ namespace DataAccessLayer.Repositories.Interface
         Task<bool> PhoneExistsAsync(string phone);
         Task AddAsync(User user);
         Task<IEnumerable<User>> GetAllAsync();
+        void Update(User user);
+        void Delete(User user);
+        Task<bool> EmailExistsExceptAsync(string email, int excludeUserId);
+        Task<bool> PhoneExistsExceptAsync(string phone, int excludeUserId);
     }
 }
