@@ -64,30 +64,18 @@ namespace BusinessLogicLayer.Services.Implementation
             if (user == null)
                 throw new InvalidOperationException("User not found");
 
-<<<<<<< HEAD
-            // Validate email unique (exclude current user)
-=======
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
             if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
             {
                 if (await _uow.Users.EmailExistsExceptAsync(request.Email, id))
                     throw new InvalidOperationException("Email already exists");
             }
 
-<<<<<<< HEAD
-            // Validate phone unique (exclude current user)
-=======
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
             if (!string.IsNullOrWhiteSpace(request.Phone) && request.Phone != user.Phone)
             {
                 if (await _uow.Users.PhoneExistsExceptAsync(request.Phone, id))
                     throw new InvalidOperationException("Phone already exists");
             }
 
-<<<<<<< HEAD
-            // Update fields
-=======
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
             if (!string.IsNullOrWhiteSpace(request.FullName))
                 user.FullName = request.FullName;
 
@@ -106,10 +94,6 @@ namespace BusinessLogicLayer.Services.Implementation
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
 
-<<<<<<< HEAD
-            // Reload to get updated Role
-=======
->>>>>>> 8a370204f4390a9bd8056ea36986c0f2cfb25ab3
             var updated = await _uow.Users.GetByIdAsync(id);
             return MapToDto(updated!);
         }
