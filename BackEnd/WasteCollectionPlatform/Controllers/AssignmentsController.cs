@@ -18,7 +18,6 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Enterprise: Assign collector to request
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "Enterprise")]
