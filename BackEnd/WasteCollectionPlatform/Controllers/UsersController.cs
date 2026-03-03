@@ -2,7 +2,7 @@ using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+//nothing
 namespace WasteCollectionPlatform.Controllers
 {
     [ApiController]
