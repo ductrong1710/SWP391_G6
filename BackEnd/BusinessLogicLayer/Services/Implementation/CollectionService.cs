@@ -307,36 +307,36 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Cannot validate time: no baseline timestamp available");
             }
 
-            var timeElapsed = DateTime.UtcNow - baselineTime;
+            //var timeElapsed = DateTime.UtcNow - baselineTime;
                 
-                // Minimum time validation (2 minutes from arrival)
-                // Rationale: After arriving, collector needs time to:
-                // - Take before photo and assess situation (30 sec)
-                // - Collect waste properly (1-2 min minimum)
-                // - Clean up area (30 sec)
-            var minimumDuration = TimeSpan.FromMinutes(2);
+            //    // Minimum time validation (2 minutes from arrival)
+            //    // Rationale: After arriving, collector needs time to:
+            //    // - Take before photo and assess situation (30 sec)
+            //    // - Collect waste properly (1-2 min minimum)
+            //    // - Clean up area (30 sec)
+            //var minimumDuration = TimeSpan.FromMinutes(2);
             
-            if (timeElapsed < minimumDuration)
-            {
-                var remainingMinutes = Math.Ceiling((minimumDuration - timeElapsed).TotalMinutes);
-                throw new InvalidOperationException(
-                    $"Collection must take at least {minimumDuration.TotalMinutes} minutes. " +
-                    $"Please wait {remainingMinutes} more minute(s) before completing. " +
-                    $"This ensures quality and prevents fake completions."
-                );
-            }
+            //if (timeElapsed < minimumDuration)
+            //{
+            //    var remainingMinutes = Math.Ceiling((minimumDuration - timeElapsed).TotalMinutes);
+            //    throw new InvalidOperationException(
+            //        $"Collection must take at least {minimumDuration.TotalMinutes} minutes. " +
+            //        $"Please wait {remainingMinutes} more minute(s) before completing. " +
+            //        $"This ensures quality and prevents fake completions."
+            //    );
+            //}
 
             // Maximum time warning (4 hours)
             // If taking too long, might indicate an issue
-            var maximumDuration = TimeSpan.FromHours(4);
+            //var maximumDuration = TimeSpan.FromHours(4);
             
-            if (timeElapsed > maximumDuration)
-            {
-                // Log warning but still allow completion
-                // Enterprise should review these cases
-                Console.WriteLine($"WARNING: Assignment {assignmentId} took {timeElapsed.TotalHours:F2} hours to complete. " +
-                                $"This is unusually long and should be reviewed.");
-            }
+            //if (timeElapsed > maximumDuration)
+            //{
+            //    // Log warning but still allow completion
+            //    // Enterprise should review these cases
+            //    Console.WriteLine($"WARNING: Assignment {assignmentId} took {timeElapsed.TotalHours:F2} hours to complete. " +
+            //                    $"This is unusually long and should be reviewed.");
+            //}
 
             // Save after image (before image already saved during Arrived step)
             var afterImageUrl = await SaveProofImageAsync(dto.AfterImage, "after");

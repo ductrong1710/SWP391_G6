@@ -19,8 +19,13 @@ namespace WasteCollectionPlatform.Controllers
         }
 
        
+        /// <summary>
+        /// Authenticated: Get all waste types
+        /// </summary>
         [HttpGet]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll()
         {
             var result = await _service.GetAllAsync();
@@ -28,8 +33,14 @@ namespace WasteCollectionPlatform.Controllers
         }
 
        
+        /// <summary>
+        /// Authenticated: Get waste type by ID
+        /// </summary>
         [HttpGet("{id:int}")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             var item = await _service.GetByIdAsync(id);
@@ -42,8 +53,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Admin: Create new waste type
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Create([FromBody] CreateWasteTypeDto dto)
         {
             try
@@ -62,8 +81,17 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Admin: Update waste type
+        /// </summary>
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateWasteTypeDto dto)
         {
             try
@@ -86,8 +114,15 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         
+        /// <summary>
+        /// Admin: Delete waste type
+        /// </summary>
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
             try
