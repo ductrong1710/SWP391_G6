@@ -44,6 +44,11 @@ namespace WasteCollectionPlatform
             // Cấu hình Swagger để nhập Token test cho tiện
             builder.Services.AddSwaggerGen(c =>
             {
+                // Enable XML comments
+                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                c.IncludeXmlComments(xmlPath);
+
                 c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
                 {
                     Description = "Nhập JWT token",

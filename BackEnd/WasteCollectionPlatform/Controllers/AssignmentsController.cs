@@ -18,10 +18,14 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Enterprise assigns a collector to a collection request
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> AssignCollector([FromBody] AssignCollectorDto dto)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -54,10 +58,16 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Enterprise reassigns a different collector to an assignment
+        /// Enterprise: Reassign different collector
         /// </summary>
+        
         [HttpPut("{assignmentId:int}")]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ReassignCollector(int assignmentId, [FromBody] ReassignCollectorDto dto)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -90,10 +100,15 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Cancel an assignment (Enterprise or Collector can cancel)
+        /// Enterprise: Cancel assignment
         /// </summary>
         [HttpPut("{assignmentId:int}/cancel")]
-        [Authorize(Roles = "Enterprise,Collector")]
+        [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CancelAssignment(int assignmentId)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -129,10 +144,13 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Enterprise: Get all assignments created by this enterprise (across all requests)
+        /// Enterprise: Get all my assignments
         /// </summary>
         [HttpGet]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAllMyAssignments()
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -194,10 +212,13 @@ public async Task<IActionResult> AssignmentsCollector([FromBody] AssignCollector
 }
 
         /// <summary>
-        /// Collector: Get all assignments for the authenticated collector
+        /// Collector: Get all my assignments
         /// </summary>
         [HttpGet("my-assignments")]
         [Authorize(Roles = "Collector")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetMyAssignments()
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -218,10 +239,14 @@ public async Task<IActionResult> AssignmentsCollector([FromBody] AssignCollector
         }
 
         /// <summary>
-        /// Collector: Get detailed information about a specific assignment
+        /// Collector: Get assignment details
         /// </summary>
         [HttpGet("{assignmentId:int}")]
         [Authorize(Roles = "Collector")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetAssignmentDetail(int assignmentId)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;

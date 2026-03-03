@@ -1,8 +1,6 @@
 import api from './api';
 
-const API_BASE_URL = 'http://localhost:5021/api';
-
-export const authService = {
+const authService = {
   // Đăng ký - Bước 1: Gửi OTP
   register: async (userData) => {
     const response = await api.post('/Auth/register', {
@@ -29,12 +27,12 @@ export const authService = {
       email: email,
       password: password
     });
-    
+
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
-    
+
     return response.data;
   },
 
@@ -62,21 +60,78 @@ export const authService = {
     return user?.roleId === roleId;
   },
 
-  // Kiểm tra nếu có một trong các role được cho phép
   hasAnyRole: (roleIds) => {
     const user = authService.getCurrentUser();
     return roleIds.includes(user?.roleId);
   },
 
-  // Lấy role ID
   getRoleId: () => {
     const user = authService.getCurrentUser();
     return user?.roleId;
   },
 
-  // Lấy role Name (nếu có trong response)
   getRoleName: () => {
     const user = authService.getCurrentUser();
     return user?.roleName || 'citizen';
   },
+
+  // ===== USER MANAGEMENT =====
+
+  getAllUsers: async () => {
+    const response = await api.get('/Users');
+    return response.data;
+  },
+
+  getUserById: async (userId) => {
+    const response = await api.get(`/Users/${userId}`);
+    return response.data;
+  },
+
+  // Lấy danh sách collectors từ DB
+  getCollectors: async () => {
+    try {
+      const response = await api.get('/Users/collectors');
+      const data = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.$values || response.data?.data || []);
+
+      console.log('✅ Collectors from DB:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Error fetching collectors:', error.response?.status, error.response?.data);
+      return [];
+    }
+  },
+
+  // Lấy danh sách enterprises
+  getEnterprises: async () => {
+    try {
+      const response = await api.get('/Users');
+      const allUsers = Array.isArray(response.data) ? response.data : [];
+      return allUsers.filter(u => {
+        const role = u.roleName ?? u.RoleName ?? '';
+        return role.toLowerCase() === 'enterprise';
+      });
+    } catch (error) {
+      console.error('❌ Error fetching enterprises:', error);
+      return [];
+    }
+  },
+
+  getUsersByRole: async (roleName) => {
+    try {
+      const response = await api.get('/Users');
+      const allUsers = Array.isArray(response.data) ? response.data : [];
+      return allUsers.filter(u => {
+        const role = u.roleName ?? u.RoleName ?? '';
+        return role.toLowerCase() === roleName.toLowerCase();
+      });
+    } catch (error) {
+      console.error('❌ Error fetching users by role:', error);
+      return [];
+    }
+  },
 };
+
+export { authService };
+export default authService;

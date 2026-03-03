@@ -34,43 +34,53 @@ namespace WasteCollectionPlatform.Controllers
             public int WasteTypeId { get; set; }
         }
 
-        
-       [HttpGet]
-[Authorize]
-public async Task<IActionResult> GetAll()
-{
-    var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-    
-    var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
-    var isEnterprise = string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase);
 
-    int? userId = null;
-    
-    // ✅ CHỈ Citizen/Collector mới filter theo userId
-    if (!isAdmin && !isEnterprise)
-    {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
+        /// <summary>
+        /// Citizen/Admin/Enterprise: Get all waste reports
+        /// </summary>
+        [HttpGet]
+        [Authorize(Roles = "Admin,Citizen,Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetAll()
         {
-            return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
+            var isEnterprise = string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase);
+
+            int? userId = null;
+
+            if (!isAdmin && !isEnterprise)
+            {
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+                if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
+                {
+                    return Unauthorized(new { message = "Invalid or missing UserId claim" });
+                }
+                userId = parsedUserId;
+            }
+
+            var reports = await _service.GetAllAsync(userId);
+            return Ok(reports);
         }
-        userId = parsedUserId;
-    }
 
-    var reports = await _service.GetAllAsync(userId);  // ✅ Enterprise: userId = null → lấy tất cả
-    return Ok(reports);
-}
-
-       
+        /// <summary>
+        /// Citizen/Admin/Enterprise: Get waste report details
+        /// </summary>
         [HttpGet("{id:int}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Citizen,Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
             var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
+            var isEnterprise = string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase);
 
             int? userId = null;
-            if (!isAdmin)
+
+            if (!isAdmin && !isEnterprise)
             {
                 var userIdClaim = User.FindFirst("UserId")?.Value;
                 if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
@@ -81,18 +91,24 @@ public async Task<IActionResult> GetAll()
             }
 
             var report = await _service.GetByIdAsync(id, userId);
+
             if (report == null)
-            {
                 return NotFound(new { message = "Waste report not found" });
-            }
 
             return Ok(report);
         }
 
-        
+
+        /// <summary>
+        /// Citizen: Create new waste report
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Create([FromForm] CreateWasteReportForm form)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -128,9 +144,17 @@ public async Task<IActionResult> GetAll()
         }
 
         
+        /// <summary>
+        /// Citizen: Update waste report
+        /// </summary>
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int id, [FromForm] UpdateWasteReportForm form)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -174,8 +198,16 @@ public async Task<IActionResult> GetAll()
         }
 
         
+        /// <summary>
+        /// Citizen: Cancel waste report
+        /// </summary>
         [HttpPut("{id:int}/cancel")]
         [Authorize(Roles = "Citizen")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Cancel(int id)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -203,8 +235,16 @@ public async Task<IActionResult> GetAll()
             }
         }
 
+        /// <summary>
+        /// Enterprise: Accept waste report and create collection request
+        /// </summary>
         [HttpPut("{id:int}/accept")]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Accept(int id)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
@@ -228,8 +268,16 @@ public async Task<IActionResult> GetAll()
             }
         }
 
+        /// <summary>
+        /// Enterprise: Reject waste report
+        /// </summary>
         [HttpPut("{id:int}/reject")]
         [Authorize(Roles = "Enterprise")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Reject(int id)
         {
             try
@@ -270,4 +318,3 @@ public async Task<IActionResult> GetAll()
         }
     }
 }
-
