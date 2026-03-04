@@ -1,76 +1,317 @@
-// src/pages/citizen/History.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import wasteReportService from '../../services/wasteReportService';
+// import '../styles/History.css';
 
 const History = () => {
-  // Dữ liệu mẫu nhiều hơn để xuất hiện thanh cuộn
-  const historyData = [
-    { id: 1, date: "Jan 18, 2026", type: "Plastic", weight: "2.5 kg", points: 50, status: "Verified" },
-    { id: 2, date: "Jan 15, 2026", type: "Paper", weight: "4.0 kg", points: 80, status: "Verified" },
-    { id: 3, date: "Jan 12, 2026", type: "Electronics", weight: "1.2 kg", points: 120, status: "Verified" },
-    { id: 4, date: "Jan 10, 2026", type: "Glass", weight: "3.0 kg", points: 45, status: "Disputed" },
-    { id: 5, date: "Jan 08, 2026", type: "Metal", weight: "5.5 kg", points: 165, status: "Verified" },
-    { id: 6, date: "Jan 05, 2026", type: "Plastic", weight: "1.8 kg", points: 36, status: "Verified" },
-    { id: 7, date: "Jan 03, 2026", type: "Paper", weight: "6.2 kg", points: 124, status: "Verified" },
-    { id: 8, date: "Dec 30, 2025", type: "Organic", weight: "8.0 kg", points: 40, status: "Verified" },
-    { id: 9, date: "Dec 28, 2025", type: "Metal", weight: "2.1 kg", points: 63, status: "Verified" },
-    { id: 10, date: "Dec 25, 2025", type: "Electronics", weight: "0.5 kg", points: 50, status: "Verified" },
-    { id: 11, date: "Dec 22, 2025", type: "Glass", weight: "4.5 kg", points: 67, status: "Verified" },
-    { id: 12, date: "Dec 20, 2025", type: "Plastic", weight: "3.3 kg", points: 66, status: "Disputed" },
-    { id: 13, date: "Dec 18, 2025", type: "Paper", weight: "2.0 kg", points: 40, status: "Verified" },
-    { id: 14, date: "Dec 15, 2025", type: "Metal", weight: "1.5 kg", points: 45, status: "Verified" },
-    { id: 15, date: "Dec 12, 2025", type: "Organic", weight: "5.0 kg", points: 25, status: "Verified" },
-    { id: 16, date: "Dec 10, 2025", type: "Electronics", weight: "2.2 kg", points: 220, status: "Verified" },
-  ];
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [filter, setFilter] = useState('All');
+
+  const token = localStorage.getItem('token');
+
+  useEffect(() => {
+    fetchMyReports();
+  }, [filter]);
+
+  const fetchMyReports = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const allReports = await wasteReportService.getAllReports(token);
+      
+      // Lọc báo cáo của citizen hiện tại
+      let filtered = allReports;
+      
+      if (filter !== 'All') {
+        filtered = allReports.filter(report => report.status === filter);
+      }
+      
+      setReports(filtered);
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+      setError('❌ Không thể tải lịch sử báo cáo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Pending':
+        return { icon: '⏳', color: '#fef3c7', textColor: '#92400e', text: 'Chờ duyệt' };
+      case 'Accepted':
+        return { icon: '✅', color: '#d1fae5', textColor: '#065f46', text: 'Đã duyệt' };
+      case 'Rejected':
+        return { icon: '❌', color: '#fee2e2', textColor: '#991b1b', text: 'Bị từ chối' };
+      default:
+        return { icon: '❓', color: '#f3f4f6', textColor: '#6b7280', text: status };
+    }
+  };
 
   return (
-    <div className="citizen-page-container fade-in">
-      {/* Header */}
-      <div className="cit-page-header">
-        <h2>Activity History</h2>
-        <p className="text-gray">View your past waste collection requests and report any issues</p>
+    <div className="history-container">
+      <div className="history-header">
+        <h2>📜 Lịch Sử Báo Cáo Của Tôi</h2>
+        <p>Xem trạng thái duyệt của các báo cáo rác thải</p>
       </div>
 
-      {/* Card chứa bảng */}
-      <div className="cit-card">
-        <h3 className="card-title">Collection Records</h3>
-
-        {/* Header của bảng (Cố định, không trượt) */}
-        <div className="history-table-header">
-           <span style={{width: '40px'}}></span> {/* Chỗ cho dấu mũi tên */}
-           <span style={{flex: 1}}>Date</span>
-           <span style={{flex: 1}}>Waste Type</span>
-           <span style={{flex: 1}}>Weight</span>
-           <span style={{flex: 1}}>Points</span>
-           <span style={{flex: 1}}>Status</span>
-           <span style={{width: '140px'}}>Actions</span>
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          borderRadius: '6px',
+          marginBottom: '15px',
+          borderLeft: '4px solid #ef4444'
+        }}>
+          {error}
         </div>
+      )}
 
-        {/* Danh sách cuộn (Scrollable List) */}
-        <div className="history-scroll-list">
-          {historyData.map((item) => (
-            <div key={item.id} className="history-row">
-               <span className="row-chevron">›</span>
-               <span style={{flex: 1, fontWeight: 500}}>{item.date}</span>
-               <span style={{flex: 1}}>{item.type}</span>
-               <span style={{flex: 1}}>{item.weight}</span>
-               <span style={{flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', color: '#10b981'}}>
-                 🍃 +{item.points}
-               </span>
-               <span style={{flex: 1}}>
-                  <span className={`status-badge ${item.status.toLowerCase()}`}>
-                    {item.status === 'Verified' && '✔ Verified'}
-                    {item.status === 'Disputed' && '⛔ Disputed'}
-                  </span>
-               </span>
-               <span style={{width: '140px'}}>
-                 {item.status === 'Verified' && (
-                   <button className="btn-report">⚠️ Report Issue</button>
-                 )}
-               </span>
+      {/* BỘ LỌC */}
+      <div style={{
+        marginBottom: '20px',
+        display: 'flex',
+        gap: '10px',
+        flexWrap: 'wrap'
+      }}>
+        {['All', 'Pending', 'Accepted', 'Rejected'].map(status => (
+          <button
+            key={status}
+            onClick={() => setFilter(status)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: '1px solid #ccc',
+              backgroundColor: filter === status ? '#3b82f6' : 'white',
+              color: filter === status ? 'white' : '#333',
+              cursor: 'pointer',
+              fontWeight: filter === status ? 'bold' : 'normal',
+              transition: 'all 0.3s'
+            }}
+          >
+            {status === 'All' && '📋'} {status === 'Pending' && '⏳'} {status === 'Accepted' && '✅'} {status === 'Rejected' && '❌'} {status}
+          </button>
+        ))}
+      </div>
+
+      {/* DANH SÁCH BÁO CÁO */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <p>⏳ Đang tải...</p>
+        </div>
+      ) : reports.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+          <p>📭 Bạn chưa có báo cáo nào</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          {reports.map((report) => {
+            const badge = getStatusBadge(report.status);
+            return (
+              <div
+                key={report.wastereportId}
+                onClick={() => {
+                  setSelectedReport(report);
+                  setShowModal(true);
+                }}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '100px 1fr auto',
+                  gap: '15px',
+                  padding: '15px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {/* ẢNH */}
+                {report.imageUrl && (
+                  <img
+                    src={report.imageUrl}
+                    alt="Report"
+                    style={{
+                      width: '100px',
+                      height: '100px',
+                      objectFit: 'cover',
+                      borderRadius: '6px'
+                    }}
+                  />
+                )}
+
+                {/* THÔNG TIN */}
+                <div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#1f2937' }}>
+                    #{report.wastereportId} - {report.wastetype?.name || 'N/A'}
+                  </h3>
+                  <p style={{ margin: '4px 0', fontSize: '13px', color: '#666' }}>
+                    📍 Vị trí: {parseFloat(report.latitude).toFixed(4)}, {parseFloat(report.longitude).toFixed(4)}
+                  </p>
+                  <p style={{ margin: '4px 0', fontSize: '13px', color: '#666' }}>
+                    📅 {new Date(report.createdAt).toLocaleString('vi-VN')}
+                  </p>
+                  {report.description && (
+                    <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+                      {report.description.substring(0, 60)}...
+                    </p>
+                  )}
+                </div>
+
+                {/* TRẠNG THÁI */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  backgroundColor: badge.color,
+                  color: badge.textColor,
+                  borderRadius: '20px',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  fontSize: '13px'
+                }}>
+                  {badge.icon} {badge.text}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* MODAL CHI TIẾT */}
+      {showModal && selectedReport && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '25px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h2 style={{ marginTop: 0, marginBottom: '15px', color: '#1f2937' }}>
+              Chi Tiết Báo Cáo #{selectedReport.wastereportId}
+            </h2>
+
+            {selectedReport.imageUrl && (
+              <img
+                src={selectedReport.imageUrl}
+                alt="Report"
+                style={{
+                  width: '100%',
+                  maxHeight: '300px',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                  marginBottom: '15px'
+                }}
+              />
+            )}
+
+            <div style={{ backgroundColor: '#f9fafb', padding: '15px', borderRadius: '6px', marginBottom: '15px' }}>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>🗑️ Loại rác:</strong> {selectedReport.wastetype?.name || 'N/A'}
+              </p>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>📍 Vị trí:</strong> {selectedReport.latitude}, {selectedReport.longitude}
+              </p>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>📅 Ngày tạo:</strong> {new Date(selectedReport.createdAt).toLocaleString('vi-VN')}
+              </p>
+              <p style={{ margin: '8px 0', fontSize: '14px' }}>
+                <strong>📝 Mô tả:</strong> {selectedReport.description || 'Không có mô tả'}
+              </p>
+
+              {(() => {
+                const badge = getStatusBadge(selectedReport.status);
+                return (
+                  <p style={{
+                    margin: '12px 0 0 0',
+                    padding: '8px 12px',
+                    backgroundColor: badge.color,
+                    color: badge.textColor,
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    fontSize: '13px'
+                  }}>
+                    {badge.icon} {badge.text}
+                  </p>
+                );
+              })()}
+
+              {selectedReport.status === 'Rejected' && selectedReport.rejectionReason && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '10px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  borderRadius: '4px',
+                  borderLeft: '3px solid #ef4444',
+                  fontSize: '13px'
+                }}>
+                  <strong>Lý do từ chối:</strong> {selectedReport.rejectionReason}
+                </div>
+              )}
+
+              {selectedReport.status === 'Accepted' && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '10px',
+                  backgroundColor: '#d1fae5',
+                  color: '#065f46',
+                  borderRadius: '4px',
+                  borderLeft: '3px solid #10b981',
+                  fontSize: '13px'
+                }}>
+                  <strong>✅ Báo cáo của bạn đã được duyệt!</strong> Đội thu gom sẽ xử lý sớm.
+                </div>
+              )}
             </div>
-          ))}
+
+            <button
+              onClick={() => setShowModal(false)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Đóng
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

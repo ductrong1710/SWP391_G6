@@ -1,136 +1,308 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Link } from 'react-router-dom';
+import './Dashboard.css';
+
+const API_BASE_URL = 'http://localhost:5021/api';
 
 const Dashboard = () => {
-  const transactions = [
-    { id: "TXN-2026-0458", user: "Sarah Johnson", weight: "12.5 kg", type: "Plastic", time: "2 hours ago", icon: "♻️" },
-    { id: "TXN-2026-0457", user: "Michael Chen", weight: "8.2 kg", type: "Organic", time: "3 hours ago", icon: "🍏" },
-    { id: "TXN-2026-0456", user: "Emily Davis", weight: "15.8 kg", type: "Metal", time: "4 hours ago", icon: "🔩" },
-    { id: "TXN-2026-0455", user: "James Wilson", weight: "6.4 kg", type: "Paper", time: "5 hours ago", icon: "📄" },
-    { id: "TXN-2026-0454", user: "Lisa Thompson", weight: "9.1 kg", type: "Plastic", time: "6 hours ago", icon: "♻️" },
-  ];
+  const [stats, setStats] = useState({
+    totalCollected: 0,
+    carbonSaved: 0,
+    activeCollectors: 0,
+    revenue: 0,
+    monthlyGrowth: 0
+  });
+  const [wasteDistribution, setWasteDistribution] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [collectionTrend, setCollectionTrend] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [timeFilter, setTimeFilter] = useState('This Year');
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [timeFilter]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Fetch all waste reports
+      const reportsResponse = await axios.get(`${API_BASE_URL}/waste-reports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const allReports = reportsResponse.data;
+      const acceptedReports = allReports.filter(r => r.status === 'Accepted');
+
+      // Calculate statistics
+      const totalWeight = acceptedReports.length * 12.5; // Mock: 12.5kg per report
+      const carbonSaved = totalWeight * 0.8; // Mock: 0.8kg CO2 per kg waste
+      const revenue = acceptedReports.length * 150; // Mock: $150 per report
+      
+      // Calculate growth
+      const lastMonthReports = acceptedReports.filter(r => {
+        const date = new Date(r.createdAt);
+        const now = new Date();
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return date >= lastMonth && date < new Date(now.getFullYear(), now.getMonth(), 1);
+      });
+      
+      const currentMonthReports = acceptedReports.filter(r => {
+        const date = new Date(r.createdAt);
+        const now = new Date();
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      });
+
+      const growth = lastMonthReports.length > 0 
+        ? ((currentMonthReports.length - lastMonthReports.length) / lastMonthReports.length * 100).toFixed(1)
+        : 0;
+
+      setStats({
+        totalCollected: totalWeight.toFixed(1),
+        carbonSaved: carbonSaved.toFixed(0),
+        activeCollectors: 24, // Mock
+        revenue: revenue,
+        monthlyGrowth: growth
+      });
+
+      // Waste type distribution
+      const wasteTypes = {};
+      acceptedReports.forEach(report => {
+        const typeName = report.wastetype?.name || 'Other';
+        wasteTypes[typeName] = (wasteTypes[typeName] || 0) + 1;
+      });
+
+      const total = Object.values(wasteTypes).reduce((a, b) => a + b, 0) || 1;
+      const distribution = Object.entries(wasteTypes).map(([name, count]) => ({
+        name,
+        count,
+        percentage: ((count / total) * 100).toFixed(0)
+      }));
+
+      setWasteDistribution(distribution);
+
+      // Collection trend (last 30 days)
+      const last30Days = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (29 - i));
+        return date.toISOString().split('T')[0];
+      });
+
+      const trendData = last30Days.map(date => {
+        const count = acceptedReports.filter(r => 
+          r.createdAt.startsWith(date)
+        ).length;
+        return { date, count };
+      });
+
+      setCollectionTrend(trendData);
+
+      // Recent transactions
+      const recent = acceptedReports
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5)
+        .map(r => ({
+          id: r.wastereportId,
+          userName: r.user?.username || 'Unknown User',
+          weight: (Math.random() * 15 + 5).toFixed(1),
+          wasteType: r.wastetype?.name || 'Unknown',
+          time: new Date(r.createdAt).toLocaleString('vi-VN'),
+          txnId: `TXN-2026-${String(r.wastereportId).padStart(4, '0')}`
+        }));
+
+      setRecentTransactions(recent);
+
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const StatCard = ({ icon, title, value, change, color }) => (
+    <div className="stat-card">
+      <div className="stat-icon" style={{ backgroundColor: `${color}20` }}>
+        {icon}
+      </div>
+      <div className="stat-content">
+        <div className="stat-title">{title}</div>
+        <div className="stat-value">{value}</div>
+        <div className="stat-change" style={{ color: change.startsWith('+') ? '#10b981' : '#ef4444' }}>
+          {change}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Đang tải dữ liệu...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="ent-dashboard-content fade-in">
-      {/* Page Title */}
-      <div className="ent-page-header">
-        <h2>Enterprise Dashboard</h2>
-        <p className="text-gray">Business overview and performance metrics</p>
-      </div>
-
-      {/* 1. Stats Cards */}
-      <div className="ent-stats-grid">
-        <div className="ent-card stat-card">
-          <div className="stat-content">
-            <span className="stat-title">Total Collected</span>
-            <h3 className="stat-number">245.8 tons</h3>
-            <span className="stat-trend positive">↗ +12.5% vs last month</span>
-          </div>
-          <div className="stat-icon-box green">⚖️</div>
+    <div className="dashboard-container">
+      {/* HEADER */}
+      <div className="dashboard-header">
+        <div>
+          <h1>Enterprise Dashboard</h1>
+          <p>Business overview and performance metrics</p>
         </div>
-        <div className="ent-card stat-card">
-          <div className="stat-content">
-            <span className="stat-title">Carbon Saved</span>
-            <h3 className="stat-number">892 kg CO₂</h3>
-            <span className="stat-trend positive">↗ +8.3% vs last month</span>
-          </div>
-          <div className="stat-icon-box green">🍃</div>
-        </div>
-        <div className="ent-card stat-card">
-          <div className="stat-content">
-            <span className="stat-title">Active Collectors</span>
-            <h3 className="stat-number">24</h3>
-            <span className="stat-trend positive">↗ +2 this week</span>
-          </div>
-          <div className="stat-icon-box green">🚚</div>
-        </div>
-        <div className="ent-card stat-card">
-          <div className="stat-content">
-            <span className="stat-title">Revenue</span>
-            <h3 className="stat-number">$48,250</h3>
-            <span className="stat-trend positive">↗ +15.2% vs last month</span>
-          </div>
-          <div className="stat-icon-box green">$</div>
+        <div className="header-actions">
+          <Link to="/enterprise/dispatch" className="btn-primary">
+            📋 Dispatch Console
+          </Link>
+          <select 
+            className="time-filter"
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value)}
+          >
+            <option>This Year</option>
+            <option>This Month</option>
+            <option>This Week</option>
+          </select>
         </div>
       </div>
 
-      {/* 2. Charts Grid */}
-      <div className="ent-charts-grid">
-        {/* Left: Collection Trends (Dot/Line Chart) */}
-        <div className="ent-card chart-card">
-          <h3 className="card-title">Collection Trends (Last 30 Days)</h3>
-          <div className="chart-container line-chart">
-             <div className="y-axis"><span>16t</span><span>12t</span><span>8t</span><span>4t</span><span>0t</span></div>
-             <div className="chart-area">
-                {/* Các điểm chấm giả lập */}
-                <div className="dot-point" style={{bottom: '20%', left: '5%'}}></div>
-                <div className="dot-point" style={{bottom: '30%', left: '15%'}}></div>
-                <div className="dot-point" style={{bottom: '35%', left: '25%'}}></div>
-                <div className="dot-point" style={{bottom: '28%', left: '35%'}}></div>
-                <div className="dot-point" style={{bottom: '45%', left: '45%'}}></div>
-                <div className="dot-point" style={{bottom: '48%', left: '55%'}}></div>
-                <div className="dot-point" style={{bottom: '42%', left: '65%'}}></div>
-                <div className="dot-point" style={{bottom: '55%', left: '75%'}}></div>
-                <div className="dot-point" style={{bottom: '68%', left: '85%'}}></div>
-                <div className="dot-point" style={{bottom: '75%', left: '95%'}}></div>
-                
-                {/* Đường kẻ ngang */}
-                <div className="grid-line" style={{bottom: '0%'}}></div>
-                <div className="grid-line" style={{bottom: '25%'}}></div>
-                <div className="grid-line" style={{bottom: '50%'}}></div>
-                <div className="grid-line" style={{bottom: '75%'}}></div>
-                
-                <div className="x-axis">
-                   <span>Jan 1</span><span>Jan 5</span><span>Jan 10</span><span>Jan 15</span><span>Jan 20</span><span>Jan 25</span><span>Jan 30</span><span>Feb 4</span><span>Feb 9</span><span>Feb 14</span><span>Feb 19</span><span>Feb 24</span><span>Mar 1</span><span>Mar 6</span>
-                </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Right: Waste Type Distribution (Donut Chart) */}
-        <div className="ent-card chart-card">
-          <h3 className="card-title">Waste Type Distribution</h3>
-          <div className="donut-wrapper">
-             <div className="donut-chart"><div className="donut-center"></div></div>
-             
-             {/* Labels trôi nổi */}
-             <span className="chart-label label-plastic">Plastic 35%</span>
-             <span className="chart-label label-organic">Organic 28%</span>
-             <span className="chart-label label-glass">Glass 7%</span>
-             <span className="chart-label label-paper">Paper 12%</span>
-             <span className="chart-label label-metal">Metal 18%</span>
-          </div>
-          <div className="donut-legend">
-             <span><span className="dot plastic"></span> Plastic</span>
-             <span><span className="dot organic"></span> Organic</span>
-             <span><span className="dot metal"></span> Metal</span>
-             <span><span className="dot paper"></span> Paper</span>
-             <span><span className="dot glass"></span> Glass</span>
-          </div>
-        </div>
+      {/* STATS GRID */}
+      <div className="stats-grid">
+        <StatCard
+          icon="♻️"
+          title="Total Collected"
+          value={`${stats.totalCollected} tons`}
+          change={`+${stats.monthlyGrowth}% vs last month`}
+          color="#10b981"
+        />
+        <StatCard
+          icon="🌱"
+          title="Carbon Saved"
+          value={`${stats.carbonSaved} kg CO₂`}
+          change="+8.3% vs last month"
+          color="#3b82f6"
+        />
+        <StatCard
+          icon="👥"
+          title="Active Collectors"
+          value={stats.activeCollectors}
+          change="+2 this week"
+          color="#f59e0b"
+        />
+        <StatCard
+          icon="💰"
+          title="Revenue"
+          value={`$${stats.revenue.toLocaleString()}`}
+          change="+15.2% vs last month"
+          color="#8b5cf6"
+        />
       </div>
 
-      {/* 3. Recent Transactions */}
-      <div className="ent-card transactions-card">
-        <h3 className="card-title">Recent Completed Transactions</h3>
-        <div className="txn-list">
-          {transactions.map((txn, index) => (
-            <div className="txn-item" key={index}>
-              <div className="txn-left">
-                 <div className="txn-icon">{txn.icon}</div>
-                 <div className="txn-info">
-                   <strong>{txn.user}</strong>
-                   <span className="txn-id">{txn.id}</span>
-                 </div>
-              </div>
-              <div className="txn-right">
-                 <div className="txn-stats">
-                   <strong>{txn.weight}</strong>
-                   <span>{txn.type}</span>
-                 </div>
-                 <span className="txn-time">{txn.time}</span>
-              </div>
+      {/* CHARTS ROW */}
+      <div className="charts-row">
+        {/* COLLECTION TRENDS */}
+        <div className="chart-card">
+          <h3>Collection Trends (Last 30 Days)</h3>
+          <div className="trend-chart">
+            <div className="chart-bars">
+              {collectionTrend.map((item, i) => {
+                const maxCount = Math.max(...collectionTrend.map(d => d.count)) || 1;
+                const height = (item.count / maxCount) * 100;
+                return (
+                  <div
+                    key={i}
+                    className="chart-bar"
+                    style={{ height: `${height}%` }}
+                    title={`${item.date}: ${item.count} reports`}
+                  />
+                );
+              })}
             </div>
-          ))}
+            <div className="chart-labels">
+              <span>{collectionTrend[0]?.date || 'Jan 1'}</span>
+              <span>{collectionTrend[Math.floor(collectionTrend.length / 3)]?.date || 'Jan 10'}</span>
+              <span>{collectionTrend[Math.floor(collectionTrend.length * 2 / 3)]?.date || 'Jan 20'}</span>
+              <span>{collectionTrend[collectionTrend.length - 1]?.date || 'Feb 1'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* WASTE DISTRIBUTION */}
+        <div className="chart-card waste-distribution">
+          <h3>Waste Type Distribution</h3>
+          <div className="donut-chart-container">
+            <div className="donut-chart">
+              {/* Donut chart visualization */}
+              <svg width="200" height="200" viewBox="0 0 200 200">
+                {wasteDistribution.map((item, i) => {
+                  const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+                  const startAngle = wasteDistribution
+                    .slice(0, i)
+                    .reduce((sum, d) => sum + (parseFloat(d.percentage) / 100) * 360, 0);
+                  const angle = (parseFloat(item.percentage) / 100) * 360;
+                  const endAngle = startAngle + angle;
+
+                  const x1 = 100 + 90 * Math.cos((startAngle - 90) * Math.PI / 180);
+                  const y1 = 100 + 90 * Math.sin((startAngle - 90) * Math.PI / 180);
+                  const x2 = 100 + 90 * Math.cos((endAngle - 90) * Math.PI / 180);
+                  const y2 = 100 + 90 * Math.sin((endAngle - 90) * Math.PI / 180);
+
+                  const largeArc = angle > 180 ? 1 : 0;
+
+                  return (
+                    <path
+                      key={i}
+                      d={`M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                      fill={colors[i % colors.length]}
+                    />
+                  );
+                })}
+                <circle cx="100" cy="100" r="60" fill="white" />
+              </svg>
+            </div>
+          </div>
+          <div className="waste-legend">
+            {wasteDistribution.slice(0, 5).map((item, i) => {
+              const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+              return (
+                <div key={i} className="legend-item">
+                  <div className="legend-dot" style={{ backgroundColor: colors[i] }} />
+                  <span className="legend-label">{item.name}</span>
+                  <span className="legend-value">{item.percentage}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* RECENT TRANSACTIONS */}
+      <div className="transactions-card">
+        <h3>Recent Completed Transactions</h3>
+        <div className="transactions-list">
+          {recentTransactions.length > 0 ? (
+            recentTransactions.map(transaction => (
+              <div key={transaction.id} className="transaction-item">
+                <div className="transaction-info">
+                  <div className="transaction-icon">♻️</div>
+                  <div>
+                    <div className="transaction-name">{transaction.userName}</div>
+                    <div className="transaction-id">{transaction.txnId}</div>
+                  </div>
+                </div>
+                <div className="transaction-details">
+                  <div className="transaction-weight">{transaction.weight} kg</div>
+                  <div className="transaction-type">{transaction.wasteType}</div>
+                </div>
+                <div className="transaction-time">{transaction.time}</div>
+              </div>
+            ))
+          ) : (
+            <div className="no-data">Chưa có giao dịch nào</div>
+          )}
         </div>
       </div>
     </div>

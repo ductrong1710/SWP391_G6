@@ -1,13 +1,11 @@
-// src/pages/Admin/Admin.jsx
 import React, { useState } from 'react';
 import AdminHeader from '../../components/AdminHeader';
 import './Admin.css';
-
 import Overview from './Overview';
 import Users from './Users'; 
 import Disputes from './Disputes';
-import System from './System'; // <--- Import System component
-import Settings from './Settings'; // <--- Import Settings
+import System from './System';
+import Settings from './Settings';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -20,10 +18,7 @@ const Admin = () => {
         {activeTab === 'overview' && <Overview />}
         {activeTab === 'users' && <Users />} 
         {activeTab === 'disputes' && <Disputes />} 
-        
-        {/* Kết nối tab System */}
         {activeTab === 'system' && <System />} 
-        {/* Kết nối tab Settings */}
         {activeTab === 'settings' && <Settings />}
       </div>
     </div>

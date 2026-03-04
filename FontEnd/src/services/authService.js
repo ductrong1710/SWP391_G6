@@ -1,82 +1,56 @@
-import api from './api';
+import api from "./api";
 
-const API_BASE_URL = 'http://localhost:5021/api';
+const authService = {
+  // ===== AUTHENTICATION =====
 
-export const authService = {
-  // Đăng ký - Bước 1: Gửi OTP
   register: async (userData) => {
-    const response = await api.post('/Auth/register', {
+    const response = await api.post("/Auth/register", {
       email: userData.email,
       fullName: userData.fullName,
       password: userData.password,
-      confirmPassword: userData.confirmPassword
+      confirmPassword: userData.confirmPassword,
     });
     return response.data;
   },
 
-  // Xác thực OTP - Bước 2: Hoàn tất đăng ký
   verifyOtp: async (email, otp) => {
-    const response = await api.post('/Auth/verify-otp', {
-      email: email,
-      otp: otp
-    });
+    const response = await api.post("/Auth/verify-otp", { email, otp });
     return response.data;
   },
 
-  // Đăng nhập
   login: async (email, password) => {
-    const response = await api.post('/Auth/login', {
-      email: email,
-      password: password
-    });
-    
+    const response = await api.post("/Auth/login", { email, password });
     if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
     }
-    
     return response.data;
   },
 
-  // Đăng xuất
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
   },
 
-  // Lấy user hiện tại
+  // ===== CURRENT USER =====
+
   getCurrentUser: () => {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem("user");
     return userStr ? JSON.parse(userStr) : null;
   },
 
-  // Kiểm tra đã đăng nhập chưa
-  isAuthenticated: () => {
-    return !!localStorage.getItem('token');
-  },
+  isAuthenticated: () => !!localStorage.getItem("token"),
 
-  // Kiểm tra quyền truy cập
-  hasRole: (roleId) => {
-    const user = authService.getCurrentUser();
-    return user?.roleId === roleId;
-  },
+  hasRole: (roleId) => authService.getCurrentUser()?.roleId === roleId,
 
-  // Kiểm tra nếu có một trong các role được cho phép
-  hasAnyRole: (roleIds) => {
-    const user = authService.getCurrentUser();
-    return roleIds.includes(user?.roleId);
-  },
+  hasAnyRole: (roleIds) =>
+    roleIds.includes(authService.getCurrentUser()?.roleId),
 
-  // Lấy role ID
-  getRoleId: () => {
-    const user = authService.getCurrentUser();
-    return user?.roleId;
-  },
+  getRoleId: () => authService.getCurrentUser()?.roleId,
 
-  // Lấy role Name (nếu có trong response)
-  getRoleName: () => {
-    const user = authService.getCurrentUser();
-    return user?.roleName || 'citizen';
-  },
+  getRoleName: () => authService.getCurrentUser()?.roleName || "citizen",
 };
+
+export { authService };
+export default authService;
