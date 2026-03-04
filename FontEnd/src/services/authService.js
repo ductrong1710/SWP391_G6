@@ -1,136 +1,55 @@
-import api from './api';
+import api from "./api";
 
 const authService = {
-  // Đăng ký - Bước 1: Gửi OTP
+  // ===== AUTHENTICATION =====
+
   register: async (userData) => {
-    const response = await api.post('/Auth/register', {
+    const response = await api.post("/Auth/register", {
       email: userData.email,
       fullName: userData.fullName,
       password: userData.password,
-      confirmPassword: userData.confirmPassword
+      confirmPassword: userData.confirmPassword,
     });
     return response.data;
   },
 
-  // Xác thực OTP - Bước 2: Hoàn tất đăng ký
   verifyOtp: async (email, otp) => {
-    const response = await api.post('/Auth/verify-otp', {
-      email: email,
-      otp: otp
-    });
+    const response = await api.post("/Auth/verify-otp", { email, otp });
     return response.data;
   },
 
-  // Đăng nhập
   login: async (email, password) => {
-    const response = await api.post('/Auth/login', {
-      email: email,
-      password: password
-    });
-
+    const response = await api.post("/Auth/login", { email, password });
     if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
     }
-
     return response.data;
   },
 
-  // Đăng xuất
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
   },
 
-  // Lấy user hiện tại
+  // ===== CURRENT USER =====
+
   getCurrentUser: () => {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem("user");
     return userStr ? JSON.parse(userStr) : null;
   },
 
-  // Kiểm tra đã đăng nhập chưa
-  isAuthenticated: () => {
-    return !!localStorage.getItem('token');
-  },
+  isAuthenticated: () => !!localStorage.getItem("token"),
 
-  // Kiểm tra quyền truy cập
-  hasRole: (roleId) => {
-    const user = authService.getCurrentUser();
-    return user?.roleId === roleId;
-  },
+  hasRole: (roleId) => authService.getCurrentUser()?.roleId === roleId,
 
-  hasAnyRole: (roleIds) => {
-    const user = authService.getCurrentUser();
-    return roleIds.includes(user?.roleId);
-  },
+  hasAnyRole: (roleIds) =>
+    roleIds.includes(authService.getCurrentUser()?.roleId),
 
-  getRoleId: () => {
-    const user = authService.getCurrentUser();
-    return user?.roleId;
-  },
+  getRoleId: () => authService.getCurrentUser()?.roleId,
 
-  getRoleName: () => {
-    const user = authService.getCurrentUser();
-    return user?.roleName || 'citizen';
-  },
-
-  // ===== USER MANAGEMENT =====
-
-  getAllUsers: async () => {
-    const response = await api.get('/Users');
-    return response.data;
-  },
-
-  getUserById: async (userId) => {
-    const response = await api.get(`/Users/${userId}`);
-    return response.data;
-  },
-
-  // Lấy danh sách collectors từ DB
-  getCollectors: async () => {
-    try {
-      const response = await api.get('/Users/collectors');
-      const data = Array.isArray(response.data)
-        ? response.data
-        : (response.data?.$values || response.data?.data || []);
-
-      console.log('✅ Collectors from DB:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error fetching collectors:', error.response?.status, error.response?.data);
-      return [];
-    }
-  },
-
-  // Lấy danh sách enterprises
-  getEnterprises: async () => {
-    try {
-      const response = await api.get('/Users');
-      const allUsers = Array.isArray(response.data) ? response.data : [];
-      return allUsers.filter(u => {
-        const role = u.roleName ?? u.RoleName ?? '';
-        return role.toLowerCase() === 'enterprise';
-      });
-    } catch (error) {
-      console.error('❌ Error fetching enterprises:', error);
-      return [];
-    }
-  },
-
-  getUsersByRole: async (roleName) => {
-    try {
-      const response = await api.get('/Users');
-      const allUsers = Array.isArray(response.data) ? response.data : [];
-      return allUsers.filter(u => {
-        const role = u.roleName ?? u.RoleName ?? '';
-        return role.toLowerCase() === roleName.toLowerCase();
-      });
-    } catch (error) {
-      console.error('❌ Error fetching users by role:', error);
-      return [];
-    }
-  },
+  getRoleName: () => authService.getCurrentUser()?.roleName || "citizen",
 };
 
 export { authService };

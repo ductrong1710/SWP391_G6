@@ -1,106 +1,43 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5021/api';
+import api from "./api";
 
 const wasteReportService = {
-  // Lấy danh sách waste reports
-  getAllReports: async (token) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/waste-reports`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-      throw error;
-    }
+  // Get all waste reports
+  getAllReports: async () => {
+    const response = await api.get("/waste-reports");
+    return response.data;
   },
 
-  // Lấy chi tiết waste report
-  getReportById: async (id, token) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/waste-reports/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching report:', error);
-      throw error;
-    }
+  // Get waste report by ID
+  getReportById: async (id) => {
+    const response = await api.get(`/waste-reports/${id}`);
+    return response.data;
   },
 
-  // Tạo waste report
-  createReport: async (formData, token) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/waste-reports`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error creating report:', error);
-      throw error;
-    }
+  // Citizen: Create waste report
+  createReport: async (formData) => {
+    const response = await api.post("/waste-reports", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
   },
 
-  // Duyệt waste report (Enterprise)
-  acceptReport: async (id, token) => {
-    try {
-      const response = await axios.put(
-        `${API_BASE_URL}/waste-reports/${id}/accept`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error accepting report:', error);
-      throw error;
-    }
+  // Enterprise: Accept waste report
+  acceptReport: async (id) => {
+    const response = await api.put(`/waste-reports/${id}/accept`);
+    return response.data;
   },
 
-  // Từ chối waste report (Enterprise)
-  rejectReport: async (id, reason, token) => {
-    try {
-      const response = await axios.put(
-        `${API_BASE_URL}/waste-reports/${id}/reject`,
-        { reason },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error rejecting report:', error);
-      throw error;
-    }
+  // Enterprise: Reject waste report
+  rejectReport: async (id, reason) => {
+    const response = await api.put(`/waste-reports/${id}/reject`, { reason });
+    return response.data;
   },
 
-  // Lấy danh sách waste types
-  getWasteTypes: async (token) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/waste-types`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching waste types:', error);
-      throw error;
-    }
-  }
+  // Get waste types
+  getWasteTypes: async () => {
+    const response = await api.get("/waste-types");
+    return response.data;
+  },
 };
 
 export default wasteReportService;
