@@ -1,7 +1,14 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using DataAccessLayer.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace WasteCollectionPlatform.Controllers
 {
@@ -19,7 +26,60 @@ namespace WasteCollectionPlatform.Controllers
             _logger = logger;
         }
 
-        
+        // Helper to fetch collectors from user service
+        private async Task<List<UserResponseDto>> FetchCollectorsAsync()
+        {
+            var allUsers = await _userService.GetAllAsync();
+            return allUsers
+                .Where(u => string.Equals(u.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Root route for frontend convenience: GET /api/collectors
+        /// Allows Enterprise/Admin clients to fetch collectors using /api/collectors (matches frontend fallback).
+        /// </summary>
+        [HttpGet("/api/collectors")]
+        [Authorize(Roles = "Admin,Enterprise")]
+        [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetCollectorsRoot()
+        {
+            try
+            {
+                var collectors = await FetchCollectorsAsync();
+                return Ok(collectors);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get collectors (root)");
+                return StatusCode(500, new { message = "Could not load collectors", detail = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Enterprise/Admin: Get all collectors (roleId = 3) for task assignment
+        /// </summary>
+        [HttpGet("collectors")]
+        [Authorize(Roles = "Admin,Enterprise")]
+        [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetCollectors()
+        {
+            try
+            {
+                var collectors = await FetchCollectorsAsync();
+                return Ok(collectors);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get collectors");
+                return StatusCode(500, new { message = "Could not load collectors", detail = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Admin: Get all users in system
         /// </summary>
@@ -51,7 +111,6 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(user);
         }
 
-        
         /// <summary>
         /// Admin: Create new user account
         /// </summary>
@@ -90,7 +149,6 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        
         /// <summary>
         /// Admin: Update user information
         /// </summary>

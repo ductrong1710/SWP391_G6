@@ -1,79 +1,164 @@
-// src/pages/citizen/CreateReport.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import axios from 'axios';
+
+// --- KHẮC PHỤC LỖI MẤT ICON CỦA LEAFLET ---
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// --- COMPONENT CON: XỬ LÝ CLICK TRÊN BẢN ĐỒ ---
+function LocationMarker({ position, setPosition, setFormData }) {
+  const map = useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      setPosition(e.latlng);
+      map.setView(e.latlng, map.getZoom(), { animate: false });
+
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat,
+        longitude: lng
+      }));
+    },
+  });
+  return position === null ? null : <Marker position={position}></Marker>;
+}
+
+// --- COMPONENT CON: TỰ ĐỘNG DI CHUYỂN MAP KHI CÓ TỌA ĐỘ MỚI ---
+function RecenterAutomatically({ lat, lng }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) {
+      map.setView([lat, lng], 16, { animate: false });
+    }
+  }, [lat, lng, map]);
+  return null;
+}
 
 const API_BASE_URL = 'http://localhost:5021/api';
 
 const CreateReport = () => {
+  const fileInputRef = useRef(null);
+  
+  // --- STATE QUẢN LÝ DỮ LIỆU ---
   const [wasteTypes, setWasteTypes] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [formData, setFormData] = useState({
     wasteTypeId: '',
-    latitude: '',
-    longitude: '',
+    latitude: null,
+    longitude: null,
     description: ''
   });
+
+  // State quản lý bản đồ & Tìm kiếm
+  const [markerPosition, setMarkerPosition] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const defaultCenter = [10.7769, 106.7009];
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // Lấy danh sách waste types khi component mount
+  // --- FETCH WASTE TYPES ---
   useEffect(() => {
+    const fetchWasteTypes = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_BASE_URL}/waste-types`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setWasteTypes(response.data);
+      } catch (err) {
+        console.error('Error fetching waste types:', err);
+        setError('❌ Không thể tải danh sách loại rác');
+      }
+    };
+
     fetchWasteTypes();
   }, []);
 
-  const fetchWasteTypes = async () => {
+  // --- HÀM TÌM KIẾM ĐỊA CHỈ ---
+  const handleSearchAddress = async () => {
+    if (!searchQuery.trim()) {
+      setError('❌ Vui lòng nhập địa chỉ để tìm kiếm');
+      return;
+    }
+    
+    setIsSearching(true);
+    setError('');
+
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/waste-types`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      setWasteTypes(response.data);
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+      );
+
+      if (response.data && response.data.length > 0) {
+        const firstResult = response.data[0];
+        const lat = parseFloat(firstResult.lat);
+        const lng = parseFloat(firstResult.lon);
+
+        setFormData(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng
+        }));
+        setMarkerPosition({ lat, lng });
+        setSuccess(`✅ Tìm thấy: ${firstResult.display_name}`);
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError('❌ Không tìm thấy địa chỉ. Vui lòng thử lại.');
+      }
     } catch (err) {
-      console.error('Error fetching waste types:', err);
-      setError('Không thể tải danh sách loại rác. Vui lòng đăng nhập lại.');
+      console.error('Error searching address:', err);
+      setError('❌ Lỗi khi tìm kiếm địa chỉ.');
+    } finally {
+      setIsSearching(false);
     }
   };
 
-  // Xử lý khi chọn file
+  // --- XỬ LÝ FILE ẢNH ---
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Kiểm tra kích thước file (10MB)
       if (file.size > 10 * 1024 * 1024) {
-        setError('File không được vượt quá 10MB');
+        setError('❌ Kích thước file vượt quá 10MB');
         return;
       }
 
-      // Kiểm tra định dạng file
       if (!file.type.match(/image\/(png|jpg|jpeg)/)) {
-        setError('Chỉ chấp nhận file PNG, JPG, JPEG');
+        setError('❌ Chỉ hỗ trợ file ảnh PNG, JPG, JPEG');
         return;
       }
 
       setSelectedFile(file);
       setError('');
-
-      // Tạo preview URL
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
+      reader.onloadend = () => setPreviewUrl(reader.result);
       reader.readAsDataURL(file);
     }
   };
 
-  // Xử lý khi kéo thả file
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     const file = e.dataTransfer.files?.[0];
     if (file) {
       const fakeEvent = { target: { files: [file] } };
@@ -81,109 +166,176 @@ const CreateReport = () => {
     }
   };
 
-  // Lấy vị trí hiện tại
+  // --- LẤY VỊ TRÍ GPS ---
   const handleGetCurrentLocation = () => {
     setLoadingLocation(true);
     setError('');
 
     if (!navigator.geolocation) {
-      setError('Trình duyệt không hỗ trợ định vị');
+      setError('❌ Trình duyệt không hỗ trợ GPS');
       setLoadingLocation(false);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setFormData({
-          ...formData,
-          latitude: position.coords.latitude.toString(),
-          longitude: position.coords.longitude.toString()
-        });
-        setLoadingLocation(false);
-        setSuccess('Đã lấy vị trí hiện tại thành công!');
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        setFormData(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng
+        }));
+        setMarkerPosition({ lat, lng });
+        setSuccess('✅ Đã lấy vị trí hiện tại');
         setTimeout(() => setSuccess(''), 3000);
+        setLoadingLocation(false);
       },
       (err) => {
-        setError('Không thể lấy vị trí. Vui lòng cho phép truy cập vị trí.');
+        console.error('Geolocation error:', err);
+        setError('❌ Không thể lấy vị trí. Kiểm tra quyền truy cập GPS.');
         setLoadingLocation(false);
       }
     );
   };
 
-  // Xử lý submit form
+  // --- GỬI BÁO CÁO ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     setSuccess('');
 
-    // Validate
+    // ✅ VALIDATE
     if (!selectedFile) {
-      setError('Vui lòng chọn ảnh rác thải');
-      setLoading(false);
+      setError('❌ Vui lòng chọn ảnh');
       return;
     }
 
     if (!formData.wasteTypeId) {
-      setError('Vui lòng chọn loại rác');
-      setLoading(false);
+      setError('❌ Vui lòng chọn loại rác');
       return;
     }
 
     if (!formData.latitude || !formData.longitude) {
-      setError('Vui lòng nhập hoặc lấy vị trí');
-      setLoading(false);
+      setError('❌ Vui lòng chọn vị trí trên bản đồ');
       return;
     }
 
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
+
+      if (!token) {
+        setError('❌ Bạn chưa đăng nhập');
+        return;
+      }
+
+      // ✅ PARSE VÀ FORMAT ĐÚNG CHO C# DECIMAL
+      let latitude = parseFloat(formData.latitude);
+      let longitude = parseFloat(formData.longitude);
       
-      // Tạo FormData để gửi multipart/form-data
+      // Clamp to valid range
+      latitude = Math.max(-90, Math.min(90, latitude));
+      longitude = Math.max(-180, Math.min(180, longitude));
+      
+      const wasteTypeId = parseInt(formData.wasteTypeId);
+
+      console.log('=== SUBMITTING ===');
+      console.log('Image:', selectedFile.name);
+      console.log('WasteTypeId:', wasteTypeId);
+      console.log('Latitude:', latitude);
+      console.log('Longitude:', longitude);
+      console.log('Description:', formData.description);
+
+      // ✅ GỬI FORMDATA - FORMAT ĐẶC BIỆT CHO C# DECIMAL
       const submitData = new FormData();
       submitData.append('Image', selectedFile);
-      submitData.append('WasteTypeId', formData.wasteTypeId);
-      submitData.append('Latitude', formData.latitude);
-      submitData.append('Longitude', formData.longitude);
+      submitData.append('WasteTypeId', wasteTypeId);
+      
+      // ⭐ KEY: Dùng Blob để force gửi đúng type
+      submitData.append('Latitude', new Blob([latitude.toString()], { type: 'text/plain' }));
+      submitData.append('Longitude', new Blob([longitude.toString()], { type: 'text/plain' }));
       submitData.append('Description', formData.description || '');
+
+      console.log('FormData prepared:', {
+        Image: selectedFile.name,
+        WasteTypeId: wasteTypeId,
+        Latitude: latitude,
+        Longitude: longitude,
+        Description: formData.description
+      });
 
       const response = await axios.post(
         `${API_BASE_URL}/waste-reports`,
         submitData,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
           }
         }
       );
 
-      setSuccess(`Báo cáo đã được tạo thành công! ID: ${response.data.id}`);
-      
-      // Reset form
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setFormData({
-        wasteTypeId: '',
-        latitude: '',
-        longitude: '',
-        description: ''
-      });
+      console.log('✅ Success:', response.data);
+      setSuccess('✅ Báo cáo đã được gửi thành công! Đang chuyển về trang chủ...');
 
-      // Scroll to top để hiển thị thông báo
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Reset form
+      setTimeout(() => {
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        setFormData({
+          wasteTypeId: '',
+          latitude: null,
+          longitude: null,
+          description: ''
+        });
+        setMarkerPosition(null);
+        setSearchQuery('');
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+
+        window.location.href = '/citizen/home';
+      }, 2000);
 
     } catch (err) {
-      console.error('Error creating report:', err);
+      console.error('❌ Full Error:', err);
+      console.error('Response Data:', err.response?.data);
+      console.error('Response Status:', err.response?.status);
+      console.error('Response Headers:', err.response?.headers);
       
-      if (err.response?.status === 401) {
-        setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-      } else if (err.response?.status === 429) {
-        setError('Bạn đã tạo quá nhiều báo cáo. Vui lòng thử lại sau.');
-      } else if (err.response?.data?.message) {
-        setError(err.response.data.message);
+      if (err.response?.data) {
+        const data = err.response.data;
+        let errorMsg = 'Lỗi từ server';
+        
+        if (typeof data === 'string') {
+          errorMsg = data;
+        } else if (data.message) {
+          errorMsg = data.message;
+        } else if (data.errors) {
+          if (typeof data.errors === 'object') {
+            const errorsArray = Object.entries(data.errors)
+              .map(([key, val]) => {
+                if (Array.isArray(val)) {
+                  return `${key}: ${val.join(', ')}`;
+                }
+                return `${key}: ${val}`;
+              });
+            errorMsg = errorsArray.join('; ');
+          } else {
+            errorMsg = JSON.stringify(data.errors);
+          }
+        } else if (data.title) {
+          errorMsg = data.title;
+        }
+        
+        setError(`❌ ${errorMsg}`);
+      } else if (err.request) {
+        setError('❌ Không thể kết nối tới server. Kiểm tra lại backend.');
       } else {
-        setError('Có lỗi xảy ra khi tạo báo cáo. Vui lòng thử lại.');
+        setError(`❌ Đã xảy ra lỗi: ${err.message}`);
       }
     } finally {
       setLoading(false);
@@ -191,64 +343,70 @@ const CreateReport = () => {
   };
 
   return (
-    <div className="report-container fade-in">
-      <div className="report-header">
-        <h2>Create Waste Report</h2>
-        <p className="subtitle">Upload a photo of your waste and let our AI help identify the type</p>
+    <div style={{ 
+      maxWidth: '1200px', 
+      margin: '0 auto', 
+      padding: '20px', 
+      backgroundColor: '#f9fafb', 
+      minHeight: '100vh' 
+    }}>
+      <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+        <h2 style={{ color: '#1f2937', margin: '0 0 10px 0', fontSize: '28px' }}>
+          📝 Tạo Báo Cáo Rác Thải
+        </h2>
+        <p style={{ color: '#6b7280', margin: 0, fontSize: '16px' }}>
+          Chụp ảnh & Chọn vị trí trên bản đồ
+        </p>
       </div>
 
-      {/* Thông báo lỗi/thành công */}
-      {error && (
-        <div style={{
-          padding: '12px 20px',
-          marginBottom: '20px',
-          backgroundColor: '#fee',
-          border: '1px solid #fcc',
-          borderRadius: '8px',
-          color: '#c00'
-        }}>
-          ❌ {error}
-        </div>
-      )}
-
-      {success && (
-        <div style={{
-          padding: '12px 20px',
-          marginBottom: '20px',
-          backgroundColor: '#efe',
-          border: '1px solid #cfc',
-          borderRadius: '8px',
-          color: '#060'
-        }}>
-          ✅ {success}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit}>
-        <div className="report-grid">
-          {/* CỘT TRÁI: UPLOAD ẢNH */}
-          <div className="report-card">
-            <div className="card-header-title">
-              <span className="icon-green">📷</span> Upload Waste Photo
-            </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+          gap: '20px'
+        }}>
+
+          {/* CỘT TRÁI: UPLOAD ẢNH & CHỌN LOẠI RÁC */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#1f2937' }}>
+              📷 Tải Lên Ảnh Rác Thải
+            </h3>
             
-            <div 
-              className="upload-area"
+            <div
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              onClick={() => document.getElementById('file-input').click()}
-              style={{ cursor: 'pointer', position: 'relative' }}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                cursor: 'pointer',
+                position: 'relative',
+                minHeight: '200px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                border: '2px dashed #ccc',
+                borderRadius: '8px',
+                backgroundColor: '#f9f9f9',
+                transition: 'all 0.3s',
+                marginBottom: '15px'
+              }}
             >
               {previewUrl ? (
-                <div style={{ position: 'relative' }}>
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '300px', 
-                      borderRadius: '8px' 
-                    }} 
+                <div style={{ position: 'relative', width: '100%', padding: '10px' }}>
+                  <img
+                    src={previewUrl}
+                    style={{
+                      width: '100%',
+                      maxHeight: '300px',
+                      objectFit: 'contain',
+                      borderRadius: '8px'
+                    }}
+                    alt="Preview"
                   />
                   <button
                     type="button"
@@ -256,18 +414,20 @@ const CreateReport = () => {
                       e.stopPropagation();
                       setSelectedFile(null);
                       setPreviewUrl(null);
+                      setError('');
                     }}
                     style={{
                       position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      background: 'rgba(255,0,0,0.8)',
+                      top: 5,
+                      right: 5,
+                      background: 'rgba(0,0,0,0.5)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '50%',
-                      width: '30px',
-                      height: '30px',
-                      cursor: 'pointer'
+                      width: 30,
+                      height: 30,
+                      cursor: 'pointer',
+                      fontSize: '18px'
                     }}
                   >
                     ✕
@@ -275,120 +435,293 @@ const CreateReport = () => {
                 </div>
               ) : (
                 <>
-                  <div className="upload-icon">⬆️</div>
-                  <p><span className="text-green">Click to upload</span> or drag and drop</p>
-                  <p className="file-info">PNG, JPG up to 10MB</p>
+                  <p style={{ fontSize: '16px', marginBottom: '10px' }}>
+                    📁 Kéo thả ảnh vào đây hoặc click để chọn
+                  </p>
+                  <small style={{ color: '#666' }}>Hỗ trợ: PNG, JPG, JPEG (Max 10MB)</small>
                 </>
               )}
-              
+
               <input
                 id="file-input"
+                ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpg,image/jpeg"
+                accept="image/png,image/jpeg,image/jpg"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
             </div>
 
-            <div className="form-group">
-              <label>Confirm Waste Type *</label>
-              <select 
-                className="form-select"
+            {/* CHỌN LOẠI RÁC */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: 'bold', 
+                color: '#1f2937' 
+              }}>
+                Loại Rác Thải *
+              </label>
+              <select
                 value={formData.wasteTypeId}
-                onChange={(e) => setFormData({ ...formData, wasteTypeId: e.target.value })}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    wasteTypeId: e.target.value
+                  });
+                }}
                 required
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '5px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
               >
-                <option value="">Select waste type</option>
-                {wasteTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name} {type.pointsPerKg && `(${type.pointsPerKg} points/kg)`}
-                  </option>
-                ))}
+                <option value="">-- Chọn loại rác --</option>
+                {wasteTypes && wasteTypes.length > 0 ? (
+                  wasteTypes.map((type) => (
+                    <option key={type.wasteTypeId} value={type.wasteTypeId}>
+                      {type.name}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Đang tải danh sách...</option>
+                )}
               </select>
             </div>
 
-            <div className="form-group">
-              <label>Description (Optional)</label>
+            {/* MÔ TẢ */}
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: 'bold', 
+                color: '#1f2937' 
+              }}>
+                Mô Tả Chi Tiết
+              </label>
               <textarea
-                className="form-select"
                 rows="3"
-                placeholder="Additional details about the waste..."
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                style={{ resize: 'vertical' }}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Thêm thông tin chi tiết về rác thải (tùy chọn)..."
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '5px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                  resize: 'vertical'
+                }}
               />
             </div>
           </div>
 
-          {/* CỘT PHẢI: BẢN ĐỒ VÀ VỊ TRÍ */}
-          <div className="report-card">
-            <div className="card-header-title">
-              <span className="icon-green">📍</span> Collection Location
+          {/* CỘT PHẢI: BẢN ĐỒ */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#1f2937' }}>
+              📍 Vị Trí Thu Gom
+            </h3>
+
+            {/* TÌM KIẾM ĐỊA CHỈ */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+              <input
+                type="text"
+                placeholder="VD: Quốc lộ 1, TP. Hồ Chí Minh..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearchAddress();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '5px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleSearchAddress}
+                disabled={isSearching}
+                style={{
+                  padding: '10px 15px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: isSearching ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  opacity: isSearching ? 0.7 : 1
+                }}
+              >
+                {isSearching ? '⏳' : '🔍'} Tìm
+              </button>
             </div>
 
-            <div className="map-preview">
-              {formData.latitude && formData.longitude ? (
-                <iframe
-                  width="100%"
-                  height="300"
-                  frameBorder="0"
-                  style={{ border: 0, borderRadius: '8px' }}
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${formData.longitude-0.01},${formData.latitude-0.01},${formData.longitude+0.01},${formData.latitude+0.01}&layer=mapnik&marker=${formData.latitude},${formData.longitude}`}
-                  allowFullScreen
+            {/* BẢN ĐỒ */}
+            <div
+              style={{
+                height: '300px',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                border: '1px solid #ddd',
+                marginBottom: '15px'
+              }}
+            >
+              <MapContainer
+                center={defaultCenter}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; OpenStreetMap contributors'
                 />
-              ) : (
-                <img 
-                  src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=600&q=80" 
-                  alt="Map Preview" 
-                  style={{ width: '100%', borderRadius: '8px' }}
+                <LocationMarker
+                  position={markerPosition}
+                  setPosition={setMarkerPosition}
+                  setFormData={setFormData}
                 />
-              )}
+                <RecenterAutomatically
+                  lat={formData.latitude}
+                  lng={formData.longitude}
+                />
+              </MapContainer>
             </div>
 
-            <button 
+            {/* NÚT LẤY VỊ TRÍ HIỆN TẠI */}
+            <button
               type="button"
-              className="btn-outline-full"
               onClick={handleGetCurrentLocation}
               disabled={loadingLocation}
+              style={{
+                width: '100%',
+                padding: '10px',
+                background: loadingLocation ? '#ccc' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: loadingLocation ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                marginBottom: '15px'
+              }}
             >
-              {loadingLocation ? '⏳ Getting location...' : '📍 Use Current Location'}
+              {loadingLocation ? '⏳ Đang lấy vị trí...' : '📍 Sử Dụng Vị Trí Hiện Tại'}
             </button>
 
-            <div className="form-group" style={{ marginTop: '15px' }}>
-              <label>Latitude *</label>
-              <input
-                type="number"
-                step="any"
-                className="form-select"
-                placeholder="e.g., 10.8231"
-                value={formData.latitude}
-                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                required
-              />
-            </div>
+            {/* HIỂN THỊ TỌA ĐỘ */}
+            <div>
+              <div
+                style={{
+                  padding: '10px',
+                  backgroundColor: '#f0f0f0',
+                  borderRadius: '5px',
+                  marginBottom: '8px'
+                }}
+              >
+                <strong>🌍 Vĩ độ (Lat):</strong>
+                <div
+                  style={{
+                    display: 'block',
+                    color: formData.latitude ? '#10b981' : '#999',
+                    fontSize: '14px',
+                    marginTop: '4px',
+                    fontFamily: 'monospace'
+                  }}
+                >
+                  {formData.latitude || 'Chưa chọn'}
+                </div>
+              </div>
 
-            <div className="form-group">
-              <label>Longitude *</label>
-              <input
-                type="number"
-                step="any"
-                className="form-select"
-                placeholder="e.g., 106.6297"
-                value={formData.longitude}
-                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                required
-              />
+              <div
+                style={{
+                  padding: '10px',
+                  backgroundColor: '#f0f0f0',
+                  borderRadius: '5px'
+                }}
+              >
+                <strong>🌍 Kinh độ (Lng):</strong>
+                <div
+                  style={{
+                    display: 'block',
+                    color: formData.longitude ? '#10b981' : '#999',
+                    fontSize: '14px',
+                    marginTop: '4px',
+                    fontFamily: 'monospace'
+                  }}
+                >
+                  {formData.longitude || 'Chưa chọn'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="form-footer">
-          <button 
-            type="submit" 
-            className="btn-submit"
+        {/* THÔNG BÁO LỖI & THÀNH CÔNG */}
+        <div style={{ marginTop: '20px' }}>
+          {error && (
+            <div
+              style={{
+                padding: '12px',
+                backgroundColor: '#fee2e2',
+                color: '#991b1b',
+                borderRadius: '5px',
+                marginBottom: '10px',
+                borderLeft: '4px solid #ef4444'
+              }}
+            >
+              {error}
+            </div>
+          )}
+          {success && (
+            <div
+              style={{
+                padding: '12px',
+                backgroundColor: '#dcfce7',
+                color: '#166534',
+                borderRadius: '5px',
+                marginBottom: '10px',
+                borderLeft: '4px solid #10b981'
+              }}
+            >
+              {success}
+            </div>
+          )}
+
+          <button
+            type="submit"
             disabled={loading}
+            style={{
+              width: '100%',
+              padding: '12px',
+              backgroundColor: loading ? '#ccc' : '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}
           >
-            {loading ? '⏳ Submitting...' : '✓ Submit Report'}
+            {loading ? '⏳ Đang gửi báo cáo...' : '✓ Gửi Báo Cáo'}
           </button>
         </div>
       </form>
