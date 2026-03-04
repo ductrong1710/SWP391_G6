@@ -14,24 +14,28 @@ const AdminOverview = () => {
 
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const allReports = await wasteReportService.getAllReports(token);
-      
+      const allReportsRaw = await wasteReportService.getAllReports(token);
+      const allReports = Array.isArray(allReportsRaw) ? allReportsRaw : [];
+
       const stats = {
         total: allReports.length,
-        pending: allReports.filter(r => r.status === 'Pending').length,
-        accepted: allReports.filter(r => r.status === 'Accepted').length,
-        rejected: allReports.filter(r => r.status === 'Rejected').length
+        pending: allReports.filter(r => r?.status === 'Pending').length,
+        accepted: allReports.filter(r => r?.status === 'Accepted').length,
+        rejected: allReports.filter(r => r?.status === 'Rejected').length
       };
 
       setStats(stats);
       setReports(allReports);
     } catch (err) {
       console.error('Error fetching stats:', err);
+      setReports([]);
+      setStats({ total: 0, pending: 0, accepted: 0, rejected: 0 });
     } finally {
       setLoading(false);
     }
@@ -78,7 +82,7 @@ const AdminOverview = () => {
         ))}
       </div>
 
-      {/* DANH SÁCH BÁOCÁO GẦN ĐÂY */}
+      {/* DANH SÁCH BÁO CÁO GẦN ĐÂY */}
       <h2>📋 Báo Cáo Gần Đây</h2>
       {loading ? (
         <p>⏳ Đang tải...</p>
@@ -115,16 +119,19 @@ const AdminOverview = () => {
                   'Accepted': { bg: '#d1fae5', color: '#065f46' },
                   'Rejected': { bg: '#fee2e2', color: '#991b1b' }
                 };
-                const colors = statusColors[report.status];
+                const colors = statusColors[report?.status] ?? { bg: '#f3f4f6', color: '#374151' };
+
+                const createdDate = report?.createdAt ? new Date(report.createdAt) : null;
+                const createdStr = createdDate && !Number.isNaN(createdDate.getTime())
+                  ? createdDate.toLocaleDateString('vi-VN')
+                  : 'N/A';
 
                 return (
-                  <tr key={report.wastereportId} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '12px' }}>#{report.wastereportId}</td>
-                    <td style={{ padding: '12px' }}>{report.wastetype?.name || 'N/A'}</td>
-                    <td style={{ padding: '12px' }}>{report.user?.fullName || 'N/A'}</td>
-                    <td style={{ padding: '12px' }}>
-                      {new Date(report.createdAt).toLocaleDateString('vi-VN')}
-                    </td>
+                  <tr key={report?.wastereportId ?? Math.random()} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '12px' }}>#{report?.wastereportId ?? 'N/A'}</td>
+                    <td style={{ padding: '12px' }}>{report?.wastetype?.name ?? 'N/A'}</td>
+                    <td style={{ padding: '12px' }}>{report?.user?.fullName ?? 'N/A'}</td>
+                    <td style={{ padding: '12px' }}>{createdStr}</td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <span style={{
                         padding: '4px 12px',
@@ -135,10 +142,10 @@ const AdminOverview = () => {
                         fontSize: '12px',
                         whiteSpace: 'nowrap'
                       }}>
-                        {report.status === 'Pending' && '⏳'} 
-                        {report.status === 'Accepted' && '✅'} 
-                        {report.status === 'Rejected' && '❌'} 
-                        {report.status}
+                        {report?.status === 'Pending' && '⏳'} 
+                        {report?.status === 'Accepted' && '✅'} 
+                        {report?.status === 'Rejected' && '❌'} 
+                        {report?.status ?? 'Unknown'}
                       </span>
                     </td>
                   </tr>
