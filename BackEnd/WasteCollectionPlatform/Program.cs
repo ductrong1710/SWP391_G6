@@ -44,7 +44,6 @@ namespace WasteCollectionPlatform
             // Cấu hình Swagger để nhập Token test cho tiện
             builder.Services.AddSwaggerGen(c =>
             {
-                // Enable XML comments
                 var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
                 c.IncludeXmlComments(xmlPath);
@@ -54,8 +53,8 @@ namespace WasteCollectionPlatform
                     Description = "Nhập JWT token",
                     Name = "Authorization",
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http, 
-                    Scheme = "bearer",                                      
+                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                    Scheme = "bearer",
                     BearerFormat = "JWT"
                 });
 
@@ -75,16 +74,33 @@ namespace WasteCollectionPlatform
                 });
             });
 
-
+            // CORS: cho phép frontend (Vite) truy cập API
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowReactApp",
-                    policy =>
+                options.AddPolicy("AllowReactApp", policy =>
+                {
+                    if (builder.Environment.IsDevelopment())
                     {
-                        policy.WithOrigins("http://localhost:5173") // Địa chỉ Frontend của bạn
-                              .AllowAnyHeader()
-                              .AllowAnyMethod();
-                    });
+                        // Development: cho phép origin dev server (vite) and allow any origin to avoid http/https mismatch
+                        policy
+                            .AllowAnyOrigin()
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .WithExposedHeaders("WWW-Authenticate");
+                    }
+                    else
+                    {
+                        // Production: giới hạn origin
+                        policy
+                            .WithOrigins(
+                                "https://your-production-frontend.example"
+                            )
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials()
+                            .WithExposedHeaders("WWW-Authenticate");
+                    }
+                });
             });
 
             var app = builder.Build();
@@ -96,11 +112,14 @@ namespace WasteCollectionPlatform
             }
 
             app.UseHttpsRedirection();
+
+            // IMPORTANT: place CORS before static files/auth so preflight is handled and header is present
+            app.UseCors("AllowReactApp");
+
             app.UseStaticFiles();
 
             // 3. Kích hoạt Middleware (Thứ tự rất quan trọng!)
-            app.UseCors("AllowReactApp");
-            app.UseAuthentication(); 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
-import { authService } from "../../services/authService";
 import assignmentService from "../../services/assignmentService";
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -123,17 +122,12 @@ const Dispatch = () => {
     return () => { mountedRef.current = false; };
   }, []);
 
-  // fetch collectors (general)
+  // fetch collectors (general) - use assignmentService.getCollectors()
   const fetchCollectors = useCallback(async () => {
     try {
       setLoadingCollectors(true);
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const res = await axios.get(`${API_BASE_URL}/api/collectors`, {
-        headers: { Authorization: `Bearer ${token}` }, timeout: 8000
-      });
-      const list = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
-      setCollectors(list);
+      const list = await assignmentService.getCollectors();
+      setCollectors(Array.isArray(list) ? list : []);
     } catch (e) {
       console.error('Error fetching collectors:', e);
       setCollectors([]);
@@ -530,7 +524,37 @@ const Dispatch = () => {
 
                 {String(selectedReport.status).toLowerCase() === 'accepted' && (
                   <div className="details-actions">
-                    <button className="btn-assign" disabled={actionLoading} onClick={() => setShowAssignModal(true)}>👤 Assign Collector</button>
+                    <div className="inline-assign">
+                      <select
+                        className="assign-select"
+                        value={selectedCollectorMap[selectedReport.id] || ''}
+                        onChange={(e) => setSelectedCollectorMap(prev => ({ ...prev, [selectedReport.id]: e.target.value }))}
+                        disabled={loadingCollectors || actionLoading}
+                      >
+                        <option value="">{loadingCollectors ? 'Loading collectors...' : '-- Select collector --'}</option>
+                        {collectors.map((c) => (
+                          <option key={getCollectorId(c)} value={getCollectorId(c)}>
+                            {getCollectorName(c)}{getCollectorEmail(c) ? ` (${getCollectorEmail(c)})` : ''}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        className="btn-assign"
+                        disabled={actionLoading || !selectedCollectorMap[selectedReport.id]}
+                        onClick={() => handleAssignCollector(selectedReport.id)}
+                      >
+                        {assigningId === selectedReport.id ? 'Assigning...' : 'Assign'}
+                      </button>
+
+                      <button
+                        className="btn-assign-modal"
+                        disabled={actionLoading}
+                        onClick={() => setShowAssignModal(true)}
+                      >
+                        👤 Assign via modal
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
