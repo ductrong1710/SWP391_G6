@@ -170,47 +170,6 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-
-        
-
-        [HttpPost]
-[Authorize(Roles = "Enterprise")]
-public async Task<IActionResult> AssignmentsCollector([FromBody] AssignCollectorDto dto)
-{
-    var userIdClaim = User.FindFirst("UserId")?.Value;
-    if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
-    {
-        return Unauthorized(new { message = "Invalid or missing UserId claim" });
-    }
-
-    if (dto?.CollectorId <= 0 || dto?.RequestId <= 0)
-    {
-        return BadRequest(new { message = "Invalid CollectorId or RequestId" });
-    }
-
-    try
-    {
-        var result = await _service.AssignCollectorAsync(dto.RequestId, enterpriseId, dto);
-        return Ok(result);
-    }
-    catch (InvalidOperationException ex)
-    {
-        return BadRequest(new { message = ex.Message });
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-    }
-    catch (ArgumentException ex)
-    {
-        return BadRequest(new { message = ex.Message });
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-    }
-}
-
         /// <summary>
         /// Collector: Get all my assignments
         /// </summary>
