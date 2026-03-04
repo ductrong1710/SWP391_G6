@@ -36,29 +36,6 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Root route for frontend convenience: GET /api/collectors
-        /// Allows Enterprise/Admin clients to fetch collectors using /api/collectors (matches frontend fallback).
-        /// </summary>
-        [HttpGet("/api/collectors")]
-        [Authorize(Roles = "Admin,Enterprise")]
-        [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<IActionResult> GetCollectorsRoot()
-        {
-            try
-            {
-                var collectors = await FetchCollectorsAsync();
-                return Ok(collectors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get collectors (root)");
-                return StatusCode(500, new { message = "Could not load collectors", detail = ex.Message });
-            }
-        }
-
-        /// <summary>
         /// Enterprise/Admin: Get all collectors (roleId = 3) for task assignment
         /// </summary>
         [HttpGet("collectors")]

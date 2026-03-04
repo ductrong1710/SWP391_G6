@@ -144,33 +144,6 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Enterprise: Get all my assignments
-        /// </summary>
-        [HttpGet]
-        [Authorize(Roles = "Enterprise")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<IActionResult> GetAllMyAssignments()
-        {
-            var userIdClaim = User.FindFirst("UserId")?.Value;
-            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
-            {
-                return Unauthorized(new { message = "Invalid or missing UserId claim" });
-            }
-
-            try
-            {
-                var assignments = await _service.GetAllAssignmentsByEnterpriseAsync(enterpriseId);
-                return Ok(assignments);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-            }
-        }
-
-        /// <summary>
         /// Collector: Get all my assignments
         /// </summary>
         [HttpGet("my-assignments")]
