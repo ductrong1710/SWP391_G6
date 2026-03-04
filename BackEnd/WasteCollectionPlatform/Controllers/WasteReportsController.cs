@@ -63,12 +63,6 @@ namespace WasteCollectionPlatform.Controllers
             var reports = await _service.GetAllAsync(userId);
             return Ok(reports);
         }
-        userId = parsedUserId;
-    }
-
-    var reports = await _service.GetAllAsync(userId);  // ✅ Enterprise: userId = null → lấy tất cả
-    return Ok(reports);
-}
 
         /// <summary>
         /// Citizen/Admin/Enterprise: Get waste report details
@@ -324,4 +318,3 @@ namespace WasteCollectionPlatform.Controllers
         }
     }
 }
-

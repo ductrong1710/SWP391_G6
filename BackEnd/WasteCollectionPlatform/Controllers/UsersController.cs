@@ -19,7 +19,26 @@ namespace WasteCollectionPlatform.Controllers
             _logger = logger;
         }
 
+<<<<<<< HEAD
         
+=======
+       
+        /// <summary>
+        /// Enterprise/Admin: Get all collectors (roleId = 3) for task assignment
+        /// </summary>
+        [HttpGet("collectors")]
+        [Authorize(Roles = "Admin,Enterprise")]
+        [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetCollectors()
+        {
+            var allUsers = await _userService.GetAllAsync();
+            var collectors = allUsers.Where(u => u.RoleName == "Collector").ToList();
+            return Ok(collectors);
+        }
+
+>>>>>>> 3cc50b22c2bd06c2fdf07a547ed516418594f7c5
         /// <summary>
         /// Admin: Get all users in system
         /// </summary>
