@@ -19,9 +19,6 @@ namespace WasteCollectionPlatform.Controllers
             _logger = logger;
         }
 
-<<<<<<< HEAD
-        
-=======
        
         /// <summary>
         /// Enterprise/Admin: Get all collectors (roleId = 3) for task assignment
@@ -38,7 +35,6 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(collectors);
         }
 
->>>>>>> 3cc50b22c2bd06c2fdf07a547ed516418594f7c5
         /// <summary>
         /// Admin: Get all users in system
         /// </summary>

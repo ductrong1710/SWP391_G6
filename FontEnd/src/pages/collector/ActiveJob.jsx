@@ -5,84 +5,84 @@ const ActiveJob = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const mountedRef = useRef(true);
   const lastFetchRef = useRef(null);
 
   useEffect(() => {
     // Initial fetch
     fetchMyAssignments();
-    
-    // Auto-refresh mỗi 10 giây (thay vì 5s) để giảm tải server
+
+    // Auto-refresh every 10 seconds
     const interval = setInterval(() => {
       if (mountedRef.current) {
         fetchMyAssignments();
       }
     }, 10000);
-    
+
     return () => {
       clearInterval(interval);
       mountedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchMyAssignments = async () => {
-    // Skip nếu fetch vừa xong trong 1 giây
     const now = Date.now();
-    if (lastFetchRef.current && now - lastFetchRef.current < 1000) {
-      return;
-    }
+    if (lastFetchRef.current && now - lastFetchRef.current < 1000) return;
     lastFetchRef.current = now;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem('token');
       const response = await axios.get(
-        "http://localhost:5021/api/assignments/my-assignments",
+        'http://localhost:5021/api/assignments/my-assignments',
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         }
       );
-      
-      console.log("Assignments:", response.data);
-      
+
       if (mountedRef.current) {
-        if (response.data && response.data.length > 0) {
+        if (Array.isArray(response.data) && response.data.length > 0) {
           setJob(response.data[0]);
         } else {
           setJob(null);
         }
         setLoading(false);
       }
-    } catch (error) {
-      console.error("Fetch assignments error:", error);
+    } catch (err) {
+      console.error('Fetch assignments error:', err);
       if (mountedRef.current) {
         setJob(null);
         setLoading(false);
+        setError('Không thể tải nhiệm vụ.');
+        setTimeout(() => setError(''), 3000);
       }
     }
   };
 
   const handleStart = async () => {
+    if (!job || !job.assignmentId) {
+      alert('No assignment to start.');
+      return;
+    }
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem('token');
 
-      const response = await axios.put(
+      await axios.put(
         `http://localhost:5021/api/collections/${job.assignmentId}/start`,
         {},
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         }
       );
 
-      console.log("Start response:", response.data);
-      
       // Refresh assignments after starting
       if (mountedRef.current) {
         fetchMyAssignments();
       }
-
-    } catch (error) {
-      console.error("Start error:", error.response?.data || error);
-      alert(error.response?.data?.message || "Failed to start trip");
+    } catch (err) {
+      console.error('Start error:', err.response?.data || err);
+      alert(err.response?.data?.message || 'Failed to start trip');
     }
   };
 
@@ -97,6 +97,12 @@ const ActiveJob = () => {
   if (!job) {
     return (
       <div className="col-active-job">
+        {error && (
+          <div className="error-banner">
+            {error}
+            <button onClick={() => setError('')} className="alert-close">✕</button>
+          </div>
+        )}
         <h3>No active job assigned</h3>
       </div>
     );
@@ -123,7 +129,7 @@ const ActiveJob = () => {
           </span>
           <label className="switch">
             <input type="checkbox" checked={isOnline} onChange={() => setIsOnline(!isOnline)} />
-            <span className="slider round"></span>
+            <span className="slider round" />
           </label>
         </div>
       </div>
@@ -132,9 +138,8 @@ const ActiveJob = () => {
       <div className="job-card">
         <div className="job-header">
           <h3>Job #{job.assignmentId}</h3>
-          <span className="badge-assigned">{job.status}</span>
+          <span className="badge-assigned">{job.status || 'Unknown'}</span>
         </div>
-      )}
 
         <div className="customer-info">
           <div className="info-row">
@@ -159,29 +164,29 @@ const ActiveJob = () => {
           </div>
           <div className="stat-box">
             <div className="label">Est. Weight</div>
-            <div className="val">{job.estimatedWeight} kg</div>
+            <div className="val">{job.estimatedWeight ?? 'N/A'} kg</div>
           </div>
           <div className="stat-box">
             <div className="label">Distance</div>
-            <div className="val">2.3 km</div>
+            <div className="val">{job.distance ?? 'N/A'}</div>
           </div>
           <div className="stat-box">
             <div className="label">ETA</div>
-            <div className="val">8 mins</div>
+            <div className="val">{job.eta ?? 'N/A'}</div>
           </div>
         </div>
 
         <div className="note-box">
           <div className="note-title">📄 Customer Note</div>
-          <div className="note-content">{job.note}</div>
+          <div className="note-content">{job.note ?? 'No notes'}</div>
         </div>
-      
 
-      {/* Bottom Action Button */}
-      <div className="bottom-action-bar">
-        <button className="btn-start-trip" onClick={handleStart}>
-          Start Trip
-        </button>
+        {/* Bottom Action Button */}
+        <div className="bottom-action-bar">
+          <button className="btn-start-trip" onClick={handleStart}>
+            Start Trip
+          </button>
+        </div>
       </div>
     </div>
   );
