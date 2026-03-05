@@ -1,48 +1,55 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authService } from '../../services/authService';
-import './Auth.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { authService } from "../../services/authService";
+import "./Auth.css";
 
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
-    setError('');
+    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const response = await authService.login(formData.email, formData.password);
+      const response = await authService.login(
+        formData.email,
+        formData.password
+      );
 
-      // Điều hướng theo role
+      // Navigate by role
       const user = response.user;
-      if (user.roleId === 4) { // Admin
-        navigate('/admin');
-      } else if (user.roleId === 2) { // Enterprise
-        navigate('/enterprise');
-      } else if (user.roleId === 3) { // Collector
-        navigate('/collector');
-      } else { // Citizen (roleId = 1)
-        navigate('/citizen');
+      if (user.roleId === 4) {
+        // Admin
+        navigate("/admin");
+      } else if (user.roleId === 2) {
+        // Enterprise
+        navigate("/enterprise");
+      } else if (user.roleId === 3) {
+        // Collector
+        navigate("/collector");
+      } else {
+        // Citizen (roleId = 1)
+        navigate("/citizen");
       }
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');
+      console.error("Login error:", err);
+      setError(err.response?.data?.message || "Incorrect email or password");
     } finally {
       setLoading(false);
     }
@@ -69,8 +76,8 @@ const Login = () => {
           {/* Main Title */}
           <h1 className="info-title">Together for a Greener Future</h1>
           <p className="info-description">
-            Join our community in making waste recycling simple, rewarding, and impactful. 
-            Every action counts towards a sustainable planet.
+            Join our community in making waste recycling simple, rewarding, and
+            impactful. Every action counts towards a sustainable planet.
           </p>
 
           {/* Stats */}
@@ -107,11 +114,7 @@ const Login = () => {
           </div>
 
           {/* Error Alert */}
-          {error && (
-            <div className="alert alert-error">
-              ❌ {error}
-            </div>
-          )}
+          {error && <div className="alert alert-error">❌ {error}</div>}
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="login-form">
@@ -137,7 +140,7 @@ const Login = () => {
               </div>
               <div className="password-input-wrapper">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   placeholder="Enter your password"
@@ -149,27 +152,23 @@ const Login = () => {
                   type="button"
                   className="toggle-password-btn"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                  {showPassword ? "👁️" : "👁️‍🗨️"}
                 </button>
               </div>
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              className="btn-login"
-              disabled={loading}
-            >
-              {loading ? 'Logging in...' : 'Log In'}
+            <button type="submit" className="btn-login" disabled={loading}>
+              {loading ? "Logging in..." : "Log In"}
             </button>
           </form>
 
           {/* Sign Up Link */}
           <div className="signup-link">
-            Don't have an account? {' '}
-            <span className="link-green" onClick={() => navigate('/register')}>
+            Don't have an account?{" "}
+            <span className="link-green" onClick={() => navigate("/register")}>
               Sign Up
             </span>
           </div>
