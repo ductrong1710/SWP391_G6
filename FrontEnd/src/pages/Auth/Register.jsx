@@ -1,56 +1,58 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authService } from '../../services/authService';
-import './Auth.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { authService } from "../../services/authService";
+import "./Auth.css";
 
 const Register = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    email: '',
-    fullName: '',
-    password: '',
-    confirmPassword: ''
+    email: "",
+    fullName: "",
+    password: "",
+    confirmPassword: "",
   });
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
-    setError('');
+    setError("");
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError("Passwords do not match");
       setLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự');
+      setError("Password must be at least 6 characters");
       setLoading(false);
       return;
     }
 
     try {
       await authService.register(formData);
-      setSuccess('OTP đã được gửi đến email của bạn!');
+      setSuccess("OTP has been sent to your email!");
       setStep(2);
     } catch (err) {
-      console.error('Register error:', err);
-      setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      console.error("Register error:", err);
+      setError(
+        err.response?.data?.message || "Registration failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -59,24 +61,24 @@ const Register = () => {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     if (!otp || otp.length !== 6) {
-      setError('Vui lòng nhập mã OTP 6 số');
+      setError("Please enter a 6-digit OTP code");
       setLoading(false);
       return;
     }
 
     try {
       await authService.verifyOtp(formData.email, otp);
-      setSuccess('Đăng ký thành công! Đang chuyển đến trang đăng nhập...');
-      
+      setSuccess("Registration successful! Redirecting to login...");
+
       setTimeout(() => {
-        navigate('/login');
+        navigate("/login");
       }, 2000);
     } catch (err) {
-      console.error('Verify OTP error:', err);
-      setError(err.response?.data?.message || 'Mã OTP không hợp lệ hoặc đã hết hạn');
+      console.error("Verify OTP error:", err);
+      setError(err.response?.data?.message || "Invalid or expired OTP code");
     } finally {
       setLoading(false);
     }
@@ -93,23 +95,19 @@ const Register = () => {
 
         {/* Welcome Text */}
         <div className="welcome-text">
-          <h2>{step === 1 ? 'Create Account' : 'Verify Email'}</h2>
-          <p>{step === 1 ? 'Join our eco-friendly community' : 'Enter the OTP sent to your email'}</p>
+          <h2>{step === 1 ? "Create Account" : "Verify Email"}</h2>
+          <p>
+            {step === 1
+              ? "Join our eco-friendly community"
+              : "Enter the OTP sent to your email"}
+          </p>
         </div>
 
         {/* Error Alert */}
-        {error && (
-          <div className="alert alert-error">
-            ❌ {error}
-          </div>
-        )}
+        {error && <div className="alert alert-error">❌ {error}</div>}
 
         {/* Success Alert */}
-        {success && (
-          <div className="alert alert-success">
-            ✅ {success}
-          </div>
-        )}
+        {success && <div className="alert alert-success">✅ {success}</div>}
 
         {step === 1 ? (
           <form onSubmit={handleRegister} className="login-form">
@@ -120,7 +118,7 @@ const Register = () => {
                 type="text"
                 id="fullName"
                 name="fullName"
-                placeholder="Nguyễn Văn A"
+                placeholder="John Doe"
                 value={formData.fullName}
                 onChange={handleChange}
                 required
@@ -146,7 +144,7 @@ const Register = () => {
               <label htmlFor="password">Password</label>
               <div className="password-input-wrapper">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   placeholder="Enter your password"
@@ -159,9 +157,9 @@ const Register = () => {
                   type="button"
                   className="toggle-password-btn"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                  {showPassword ? "👁️" : "👁️‍🗨️"}
                 </button>
               </div>
             </div>
@@ -171,7 +169,7 @@ const Register = () => {
               <label htmlFor="confirmPassword">Confirm Password</label>
               <div className="password-input-wrapper">
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   id="confirmPassword"
                   name="confirmPassword"
                   placeholder="Confirm your password"
@@ -183,20 +181,18 @@ const Register = () => {
                   type="button"
                   className="toggle-password-btn"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  aria-label={
+                    showConfirmPassword ? "Hide password" : "Show password"
+                  }
                 >
-                  {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                  {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
                 </button>
               </div>
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              className="btn-login"
-              disabled={loading}
-            >
-              {loading ? 'Processing...' : '📧 Send OTP'}
+            <button type="submit" className="btn-login" disabled={loading}>
+              {loading ? "Processing..." : "📧 Send OTP"}
             </button>
           </form>
         ) : (
@@ -218,7 +214,7 @@ const Register = () => {
                 value={otp}
                 onChange={(e) => {
                   setOtp(e.target.value);
-                  setError('');
+                  setError("");
                 }}
                 required
                 maxLength={6}
@@ -228,12 +224,8 @@ const Register = () => {
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              className="btn-login"
-              disabled={loading}
-            >
-              {loading ? 'Verifying...' : '✓ Verify OTP'}
+            <button type="submit" className="btn-login" disabled={loading}>
+              {loading ? "Verifying..." : "✓ Verify OTP"}
             </button>
 
             {/* Back Button */}
@@ -250,8 +242,8 @@ const Register = () => {
 
         {/* Sign In Link */}
         <div className="signup-link">
-          Already have an account? {' '}
-          <span className="link-green" onClick={() => navigate('/login')}>
+          Already have an account?{" "}
+          <span className="link-green" onClick={() => navigate("/login")}>
             Sign In
           </span>
         </div>

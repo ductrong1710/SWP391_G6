@@ -58,32 +58,6 @@
   cursor: not-allowed;
 }
 
-.auto-refresh-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background-color: white;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
-  transition: all 0.3s;
-}
-
-.auto-refresh-toggle:hover {
-  border-color: #10b981;
-  background-color: #f0fdf4;
-}
-
-.auto-refresh-toggle input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #10b981;
-}
-
 /* FILTER TABS */
 .filter-tabs {
   display: flex;
@@ -576,8 +550,7 @@
     flex-direction: column;
   }
 
-  .btn-refresh,
-  .auto-refresh-toggle {
+  .btn-refresh {
     width: 100%;
     justify-content: center;
   }
@@ -665,11 +638,23 @@
 
 /* ===== ASSIGN SECTION (trong request card) ===== */
 .assign-section {
-  margin-top: 10px;
-  padding: 10px;
-  background: #f0f4ff;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #f0fdf4;
   border-radius: 8px;
-  border: 1px solid #c7d2fe;
+  border: 1px solid #6ee7b7;
+}
+
+.assign-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #065f46;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #a7f3d0;
 }
 
 .assign-row {
@@ -680,42 +665,54 @@
 
 .assign-select {
   flex: 1;
-  padding: 6px 10px;
-  border: 1px solid #c7d2fe;
+  padding: 8px 10px;
+  border: 1px solid #a7f3d0;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   background: white;
+  color: #1f2937;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.assign-select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
 }
 
 .assign-notes {
   width: 100%;
-  margin-top: 6px;
-  padding: 6px 10px;
-  border: 1px solid #c7d2fe;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #a7f3d0;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   background: white;
+  color: #1f2937;
 }
 
 .btn-assign {
-  background: #6366f1;
+  background: #10b981;
   color: white;
   border: none;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
-.btn-assign:hover {
-  background: #4f46e5;
+.btn-assign:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-assign:disabled {
-  background: #a5b4fc;
+  background: #a7f3d0;
+  color: #6b7280;
   cursor: not-allowed;
 }
 

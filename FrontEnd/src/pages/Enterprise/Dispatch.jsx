@@ -129,7 +129,6 @@ const Dispatch = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
-  const [autoRefresh, setAutoRefresh] = useState(false);
   const mountedRef = useRef(false);
 
   // collectors states
@@ -141,6 +140,7 @@ const Dispatch = () => {
   const [manualCollectorId, setManualCollectorId] = useState("");
   const [assigningId, setAssigningId] = useState(null);
   const [showAssignPanel, setShowAssignPanel] = useState(false);
+  const [justAcceptedId, setJustAcceptedId] = useState(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -217,7 +217,7 @@ const Dispatch = () => {
       if (mountedRef.current) {
         setReports([]);
         setSelectedReport(null);
-        setError("Không tải được dữ liệu.");
+        setError("Unable to load data.");
       }
     } finally {
       if (mountedRef.current && !options.silent) setLoading(false);
@@ -227,16 +227,6 @@ const Dispatch = () => {
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
-
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const timer = setInterval(() => {
-      fetchReports({ silent: true });
-      fetchCollectionRequests();
-      fetchCollectors();
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [autoRefresh, fetchReports, fetchCollectionRequests, fetchCollectors]);
 
   const filteredReports = useMemo(() => {
     if (filterStatus === "All") return reports;
@@ -286,7 +276,7 @@ const Dispatch = () => {
     await fetchReports();
     await fetchCollectionRequests();
     await fetchCollectors();
-    setSuccess("Đã làm mới dữ liệu.");
+    setSuccess("Data refreshed.");
     setTimeout(() => setSuccess(""), 1600);
   };
 
@@ -294,7 +284,7 @@ const Dispatch = () => {
   const handleAssignCollector = async (reportId) => {
     const collectorId = selectedCollectorMap[reportId];
     if (!collectorId) {
-      setError("Vui lòng chọn collector trước khi phân công!");
+      setError("Please select a collector before assigning!");
       setTimeout(() => setError(""), 2000);
       return;
     }
@@ -302,7 +292,7 @@ const Dispatch = () => {
     const cr = getCollectionRequestForReport(reportId);
     if (!cr) {
       setError(
-        "❌ Chưa có collection request cho báo cáo này. Hãy Accept trước!"
+        "❌ No collection request for this report. Please Accept it first!"
       );
       setTimeout(() => setError(""), 3000);
       return;
@@ -311,7 +301,7 @@ const Dispatch = () => {
     // Fix: lấy requestId từ nhiều field có thể
     const requestId = cr.requestId ?? cr.collectionRequestId ?? cr.id;
     if (!requestId) {
-      setError("❌ Không tìm được requestId từ collection request!");
+      setError("❌ Could not find requestId from collection request!");
       setTimeout(() => setError(""), 3000);
       return;
     }
@@ -327,11 +317,12 @@ const Dispatch = () => {
         collectorId: parseInt(collectorId),
       });
       setSuccess(
-        `✅ Đã phân công ${
+        `✅ Assigned ${
           chosen ? getCollectorName(chosen) : "collector"
-        } cho báo cáo #${reportId}`
+        } to report #${reportId}`
       );
       setTimeout(() => setSuccess(""), 2000);
+      if (justAcceptedId === reportId) setJustAcceptedId(null);
       setSelectedCollectorMap((prev) => {
         const u = { ...prev };
         delete u[reportId];
@@ -342,7 +333,7 @@ const Dispatch = () => {
     } catch (err) {
       console.error("Error assigning collector:", err);
       setError(
-        `❌ Phân công thất bại: ${err.response?.data?.message || err.message}`
+        `❌ Assignment failed: ${err.response?.data?.message || err.message}`
       );
       setTimeout(() => setError(""), 3000);
     } finally {
@@ -351,17 +342,19 @@ const Dispatch = () => {
   };
 
   const handleCancelAssignment = async (assignmentId) => {
-    if (!window.confirm("Bạn có chắc muốn hủy phân công này?")) return;
+    if (!window.confirm("Are you sure you want to cancel this assignment?"))
+      return;
     try {
       setActionLoading(true);
       await assignmentService.cancelAssignment(assignmentId);
-      setSuccess("✅ Đã hủy phân công!");
+      setSuccess("✅ Assignment cancelled!");
       setTimeout(() => setSuccess(""), 2000);
       await fetchCollectionRequests();
       await fetchReports({ silent: true });
     } catch (err) {
       setError(
-        "❌ Hủy thất bại: " + (err.response?.data?.message || err.message)
+        "❌ Cancellation failed: " +
+          (err.response?.data?.message || err.message)
       );
       setTimeout(() => setError(""), 3000);
     } finally {
@@ -372,7 +365,7 @@ const Dispatch = () => {
   const updateStatusApi = async (reportId, nextStatus) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Thiếu token đăng nhập.");
+      setError("Missing login token.");
       return;
     }
     const action =
@@ -391,12 +384,13 @@ const Dispatch = () => {
         `Đã ${action === "accept" ? "duyệt" : "từ chối"} báo cáo #${reportId}.`
       );
       setTimeout(() => setSuccess(""), 1800);
+      if (action === "accept") setJustAcceptedId(reportId);
       await fetchReports({ silent: true });
       await fetchCollectionRequests();
     } catch (e) {
       console.error(e);
       setError(
-        `Không thể ${action}: ${e.response?.data?.message || e.message}`
+        `Unable to ${action}: ${e.response?.data?.message || e.message}`
       );
     } finally {
       setActionLoading(false);
@@ -410,7 +404,7 @@ const Dispatch = () => {
     if (!collectorToAssignId && manualCollectorId.trim())
       collectorToAssignId = manualCollectorId.trim();
     if (!selectedReport || !collectorToAssignId) {
-      setError("Vui lòng chọn Collector hoặc nhập Collector ID");
+      setError("Please select a Collector or enter a Collector ID");
       return;
     }
     try {
@@ -422,7 +416,7 @@ const Dispatch = () => {
         requestId,
         collectorId: parseInt(collectorToAssignId),
       });
-      setSuccess(`✅ Đã gán Collector cho request #${selectedReport.id}`);
+      setSuccess(`✅ Assigned Collector to request #${selectedReport.id}`);
       setTimeout(() => {
         setSuccess("");
         setShowAssignModal(false);
@@ -433,7 +427,7 @@ const Dispatch = () => {
       await fetchCollectionRequests();
     } catch (e) {
       console.error("Assign error:", e);
-      setError(e.response?.data?.message || "Không thể gán Collector.");
+      setError(e.response?.data?.message || "Unable to assign Collector.");
     } finally {
       setActionLoading(false);
     }
@@ -454,20 +448,11 @@ const Dispatch = () => {
           >
             🔄 {loading ? "Loading..." : "Refresh"}
           </button>
-          <label className="auto-refresh-toggle">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              disabled={loading || actionLoading}
-            />
-            <span>Auto-refresh (30s)</span>
-          </label>
           <button
             className={`btn-toggle-assign ${showAssignPanel ? "active" : ""}`}
             onClick={() => setShowAssignPanel(!showAssignPanel)}
           >
-            👷 {showAssignPanel ? "Ẩn phân công" : "Hiện phân công"}
+            👷 {showAssignPanel ? "Hide Assignment" : "Show Assignment"}
           </button>
         </div>
       </div>
@@ -505,7 +490,7 @@ const Dispatch = () => {
       {(loading || actionLoading) && (
         <div className="loading-container">
           <div className="spinner" />
-          <p>{loading ? "Đang tải..." : "Đang cập nhật..."}</p>
+          <p>{loading ? "Loading..." : "Updating..."}</p>
         </div>
       )}
 
@@ -609,7 +594,7 @@ const Dispatch = () => {
                         </div>
                       )}
 
-                      {showAssignPanel &&
+                      {(showAssignPanel || justAcceptedId === report.id) &&
                         String(report.status).toLowerCase() === "accepted" &&
                         cr &&
                         !cr.assignedCollectorId && (
@@ -617,6 +602,9 @@ const Dispatch = () => {
                             className="assign-section"
                             onClick={(e) => e.stopPropagation()}
                           >
+                            <div className="assign-section-title">
+                              👷 Assign Collector
+                            </div>
                             <div className="assign-row">
                               <select
                                 className="assign-select"
@@ -628,7 +616,7 @@ const Dispatch = () => {
                                   }))
                                 }
                               >
-                                <option value="">-- Chọn collector --</option>
+                                <option value="">-- Select collector --</option>
                                 {collectors.map((c) => {
                                   const id = getCollectorId(c);
                                   const name = getCollectorName(c);
@@ -662,7 +650,7 @@ const Dispatch = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="assigned-badge">
-                            👷 Đã phân công:{" "}
+                            👷 Assigned:{" "}
                             <strong>
                               {cr.assignedCollectorName ||
                                 `Collector #${cr.assignedCollectorId}`}
@@ -688,7 +676,7 @@ const Dispatch = () => {
                                   handleCancelAssignment(cr.currentAssignmentId)
                                 }
                               >
-                                ❌ Hủy phân công
+                                ❌ Cancel Assignment
                               </button>
                             )}
                         </div>

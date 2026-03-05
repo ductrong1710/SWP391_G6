@@ -1,20 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
-import './Analytics.css';
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import "./Analytics.css";
 
-const API_BASE_URL = 'http://localhost:5021/api';
+const API_BASE_URL = "http://localhost:5021/api";
 
 const Analytics = () => {
-  const [timeRange, setTimeRange] = useState('This Year');
+  const [timeRange, setTimeRange] = useState("This Year");
   const [stats, setStats] = useState({
     totalVolume: 0,
     activeUsers: 0,
     avgResponseTime: 0,
-    growthRate: 0
+    growthRate: 0,
   });
   const [collectionData, setCollectionData] = useState([]);
   const [wasteComposition, setWasteComposition] = useState([]);
@@ -29,19 +40,19 @@ const Analytics = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
+      const token = localStorage.getItem("token");
+
       // Fetch waste reports
       const reportsResponse = await axios.get(`${API_BASE_URL}/waste-reports`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const reports = reportsResponse.data;
-      const acceptedReports = reports.filter(r => r.status === 'Accepted');
+      const acceptedReports = reports.filter((r) => r.status === "Accepted");
 
       // Calculate stats
       const totalVolume = (acceptedReports.length * 12.5).toFixed(1); // Mock
-      const uniqueUsers = new Set(acceptedReports.map(r => r.userId)).size;
+      const uniqueUsers = new Set(acceptedReports.map((r) => r.userId)).size;
       const avgResponseTime = 2.4; // Mock
       const growthRate = 18.5; // Mock
 
@@ -49,29 +60,42 @@ const Analytics = () => {
         totalVolume,
         activeUsers: uniqueUsers,
         avgResponseTime,
-        growthRate
+        growthRate,
       });
 
       // Collection over time (12 months)
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
       const collectionByMonth = months.map((month, i) => {
-        const count = acceptedReports.filter(r => {
+        const count = acceptedReports.filter((r) => {
           const date = new Date(r.createdAt);
           return date.getMonth() === i;
         }).length;
-        
+
         return {
           month,
           reports: count,
-          volume: (count * 12.5).toFixed(1) // Mock calculation
+          volume: (count * 12.5).toFixed(1), // Mock calculation
         };
       });
       setCollectionData(collectionByMonth);
 
       // Waste composition
       const wasteTypes = {};
-      acceptedReports.forEach(report => {
-        const typeName = report.wastetype?.name || 'Other';
+      acceptedReports.forEach((report) => {
+        const typeName = report.wastetype?.name || "Other";
         wasteTypes[typeName] = (wasteTypes[typeName] || 0) + 1;
       });
 
@@ -79,40 +103,85 @@ const Analytics = () => {
       const composition = Object.entries(wasteTypes).map(([name, count]) => ({
         name,
         value: count,
-        percentage: ((count / total) * 100).toFixed(0)
+        percentage: ((count / total) * 100).toFixed(0),
       }));
       setWasteComposition(composition);
 
       // Zone data (mock)
       setZoneData([
-        { zone: 'Downtown', mon: 85, tue: 90, wed: 88, thu: 92, fri: 95, sat: 78 },
-        { zone: 'North District', mon: 75, tue: 80, wed: 85, thu: 78, fri: 82, sat: 88 },
-        { zone: 'East Zone', mon: 70, tue: 75, wed: 80, thu: 85, fri: 90, sat: 85 }
+        {
+          zone: "Downtown",
+          mon: 85,
+          tue: 90,
+          wed: 88,
+          thu: 92,
+          fri: 95,
+          sat: 78,
+        },
+        {
+          zone: "North District",
+          mon: 75,
+          tue: 80,
+          wed: 85,
+          thu: 78,
+          fri: 82,
+          sat: 88,
+        },
+        {
+          zone: "East Zone",
+          mon: 70,
+          tue: 75,
+          wed: 80,
+          thu: 85,
+          fri: 90,
+          sat: 85,
+        },
       ]);
 
       // Top collectors (mock)
       setTopCollectors([
-        { name: 'John Smith', collections: 156, revenue: 23400, efficiency: 98 },
-        { name: 'Sarah Chen', collections: 142, revenue: 21300, efficiency: 96 },
-        { name: 'Mike Johnson', collections: 128, revenue: 19200, efficiency: 94 },
-        { name: 'Lisa Wang', collections: 115, revenue: 17250, efficiency: 92 },
-        { name: 'Tom Brown', collections: 103, revenue: 15450, efficiency: 90 }
+        {
+          name: "John Smith",
+          collections: 156,
+          revenue: 23400,
+          efficiency: 98,
+        },
+        {
+          name: "Sarah Chen",
+          collections: 142,
+          revenue: 21300,
+          efficiency: 96,
+        },
+        {
+          name: "Mike Johnson",
+          collections: 128,
+          revenue: 19200,
+          efficiency: 94,
+        },
+        { name: "Lisa Wang", collections: 115, revenue: 17250, efficiency: 92 },
+        { name: "Tom Brown", collections: 103, revenue: 15450, efficiency: 90 },
       ]);
-
     } catch (err) {
-      console.error('Error fetching analytics:', err);
+      console.error("Error fetching analytics:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+  const COLORS = [
+    "#10b981",
+    "#3b82f6",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#ec4899",
+  ];
 
   if (loading) {
     return (
       <div className="analytics-loading">
         <div className="spinner"></div>
-        <p>Đang tải dữ liệu phân tích...</p>
+        <p>Loading analytics data...</p>
       </div>
     );
   }
@@ -140,7 +209,9 @@ const Analytics = () => {
       {/* KEY METRICS */}
       <div className="metrics-grid">
         <div className="metric-card">
-          <div className="metric-icon" style={{ backgroundColor: '#10b98120' }}>♻️</div>
+          <div className="metric-icon" style={{ backgroundColor: "#10b98120" }}>
+            ♻️
+          </div>
           <div className="metric-content">
             <div className="metric-label">Total Volume</div>
             <div className="metric-value">{stats.totalVolume} tons</div>
@@ -149,7 +220,9 @@ const Analytics = () => {
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon" style={{ backgroundColor: '#3b82f620' }}>👥</div>
+          <div className="metric-icon" style={{ backgroundColor: "#3b82f620" }}>
+            👥
+          </div>
           <div className="metric-content">
             <div className="metric-label">Active Users</div>
             <div className="metric-value">{stats.activeUsers}</div>
@@ -158,7 +231,9 @@ const Analytics = () => {
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon" style={{ backgroundColor: '#f59e0b20' }}>⏱️</div>
+          <div className="metric-icon" style={{ backgroundColor: "#f59e0b20" }}>
+            ⏱️
+          </div>
           <div className="metric-content">
             <div className="metric-label">Avg Response Time</div>
             <div className="metric-value">{stats.avgResponseTime} hrs</div>
@@ -167,7 +242,9 @@ const Analytics = () => {
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon" style={{ backgroundColor: '#8b5cf620' }}>📈</div>
+          <div className="metric-icon" style={{ backgroundColor: "#8b5cf620" }}>
+            📈
+          </div>
           <div className="metric-content">
             <div className="metric-label">Growth Rate</div>
             <div className="metric-value">{stats.growthRate}%</div>
@@ -188,9 +265,9 @@ const Analytics = () => {
               <YAxis stroke="#6b7280" />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
+                  backgroundColor: "white",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
                 }}
               />
               <Legend />
@@ -199,7 +276,7 @@ const Analytics = () => {
                 dataKey="reports"
                 stroke="#10b981"
                 strokeWidth={3}
-                dot={{ fill: '#10b981', r: 4 }}
+                dot={{ fill: "#10b981", r: 4 }}
                 activeDot={{ r: 6 }}
                 name="Reports"
               />
@@ -223,7 +300,10 @@ const Analytics = () => {
                 dataKey="value"
               >
                 {wasteComposition.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip />
@@ -232,7 +312,10 @@ const Analytics = () => {
           <div className="chart-legend">
             {wasteComposition.map((item, i) => (
               <div key={i} className="legend-item">
-                <div className="legend-dot" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                <div
+                  className="legend-dot"
+                  style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                />
                 <span className="legend-label">{item.name}</span>
                 <span className="legend-value">{item.percentage}%</span>
               </div>
@@ -263,9 +346,10 @@ const Analytics = () => {
                 {zoneData.map((zone, i) => (
                   <tr key={i}>
                     <td className="zone-name">{zone.zone}</td>
-                    {['mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => {
+                    {["mon", "tue", "wed", "thu", "fri", "sat"].map((day) => {
                       const value = zone[day];
-                      const intensity = value > 85 ? 'high' : value > 70 ? 'medium' : 'low';
+                      const intensity =
+                        value > 85 ? "high" : value > 70 ? "medium" : "low";
                       return (
                         <td key={day} className={`heatmap-cell ${intensity}`}>
                           {value}
@@ -301,7 +385,9 @@ const Analytics = () => {
                       className="efficiency-fill"
                       style={{ width: `${collector.efficiency}%` }}
                     />
-                    <span className="efficiency-label">{collector.efficiency}% efficiency</span>
+                    <span className="efficiency-label">
+                      {collector.efficiency}% efficiency
+                    </span>
                   </div>
                 </div>
               </div>
@@ -330,35 +416,45 @@ const Analytics = () => {
                 <td>{collectionData.reduce((sum, d) => sum + d.reports, 0)}</td>
                 <td>1,045</td>
                 <td className="positive">+15.2%</td>
-                <td><span className="trend-up">📈</span></td>
+                <td>
+                  <span className="trend-up">📈</span>
+                </td>
               </tr>
               <tr>
                 <td>Average per Day</td>
                 <td>42</td>
                 <td>38</td>
                 <td className="positive">+10.5%</td>
-                <td><span className="trend-up">📈</span></td>
+                <td>
+                  <span className="trend-up">📈</span>
+                </td>
               </tr>
               <tr>
                 <td>Response Time (hrs)</td>
                 <td>2.4</td>
                 <td>2.8</td>
                 <td className="positive">-14.3%</td>
-                <td><span className="trend-down">📉</span></td>
+                <td>
+                  <span className="trend-down">📉</span>
+                </td>
               </tr>
               <tr>
                 <td>Customer Satisfaction</td>
                 <td>94%</td>
                 <td>91%</td>
                 <td className="positive">+3.3%</td>
-                <td><span className="trend-up">📈</span></td>
+                <td>
+                  <span className="trend-up">📈</span>
+                </td>
               </tr>
               <tr>
                 <td>CO₂ Reduction (kg)</td>
                 <td>892</td>
                 <td>756</td>
                 <td className="positive">+18.0%</td>
-                <td><span className="trend-up">📈</span></td>
+                <td>
+                  <span className="trend-up">📈</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -369,18 +465,10 @@ const Analytics = () => {
       <div className="export-section">
         <h3>Export Reports</h3>
         <div className="export-buttons">
-          <button className="btn-export">
-            📄 Export as PDF
-          </button>
-          <button className="btn-export">
-            📊 Export as Excel
-          </button>
-          <button className="btn-export">
-            📧 Email Report
-          </button>
-          <button className="btn-export">
-            🔗 Share Link
-          </button>
+          <button className="btn-export">📄 Export as PDF</button>
+          <button className="btn-export">📊 Export as Excel</button>
+          <button className="btn-export">📧 Email Report</button>
+          <button className="btn-export">🔗 Share Link</button>
         </div>
       </div>
     </div>
