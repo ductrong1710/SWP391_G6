@@ -1,5 +1,6 @@
 // src/pages/citizen/Dashboard.jsx
 import React, { useState } from "react";
+import './Dashboard.css';
 
 const Dashboard = () => {
   const [startIndex, setStartIndex] = useState(0);

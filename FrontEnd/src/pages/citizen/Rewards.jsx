@@ -1,6 +1,6 @@
 // src/pages/citizen/Rewards.jsx
 import React, { useState } from "react";
-
+import './Rewards.css';
 const Rewards = () => {
   const [activeFilter, setActiveFilter] = useState("All");
 

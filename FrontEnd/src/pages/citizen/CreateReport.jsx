@@ -4,7 +4,7 @@ import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import axios from 'axios';
-
+import './CreateReport.css';
 // --- FIX LEAFLET ICON ISSUE ---
 let DefaultIcon = L.icon({
   iconUrl: icon,
