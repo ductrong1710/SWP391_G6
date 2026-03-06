@@ -40,13 +40,12 @@ namespace DataAccessLayer.Repositories.Implementation
             _context.Collectionrequests.Update(entity);
         }
 
-        // View methods
         public async Task<IEnumerable<Collectionrequest>> GetByEnterpriseIdAsync(int enterpriseId)
         {
             return await _context.Collectionrequests
                 .Include(x => x.Enterprise)
                 .Include(x => x.Report)
-                    .ThenInclude(r => r.WasteType)
+                    .ThenInclude(r => r.WasteTypes) 
                 .Include(x => x.Report.SubmittedByNavigation)
                 .Include(x => x.Collectorassignments.Where(a => a.Status == "Assigned"))
                     .ThenInclude(a => a.AssignedCollectorNavigation)
@@ -60,7 +59,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectionrequests
                 .Include(x => x.Enterprise)
                 .Include(x => x.Report)
-                    .ThenInclude(r => r.WasteType)
+                    .ThenInclude(r => r.WasteTypes) 
                 .Include(x => x.Report.SubmittedByNavigation)
                 .Include(x => x.Collectorassignments)
                     .ThenInclude(a => a.AssignedCollectorNavigation)
@@ -74,7 +73,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectionrequests
                 .Include(x => x.Enterprise)
                 .Include(x => x.Report)
-                    .ThenInclude(r => r.WasteType)
+                    .ThenInclude(r => r.WasteTypes) 
                 .Include(x => x.Report.SubmittedByNavigation)
                 .Include(x => x.Collectorassignments.Where(a => a.Status == "Assigned"))
                     .ThenInclude(a => a.AssignedCollectorNavigation)

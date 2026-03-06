@@ -8,8 +8,8 @@ namespace BusinessLogicLayer.Services.Implementation
     public class WasteReportService : IWasteReportService
     {
         private const int MaxReportsPerMinute = 2;
-        private const int DuplicateRadiusMeters = 30; 
-        private const int DuplicateTimeWindowMinutes = 30; 
+        private const int DuplicateRadiusMeters = 30;
+        private const int DuplicateTimeWindowMinutes = 30;
         private readonly IUnitOfWork _uow;
 
         public WasteReportService(IUnitOfWork uow)
@@ -34,10 +34,20 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException("Longitude must be between -180 and 180");
             }
 
-            var wasteType = await _uow.WasteTypes.GetByIdAsync(dto.WasteTypeId);
-            if (wasteType == null)
+            if (dto.WasteTypeIds == null || !dto.WasteTypeIds.Any())
             {
-                throw new ArgumentException("WasteTypeId is invalid");
+                throw new ArgumentException("At least one WasteTypeId is required");
+            }
+
+            var wasteTypes = new List<Wastetype>();
+            foreach (var id in dto.WasteTypeIds)
+            {
+                var wt = await _uow.WasteTypes.GetByIdAsync(id);
+                if (wt == null)
+                {
+                    throw new ArgumentException($"WasteTypeId {id} is invalid");
+                }
+                wasteTypes.Add(wt);
             }
 
             var sinceUtc = DateTime.UtcNow.AddMinutes(-1);
@@ -49,12 +59,12 @@ namespace BusinessLogicLayer.Services.Implementation
 
             var nowUtc = DateTime.UtcNow;
             var duplicateCheckSince = nowUtc.AddMinutes(-DuplicateTimeWindowMinutes);
-            
+
             var latDelta = 0.001m;
             var lonDelta = 0.001m;
 
             var nearbyReports = await _uow.WasteReports.FindNearbyReportsAsync(
-                dto.WasteTypeId,
+                dto.WasteTypeIds, 
                 dto.Latitude,
                 dto.Longitude,
                 latDelta,
@@ -62,8 +72,8 @@ namespace BusinessLogicLayer.Services.Implementation
                 duplicateCheckSince
             );
 
-            var isDuplicate = nearbyReports.Any(r => 
-                CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude) 
+            var isDuplicate = nearbyReports.Any(r =>
+                CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude)
                 <= DuplicateRadiusMeters
             );
 
@@ -72,13 +82,13 @@ namespace BusinessLogicLayer.Services.Implementation
             var entity = new Wastereport
             {
                 SubmittedBy = userId,
-                WasteTypeId = dto.WasteTypeId,
                 ImageUrl = dto.Image,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
                 Description = dto.Description,
                 Status = status,
-                CreatedAt = nowUtc
+                CreatedAt = nowUtc,
+                WasteTypes = wasteTypes 
             };
 
             await _uow.WasteReports.AddAsync(entity);
@@ -105,18 +115,15 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Only Pending reports can be accepted");
             }
 
-            // Check nếu đã có collection request cho report này
             var existingRequest = await _uow.CollectionRequests.GetByReportIdAsync(reportId);
             if (existingRequest != null)
             {
                 throw new InvalidOperationException("Collection request already exists for this report");
             }
 
-            // Update report status
             report.Status = "Accepted";
             _uow.WasteReports.Update(report);
 
-            // Tự động tạo collection request
             var collectionRequest = new Collectionrequest
             {
                 ReportId = reportId,
@@ -219,10 +226,20 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException("Longitude must be between -180 and 180");
             }
 
-            var wasteType = await _uow.WasteTypes.GetByIdAsync(dto.WasteTypeId);
-            if (wasteType == null)
+            if (dto.WasteTypeIds == null || !dto.WasteTypeIds.Any())
             {
-                throw new ArgumentException("WasteTypeId is invalid");
+                throw new ArgumentException("At least one WasteTypeId is required");
+            }
+
+            var newWasteTypes = new List<Wastetype>();
+            foreach (var id in dto.WasteTypeIds)
+            {
+                var wt = await _uow.WasteTypes.GetByIdAsync(id);
+                if (wt == null)
+                {
+                    throw new ArgumentException($"WasteTypeId {id} is invalid");
+                }
+                newWasteTypes.Add(wt);
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Image))
@@ -232,7 +249,12 @@ namespace BusinessLogicLayer.Services.Implementation
             report.Latitude = dto.Latitude;
             report.Longitude = dto.Longitude;
             report.Description = dto.Description;
-            report.WasteTypeId = dto.WasteTypeId;
+
+            report.WasteTypes.Clear();
+            foreach (var wt in newWasteTypes)
+            {
+                report.WasteTypes.Add(wt);
+            }
 
             _uow.WasteReports.Update(report);
             await _uow.SaveChangesAsync();
@@ -276,8 +298,10 @@ namespace BusinessLogicLayer.Services.Implementation
                 ReportId = report.ReportId,
                 SubmittedBy = report.SubmittedBy,
                 SubmittedByName = report.SubmittedByNavigation?.FullName ?? string.Empty,
-                WasteTypeId = report.WasteTypeId,
-                WasteTypeName = report.WasteType?.Name ?? string.Empty,
+
+                WasteTypeIds = report.WasteTypes?.Select(wt => wt.WasteTypeId).ToList() ?? new List<int>(),
+                WasteTypeNames = report.WasteTypes?.Select(wt => wt.Name).ToList() ?? new List<string>(),
+
                 ImageUrl = report.ImageUrl,
                 Latitude = report.Latitude,
                 Longitude = report.Longitude,
@@ -287,7 +311,6 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
-        
         private static double CalculateDistanceMeters(double lat1, double lon1, double lat2, double lon2)
         {
             const double EarthRadiusKm = 6371;
@@ -302,7 +325,7 @@ namespace BusinessLogicLayer.Services.Implementation
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             var distanceKm = EarthRadiusKm * c;
 
-            return distanceKm * 1000; 
+            return distanceKm * 1000;
         }
 
         private static double DegreesToRadians(double degrees)
@@ -311,4 +334,3 @@ namespace BusinessLogicLayer.Services.Implementation
         }
     }
 }
-
