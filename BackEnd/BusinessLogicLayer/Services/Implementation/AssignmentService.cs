@@ -234,7 +234,11 @@ namespace BusinessLogicLayer.Services.Implementation
 
                 // Waste report info
                 ReportId = a.Request?.ReportId ?? 0,
-                WasteTypeName = a.Request?.Report?.WasteType?.Name,
+
+                WasteTypeName = a.Request?.Report?.WasteTypes != null
+                    ? string.Join(", ", a.Request.Report.WasteTypes.Select(wt => wt.Name))
+                    : string.Empty,
+
                 ReportImageUrl = a.Request?.Report?.ImageUrl,
                 Latitude = a.Request?.Report?.Latitude,
                 Longitude = a.Request?.Report?.Longitude,
@@ -300,7 +304,11 @@ namespace BusinessLogicLayer.Services.Implementation
 
                 // Waste report info
                 ReportId = a.Request?.ReportId ?? 0,
-                WasteTypeName = a.Request?.Report?.WasteType?.Name,
+
+                WasteTypeName = a.Request?.Report?.WasteTypes != null
+                    ? string.Join(", ", a.Request.Report.WasteTypes.Select(wt => wt.Name))
+                    : string.Empty,
+
                 ImageUrl = a.Request?.Report?.ImageUrl,
                 Latitude = a.Request?.Report?.Latitude,
                 Longitude = a.Request?.Report?.Longitude,
@@ -346,7 +354,11 @@ namespace BusinessLogicLayer.Services.Implementation
 
                 // Waste report info
                 ReportId = assignment.Request?.ReportId ?? 0,
-                WasteTypeName = assignment.Request?.Report?.WasteType?.Name,
+
+                WasteTypeName = assignment.Request?.Report?.WasteTypes != null
+                    ? string.Join(", ", assignment.Request.Report.WasteTypes.Select(wt => wt.Name))
+                    : string.Empty,
+
                 ImageUrl = assignment.Request?.Report?.ImageUrl,
                 Latitude = assignment.Request?.Report?.Latitude,
                 Longitude = assignment.Request?.Report?.Longitude,

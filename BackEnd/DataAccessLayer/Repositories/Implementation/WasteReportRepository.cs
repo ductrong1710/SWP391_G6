@@ -29,7 +29,7 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             return await _context.Wastereports
                 .Include(x => x.SubmittedByNavigation)
-                .Include(x => x.WasteType)
+                .Include(x => x.WasteTypes)
                 .FirstOrDefaultAsync(x => x.ReportId == reportId);
         }
 
@@ -42,7 +42,7 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             return await _context.Wastereports
                 .Include(x => x.SubmittedByNavigation)
-                .Include(x => x.WasteType)
+                .Include(x => x.WasteTypes)
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
         }
@@ -51,14 +51,14 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             return await _context.Wastereports
                 .Include(x => x.SubmittedByNavigation)
-                .Include(x => x.WasteType)
+                .Include(x => x.WasteTypes)
                 .Where(x => x.SubmittedBy == userId)
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
         }
 
         public async Task<IEnumerable<Wastereport>> FindNearbyReportsAsync(
-            int wasteTypeId,
+         List<int> wasteTypeIds,
             decimal latitude,
             decimal longitude,
             decimal latDelta,
@@ -66,7 +66,7 @@ namespace DataAccessLayer.Repositories.Implementation
             DateTime sinceUtc)
         {
             return await _context.Wastereports
-                .Where(x => x.WasteTypeId == wasteTypeId
+                .Where(x => x.WasteTypes.Any(wt => wasteTypeIds.Contains(wt.WasteTypeId))
                     && x.CreatedAt >= sinceUtc
                     && x.Latitude >= latitude - latDelta
                     && x.Latitude <= latitude + latDelta

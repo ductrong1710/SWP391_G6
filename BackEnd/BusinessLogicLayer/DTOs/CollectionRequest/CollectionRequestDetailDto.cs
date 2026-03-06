@@ -29,8 +29,8 @@ namespace BusinessLogicLayer.DTOs.CollectionRequest
         public int SubmittedBy { get; set; }
         public string? CitizenName { get; set; }
         public string? CitizenEmail { get; set; }
-        public int WasteTypeId { get; set; }
-        public string? WasteTypeName { get; set; }
+        public List<int> WasteTypeIds { get; set; } = new List<int>();
+        public List<string> WasteTypeNames { get; set; } = new List<string>();
         public string? ImageUrl { get; set; }
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }

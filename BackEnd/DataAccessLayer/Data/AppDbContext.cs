@@ -386,17 +386,19 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("'Pending'::character varying")
                 .HasColumnName("status");
             entity.Property(e => e.SubmittedBy).HasColumnName("submitted_by");
-            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
 
             entity.HasOne(d => d.SubmittedByNavigation).WithMany(p => p.Wastereports)
                 .HasForeignKey(d => d.SubmittedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("wastereports_submitted_by_fkey");
 
-            entity.HasOne(d => d.WasteType).WithMany(p => p.Wastereports)
-                .HasForeignKey(d => d.WasteTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("wastereports_waste_type_id_fkey");
+            entity.HasMany(d => d.WasteTypes)
+                .WithMany(p => p.Reports)
+                .UsingEntity<Dictionary<string, object>>(
+                    "report_waste_types",
+                    j => j.HasOne<Wastetype>().WithMany().HasForeignKey("waste_type_id"),
+                    j => j.HasOne<Wastereport>().WithMany().HasForeignKey("report_id")
+                );
         });
 
         modelBuilder.Entity<Wastetype>(entity =>
@@ -405,7 +407,6 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("wastetypes");
 
-            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
             entity.Property(e => e.Description)
                 .HasMaxLength(255)
                 .HasColumnName("description");

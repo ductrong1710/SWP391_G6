@@ -22,7 +22,7 @@ namespace WasteCollectionPlatform.Controllers
             public decimal Latitude { get; set; }
             public decimal Longitude { get; set; }
             public string? Description { get; set; }
-            public int WasteTypeId { get; set; }
+            public List<int> WasteTypeIds { get; set; } = new List<int>();
         }
 
         public class UpdateWasteReportForm
@@ -31,7 +31,7 @@ namespace WasteCollectionPlatform.Controllers
             public decimal Latitude { get; set; }
             public decimal Longitude { get; set; }
             public string? Description { get; set; }
-            public int WasteTypeId { get; set; }
+            public List<int> WasteTypeIds { get; set; } = new List<int>();
         }
 
 
@@ -127,7 +127,7 @@ namespace WasteCollectionPlatform.Controllers
                     Latitude = form.Latitude,
                     Longitude = form.Longitude,
                     Description = form.Description,
-                    WasteTypeId = form.WasteTypeId
+                    WasteTypeIds = form.WasteTypeIds
                 };
 
                 var created = await _service.CreateAsync(userId, dto);
@@ -173,7 +173,7 @@ namespace WasteCollectionPlatform.Controllers
                     Latitude = form.Latitude,
                     Longitude = form.Longitude,
                     Description = form.Description,
-                    WasteTypeId = form.WasteTypeId
+                    WasteTypeIds = form.WasteTypeIds
                 };
 
                 var updated = await _service.UpdateAsync(id, userId, dto);
