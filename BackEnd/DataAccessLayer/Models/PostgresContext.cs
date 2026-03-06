@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -98,19 +98,21 @@ public partial class PostgresContext : DbContext
             entity.HasIndex(e => e.AssignmentId, "collectionconfirmations_assignment_id_key").IsUnique();
 
             entity.Property(e => e.ConfirmationId).HasColumnName("confirmation_id");
+            entity.Property(e => e.AfterImageUrl)
+                .HasComment("Photo after collection (cleaned site)")
+                .HasColumnName("after_image_url");
             entity.Property(e => e.AssignmentId).HasColumnName("assignment_id");
+            entity.Property(e => e.BeforeImageUrl)
+                .HasComment("Photo before collection (waste at site) - from assignment.before_image_url")
+                .HasColumnName("before_image_url");
             entity.Property(e => e.ConfirmedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasComment("When collector completed the collection (Status: Completed)")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("confirmed_at");
-            entity.Property(e => e.BeforeImageUrl)
-                .HasColumnType("text")
-                .HasColumnName("before_image_url");
-            entity.Property(e => e.AfterImageUrl)
-                .HasColumnType("text")
-                .HasColumnName("after_image_url");
             entity.Property(e => e.Note)
                 .HasMaxLength(255)
+                .HasComment("Additional notes from collector")
                 .HasColumnName("note");
 
             entity.HasOne(d => d.Assignment).WithOne(p => p.Collectionconfirmation)
@@ -156,27 +158,36 @@ public partial class PostgresContext : DbContext
 
             entity.ToTable("collectorassignments");
 
+            entity.HasIndex(e => e.ArrivedAt, "idx_collectorassignments_arrived_at");
+
+            entity.HasIndex(e => e.StartedAt, "idx_collectorassignments_started_at");
+
+            entity.HasIndex(e => e.Status, "idx_collectorassignments_status");
+
             entity.Property(e => e.AssignmentId).HasColumnName("assignment_id");
+            entity.Property(e => e.ArrivedAt)
+                .HasComment("When collector arrived at location (Status: Arrived)")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("arrived_at");
             entity.Property(e => e.AssignedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasComment("When enterprise assigned the collector")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("assigned_at");
             entity.Property(e => e.AssignedBy).HasColumnName("assigned_by");
             entity.Property(e => e.AssignedCollector).HasColumnName("assigned_collector");
+            entity.Property(e => e.BeforeImageUrl)
+                .HasComment("Photo before collection, uploaded when arrived")
+                .HasColumnName("before_image_url");
             entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.StartedAt)
+                .HasComment("When collector starts heading to location (Status: OnTheWay)")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("started_at");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Assigned'::character varying")
                 .HasColumnName("status");
-            entity.Property(e => e.StartedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("started_at");
-            entity.Property(e => e.ArrivedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("arrived_at");
-            entity.Property(e => e.BeforeImageUrl)
-                .HasColumnType("text")
-                .HasColumnName("before_image_url");
 
             entity.HasOne(d => d.AssignedByNavigation).WithMany(p => p.CollectorassignmentAssignedByNavigations)
                 .HasForeignKey(d => d.AssignedBy)
@@ -278,18 +289,16 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
-            entity.Property(e => e.RewardId).HasColumnName("reward_id");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Type)
-                .HasMaxLength(10)
-                .HasDefaultValue("redeem")
-                .HasColumnName("type");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.Points)
                 .HasDefaultValue(0)
                 .HasColumnName("points");
-            entity.Property(e => e.Description)
-                .HasColumnType("text")
-                .HasColumnName("description");
+            entity.Property(e => e.RewardId).HasColumnName("reward_id");
+            entity.Property(e => e.Type)
+                .HasMaxLength(10)
+                .HasDefaultValueSql("'redeem'::character varying")
+                .HasColumnName("type");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.Reward).WithMany(p => p.Rewardtransactions)
                 .HasForeignKey(d => d.RewardId)
@@ -389,17 +398,29 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("'Pending'::character varying")
                 .HasColumnName("status");
             entity.Property(e => e.SubmittedBy).HasColumnName("submitted_by");
-            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
 
             entity.HasOne(d => d.SubmittedByNavigation).WithMany(p => p.Wastereports)
                 .HasForeignKey(d => d.SubmittedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("wastereports_submitted_by_fkey");
 
-            entity.HasOne(d => d.WasteType).WithMany(p => p.Wastereports)
-                .HasForeignKey(d => d.WasteTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("wastereports_waste_type_id_fkey");
+            entity.HasMany(d => d.WasteTypes).WithMany(p => p.Reports)
+                .UsingEntity<Dictionary<string, object>>(
+                    "ReportWasteType",
+                    r => r.HasOne<Wastetype>().WithMany()
+                        .HasForeignKey("WasteTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("report_waste_types_waste_type_id_fkey"),
+                    l => l.HasOne<Wastereport>().WithMany()
+                        .HasForeignKey("ReportId")
+                        .HasConstraintName("report_waste_types_report_id_fkey"),
+                    j =>
+                    {
+                        j.HasKey("ReportId", "WasteTypeId").HasName("report_waste_types_pkey");
+                        j.ToTable("report_waste_types");
+                        j.IndexerProperty<int>("ReportId").HasColumnName("report_id");
+                        j.IndexerProperty<int>("WasteTypeId").HasColumnName("waste_type_id");
+                    });
         });
 
         modelBuilder.Entity<Wastetype>(entity =>

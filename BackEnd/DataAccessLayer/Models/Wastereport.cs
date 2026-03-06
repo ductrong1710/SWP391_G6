@@ -1,3 +1,6 @@
+﻿using System;
+using System.Collections.Generic;
+
 namespace DataAccessLayer.Models;
 
 public partial class Wastereport
@@ -5,8 +8,6 @@ public partial class Wastereport
     public int ReportId { get; set; }
 
     public int SubmittedBy { get; set; }
-
-    public int WasteTypeId { get; set; }
 
     public string ImageUrl { get; set; } = null!;
 
@@ -16,7 +17,7 @@ public partial class Wastereport
 
     public string? Description { get; set; }
 
-    public string Status { get; set; } = "Pending";
+    public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
@@ -28,5 +29,5 @@ public partial class Wastereport
 
     public virtual User SubmittedByNavigation { get; set; } = null!;
 
-    public virtual Wastetype WasteType { get; set; } = null!;
+    public virtual ICollection<Wastetype> WasteTypes { get; set; } = new List<Wastetype>();
 }

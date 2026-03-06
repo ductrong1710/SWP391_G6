@@ -1,4 +1,7 @@
-﻿namespace DataAccessLayer.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace DataAccessLayer.Models;
 
 public partial class Reward
 {
@@ -10,7 +13,7 @@ public partial class Reward
 
     public int Points { get; set; }
 
-    public bool Status { get; set; } = true;
+    public bool Status { get; set; }
 
     public virtual ICollection<Rewardtransaction> Rewardtransactions { get; set; } = new List<Rewardtransaction>();
 }
