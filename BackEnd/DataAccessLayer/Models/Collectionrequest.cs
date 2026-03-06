@@ -1,4 +1,7 @@
-﻿namespace DataAccessLayer.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace DataAccessLayer.Models;
 
 public partial class Collectionrequest
 {
