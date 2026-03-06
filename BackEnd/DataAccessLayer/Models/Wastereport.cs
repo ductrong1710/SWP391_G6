@@ -26,8 +26,6 @@ public partial class Wastereport
 
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 
-    public virtual ICollection<Rewardtransaction> Rewardtransactions { get; set; } = new List<Rewardtransaction>();
-
     public virtual User SubmittedByNavigation { get; set; } = null!;
 
     public virtual Wastetype WasteType { get; set; } = null!;

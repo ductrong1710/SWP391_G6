@@ -8,11 +8,14 @@ public partial class Rewardtransaction
 
     public int RewardId { get; set; }
 
-    public int ReportId { get; set; }
-
     public DateTime? CreatedAt { get; set; }
 
-    public virtual Wastereport Report { get; set; } = null!;
+    public string Type { get; set; } = "redeem"; // "earn" hoặc "redeem"
+
+    public int Points { get; set; } = 0;
+
+    public string? Description { get; set; }
+
 
     public virtual Reward Reward { get; set; } = null!;
 

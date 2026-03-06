@@ -262,6 +262,9 @@ public partial class PostgresContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("name");
             entity.Property(e => e.Points).HasColumnName("points");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(true)
+                .HasColumnName("status");
         });
 
         modelBuilder.Entity<Rewardtransaction>(entity =>
@@ -275,14 +278,18 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
-            entity.Property(e => e.ReportId).HasColumnName("report_id");
             entity.Property(e => e.RewardId).HasColumnName("reward_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.Report).WithMany(p => p.Rewardtransactions)
-                .HasForeignKey(d => d.ReportId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("rewardtransactions_report_id_fkey");
+            entity.Property(e => e.Type)
+                .HasMaxLength(10)
+                .HasDefaultValue("redeem")
+                .HasColumnName("type");
+            entity.Property(e => e.Points)
+                .HasDefaultValue(0)
+                .HasColumnName("points");
+            entity.Property(e => e.Description)
+                .HasColumnType("text")
+                .HasColumnName("description");
 
             entity.HasOne(d => d.Reward).WithMany(p => p.Rewardtransactions)
                 .HasForeignKey(d => d.RewardId)
@@ -344,6 +351,9 @@ public partial class PostgresContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Active'::character varying")
                 .HasColumnName("status");
+            entity.Property(e => e.Totalpoints)
+                .HasDefaultValue(0)
+                .HasColumnName("totalpoints");
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)

@@ -10,5 +10,7 @@ public partial class Reward
 
     public int Points { get; set; }
 
+    public bool Status { get; set; } = true;
+
     public virtual ICollection<Rewardtransaction> Rewardtransactions { get; set; } = new List<Rewardtransaction>();
 }

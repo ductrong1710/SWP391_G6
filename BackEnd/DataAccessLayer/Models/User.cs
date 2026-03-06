@@ -18,6 +18,8 @@ public partial class User
 
     public DateTime? CreatedAt { get; set; } = DateTime.Now;
 
+    public int Totalpoints { get; set; } = 0;
+
     public virtual ICollection<Collectionrequest> Collectionrequests { get; set; } = new List<Collectionrequest>();
 
     public virtual ICollection<Collectorassignment> CollectorassignmentAssignedByNavigations { get; set; } = new List<Collectorassignment>();
