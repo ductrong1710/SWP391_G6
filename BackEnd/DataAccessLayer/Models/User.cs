@@ -21,7 +21,7 @@ public partial class User
 
     public DateTime? CreatedAt { get; set; }
 
-    public int Totalpoints { get; set; }
+    public int TotalPoints { get; set; }
 
     public virtual ICollection<Collectionrequest> Collectionrequests { get; set; } = new List<Collectionrequest>();
 

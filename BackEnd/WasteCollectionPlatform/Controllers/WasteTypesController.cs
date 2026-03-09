@@ -26,13 +26,23 @@ namespace WasteCollectionPlatform.Controllers
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        /// <summary>
+        /// Authenticated: Get all waste types
+        /// </summary>
+        [HttpGet]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAll()
         {
-            var result = await _service.GetAllAsync();
+            bool isAdmin = User.IsInRole("Admin");
+            bool onlyActive = !isAdmin;
+            var result = await _service.GetAllAsync(onlyActive);
+
             return Ok(result);
         }
 
-       
+
         /// <summary>
         /// Authenticated: Get waste type by ID
         /// </summary>

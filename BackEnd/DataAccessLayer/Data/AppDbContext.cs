@@ -348,9 +348,9 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Active'::character varying")
                 .HasColumnName("status");
-            entity.Property(e => e.Totalpoints)
+            entity.Property(e => e.TotalPoints)
                 .HasDefaultValue(0)
-                .HasColumnName("totalpoints");
+                .HasColumnName("total_points");
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
@@ -407,12 +407,21 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("wastetypes");
 
+            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
+
             entity.Property(e => e.Description)
                 .HasMaxLength(255)
                 .HasColumnName("description");
             entity.Property(e => e.Name)
                 .HasMaxLength(50)
                 .HasColumnName("name");
+            entity.Property(e => e.RewardPoints)
+                .HasDefaultValue(0)
+                .HasColumnName("reward_points");
+
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
         });
 
         OnModelCreatingPartial(modelBuilder);
