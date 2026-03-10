@@ -1,4 +1,5 @@
 using DataAccessLayer.Data;
+using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,8 @@ namespace DataAccessLayer.Repositories.Implementation
         public ICollectionRequestRepository CollectionRequests { get; }
         public ICollectorAssignmentRepository CollectorAssignments { get; }
         public ICollectionConfirmationRepository CollectionConfirmations { get; }
+        public IGenericRepository<DataAccessLayer.Models.CollectionDetail> CollectionDetails { get; }
+        public IGenericRepository<DataAccessLayer.Models.Rewardtransaction> RewardTransactions { get; }
 
         public UnitOfWork(
             AppDbContext context,
@@ -35,6 +38,8 @@ namespace DataAccessLayer.Repositories.Implementation
             CollectionRequests = collectionRequestRepository;
             CollectorAssignments = collectorAssignmentRepository;
             CollectionConfirmations = collectionConfirmationRepository;
+            CollectionDetails = new GenericRepository<DataAccessLayer.Models.CollectionDetail>(_context);
+            RewardTransactions = new GenericRepository<DataAccessLayer.Models.Rewardtransaction>(_context);
         }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

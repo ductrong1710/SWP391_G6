@@ -14,6 +14,8 @@ namespace DataAccessLayer.Repositories.Interface
         ICollectionRequestRepository CollectionRequests { get; }
         ICollectorAssignmentRepository CollectorAssignments { get; }
         ICollectionConfirmationRepository CollectionConfirmations { get; }
+        IGenericRepository<DataAccessLayer.Models.CollectionDetail> CollectionDetails { get; }
+        IGenericRepository<DataAccessLayer.Models.Rewardtransaction> RewardTransactions { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }

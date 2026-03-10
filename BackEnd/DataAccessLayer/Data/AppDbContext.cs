@@ -287,16 +287,19 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
+            entity.Property(e => e.ReportId)
+                .HasColumnName("report_id");
 
             entity.HasOne(d => d.Reward).WithMany(p => p.Rewardtransactions)
                 .HasForeignKey(d => d.RewardId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("rewardtransactions_reward_id_fkey");
 
             entity.HasOne(d => d.User).WithMany(p => p.Rewardtransactions)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("rewardtransactions_user_id_fkey");
+
+
         });
 
         modelBuilder.Entity<Role>(entity =>
