@@ -67,8 +67,12 @@ namespace BusinessLogicLayer.Services.Implementation
 
             existing.Name = dto.Name;
             existing.Description = dto.Description;
-            existing.RewardPoints = dto.RewardPoints; 
-                                                      
+            existing.RewardPoints = dto.RewardPoints;
+
+            if (dto.IsActive.HasValue)
+            {
+                existing.IsActive = dto.IsActive.Value;
+            }
 
             _uow.WasteTypes.Update(existing);
             await _uow.SaveChangesAsync();

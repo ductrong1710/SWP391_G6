@@ -43,7 +43,7 @@ namespace BusinessLogicLayer.Services.Implementation
             foreach (var id in dto.WasteTypeIds)
             {
                 var wt = await _uow.WasteTypes.GetByIdAsync(id);
-                if (wt == null)
+                if (wt == null || wt.IsActive == false)
                 {
                     throw new ArgumentException($"WasteTypeId {id} is invalid");
                 }
@@ -100,6 +100,22 @@ namespace BusinessLogicLayer.Services.Implementation
                 CreatedAt = nowUtc
             };
             await _uow.Notifications.AddAsync(notif);
+
+            var enterprises = await _uow.Users.GetUsersByRoleAsync("Enterprise");
+            if (enterprises != null && enterprises.Any())
+            {
+                foreach (var enterprise in enterprises)
+                {
+                    var enterpriseNotif = new Notification
+                    {
+                        UserId = enterprise.UserId,
+                        Content = $"A new waste report (Pending) has been submitted and is waiting for assignment.",
+                        IsRead = false,
+                        CreatedAt = nowUtc
+                    };
+                    await _uow.Notifications.AddAsync(enterpriseNotif);
+                }
+            }
 
             await _uow.SaveChangesAsync();
 
