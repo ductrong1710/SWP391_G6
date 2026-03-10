@@ -131,6 +131,16 @@ namespace BusinessLogicLayer.Services.Implementation
             assignment.AssignedAt = DateTime.UtcNow;
 
             _uow.CollectorAssignments.Update(assignment);
+
+            var notification = new Notification
+            {
+                UserId = dto.NewCollectorId,
+                Content = $"You have been assigned to collect waste for request #{assignment.RequestId}.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notification);
+
             await _uow.SaveChangesAsync();
 
             return new CollectorAssignmentResponseDto

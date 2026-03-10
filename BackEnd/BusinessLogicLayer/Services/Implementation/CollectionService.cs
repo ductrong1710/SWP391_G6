@@ -1,5 +1,6 @@
 using BusinessLogicLayer.DTOs.Collection;
 using BusinessLogicLayer.Services.Interface;
+using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 
 namespace BusinessLogicLayer.Services.Implementation
@@ -425,6 +426,14 @@ namespace BusinessLogicLayer.Services.Implementation
                                 CreatedAt = DateTime.UtcNow
                             };
                             await _uow.RewardTransactions.AddAsync(rewardTx);
+                            var notification = new Notification
+                            {
+                                UserId = citizen.UserId,
+                                Content = $"Your reported waste has been successfully collected! You have earned {pointsEarned} reward points.",
+                                IsRead = false,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _uow.Notifications.AddAsync(notification);
                         }
                     }
                 }
