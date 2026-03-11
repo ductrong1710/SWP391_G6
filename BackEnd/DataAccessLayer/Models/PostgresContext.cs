@@ -17,6 +17,8 @@ public partial class PostgresContext : DbContext
 
     public virtual DbSet<AiWastePrediction> AiWastePredictions { get; set; }
 
+    public virtual DbSet<CollectionDetail> CollectionDetails { get; set; }
+
     public virtual DbSet<Collectionconfirmation> Collectionconfirmations { get; set; }
 
     public virtual DbSet<Collectionrequest> Collectionrequests { get; set; }
@@ -87,6 +89,27 @@ public partial class PostgresContext : DbContext
                 .HasForeignKey(d => d.ReportId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("ai_waste_predictions_report_id_fkey");
+        });
+
+        modelBuilder.Entity<CollectionDetail>(entity =>
+        {
+            entity.HasKey(e => e.DetailId).HasName("collection_details_pkey");
+
+            entity.ToTable("collection_details");
+
+            entity.Property(e => e.DetailId).HasColumnName("detail_id");
+            entity.Property(e => e.ActualWeight).HasColumnName("actual_weight");
+            entity.Property(e => e.ConfirmationId).HasColumnName("confirmation_id");
+            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
+
+            entity.HasOne(d => d.Confirmation).WithMany(p => p.CollectionDetails)
+                .HasForeignKey(d => d.ConfirmationId)
+                .HasConstraintName("fk_collection_details_confirmation");
+
+            entity.HasOne(d => d.WasteType).WithMany(p => p.CollectionDetails)
+                .HasForeignKey(d => d.WasteTypeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_collection_details_waste_type");
         });
 
         modelBuilder.Entity<Collectionconfirmation>(entity =>
@@ -360,9 +383,9 @@ public partial class PostgresContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Active'::character varying")
                 .HasColumnName("status");
-            entity.Property(e => e.Totalpoints)
+            entity.Property(e => e.TotalPoints)
                 .HasDefaultValue(0)
-                .HasColumnName("totalpoints");
+                .HasColumnName("total_points");
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
@@ -433,9 +456,15 @@ public partial class PostgresContext : DbContext
             entity.Property(e => e.Description)
                 .HasMaxLength(255)
                 .HasColumnName("description");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
             entity.Property(e => e.Name)
                 .HasMaxLength(50)
                 .HasColumnName("name");
+            entity.Property(e => e.RewardPoints)
+                .HasDefaultValue(0)
+                .HasColumnName("reward_points");
         });
 
         OnModelCreatingPartial(modelBuilder);

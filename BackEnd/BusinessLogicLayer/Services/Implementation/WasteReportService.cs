@@ -43,7 +43,7 @@ namespace BusinessLogicLayer.Services.Implementation
             foreach (var id in dto.WasteTypeIds)
             {
                 var wt = await _uow.WasteTypes.GetByIdAsync(id);
-                if (wt == null)
+                if (wt == null || wt.IsActive == false)
                 {
                     throw new ArgumentException($"WasteTypeId {id} is invalid");
                 }
@@ -92,6 +92,31 @@ namespace BusinessLogicLayer.Services.Implementation
             };
 
             await _uow.WasteReports.AddAsync(entity);
+            var notif = new Notification
+            {
+                UserId = userId,
+                Content = "Your waste report has been submitted successfully and is pending approval.",
+                IsRead = false,
+                CreatedAt = nowUtc
+            };
+            await _uow.Notifications.AddAsync(notif);
+
+            var enterprises = await _uow.Users.GetUsersByRoleAsync("Enterprise");
+            if (enterprises != null && enterprises.Any())
+            {
+                foreach (var enterprise in enterprises)
+                {
+                    var enterpriseNotif = new Notification
+                    {
+                        UserId = enterprise.UserId,
+                        Content = $"A new waste report (Pending) has been submitted and is waiting for assignment.",
+                        IsRead = false,
+                        CreatedAt = nowUtc
+                    };
+                    await _uow.Notifications.AddAsync(enterpriseNotif);
+                }
+            }
+
             await _uow.SaveChangesAsync();
 
             return new WasteReportCreatedResponseDto
@@ -133,6 +158,15 @@ namespace BusinessLogicLayer.Services.Implementation
             };
 
             await _uow.CollectionRequests.AddAsync(collectionRequest);
+
+            var notif = new Notification
+            {
+                UserId = report.SubmittedBy,
+                Content = $"Your waste report #{reportId} has been accepted and is waiting for collection.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notif);
             await _uow.SaveChangesAsync();
 
             return new WasteReportStatusResponseDto
@@ -157,6 +191,16 @@ namespace BusinessLogicLayer.Services.Implementation
 
             report.Status = "Rejected";
             _uow.WasteReports.Update(report);
+
+            var notif = new Notification
+            {
+                UserId = report.SubmittedBy,
+                Content = $"Your waste report #{reportId} has been rejected.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notif);
+
             await _uow.SaveChangesAsync();
 
             return new WasteReportStatusResponseDto

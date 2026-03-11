@@ -1,5 +1,6 @@
 using BusinessLogicLayer.DTOs.Collection;
 using BusinessLogicLayer.Services.Interface;
+using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 
 namespace BusinessLogicLayer.Services.Implementation
@@ -360,6 +361,33 @@ namespace BusinessLogicLayer.Services.Implementation
 
             await _uow.CollectionConfirmations.AddAsync(confirmation);
 
+            await _uow.SaveChangesAsync();
+
+            int pointsEarned = 0;
+
+            if (dto.ActualWeights != null && dto.ActualWeights.Any())
+            {
+                foreach (var weightItem in dto.ActualWeights)
+                {
+                    if (weightItem.Weight > 0)
+                    {
+                        var wasteType = await _uow.WasteTypes.GetByIdAsync(weightItem.WasteTypeId);
+                        if (wasteType != null)
+                        {
+                            pointsEarned += (int)Math.Round(wasteType.RewardPoints * weightItem.Weight);
+
+                            var detail = new DataAccessLayer.Models.CollectionDetail
+                            {
+                                ConfirmationId = confirmation.ConfirmationId,
+                                WasteTypeId = wasteType.WasteTypeId,
+                                ActualWeight = weightItem.Weight
+                            };
+                            await _uow.CollectionDetails.AddAsync(detail);
+                        }
+                    }
+                }
+            }
+
             // Update assignment status to "Completed"
             // Note: CompletedAt is tracked in confirmation.ConfirmedAt
             assignment.Status = "Completed";
@@ -378,6 +406,36 @@ namespace BusinessLogicLayer.Services.Implementation
                 {
                     report.Status = "Collected";
                     _uow.WasteReports.Update(report);
+                    if (pointsEarned > 0)
+                    {
+                        var citizen = await _uow.Users.GetByIdAsync(report.SubmittedBy);
+                        if (citizen != null)
+                        {
+                            // Cộng điểm
+                            citizen.TotalPoints = citizen.TotalPoints + pointsEarned;
+                            _uow.Users.Update(citizen);
+
+                            // Ghi lịch sử giao dịch điểm
+                            var rewardTx = new DataAccessLayer.Models.Rewardtransaction
+                            {
+                                UserId = citizen.UserId,
+                                ReportId = report.ReportId,
+                                Points = pointsEarned,
+                                Type = "Earned",
+                                Description = $"Earned points for waste collection (Request #{request.RequestId})",
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _uow.RewardTransactions.AddAsync(rewardTx);
+                            var notification = new Notification
+                            {
+                                UserId = citizen.UserId,
+                                Content = $"Your reported waste has been successfully collected! You have earned {pointsEarned} reward points.",
+                                IsRead = false,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _uow.Notifications.AddAsync(notification);
+                        }
+                    }
                 }
             }
 
@@ -392,7 +450,8 @@ namespace BusinessLogicLayer.Services.Implementation
                 CompletedAt = confirmation.ConfirmedAt,
                 BeforeImageUrl = confirmation.BeforeImageUrl,
                 AfterImageUrl = confirmation.AfterImageUrl,
-                Note = confirmation.Note
+                Note = confirmation.Note,
+                EarnedPoints = pointsEarned
             };
         }
 

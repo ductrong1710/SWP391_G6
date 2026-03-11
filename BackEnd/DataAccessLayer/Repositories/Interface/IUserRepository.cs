@@ -19,5 +19,6 @@ namespace DataAccessLayer.Repositories.Interface
         void Delete(User user);
         Task<bool> EmailExistsExceptAsync(string email, int excludeUserId);
         Task<bool> PhoneExistsExceptAsync(string phone, int excludeUserId);
+        Task<IEnumerable<User>> GetUsersByRoleAsync(string roleName);
     }
 }

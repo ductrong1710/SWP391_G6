@@ -65,6 +65,15 @@ namespace BusinessLogicLayer.Services.Implementation
             request.Status = "Assigned";
             _uow.CollectionRequests.Update(request);
 
+            var notification = new Notification
+            {
+                UserId = dto.CollectorId,
+                Content = $"You have been assigned to collect waste for request #{requestId}.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notification);
+
             await _uow.SaveChangesAsync();
 
             return new CollectorAssignmentResponseDto
@@ -131,6 +140,16 @@ namespace BusinessLogicLayer.Services.Implementation
             assignment.AssignedAt = DateTime.UtcNow;
 
             _uow.CollectorAssignments.Update(assignment);
+
+            var notification = new Notification
+            {
+                UserId = dto.NewCollectorId,
+                Content = $"You have been assigned to collect waste for request #{assignment.RequestId}.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notification);
+
             await _uow.SaveChangesAsync();
 
             return new CollectorAssignmentResponseDto

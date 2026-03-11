@@ -13,5 +13,7 @@ namespace BusinessLogicLayer.DTOs.Collection
         public string? BeforeImageUrl { get; set; }  // URL of before photo
         public string? AfterImageUrl { get; set; }   // URL of after photo
         public string? Note { get; set; }
+
+        public int EarnedPoints { get; set; }
     }
 }

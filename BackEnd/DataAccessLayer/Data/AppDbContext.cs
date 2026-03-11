@@ -37,8 +37,9 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Wastereport> Wastereports { get; set; }
 
     public virtual DbSet<Wastetype> Wastetypes { get; set; }
+    public virtual DbSet<CollectionDetail> CollectionDetails { get; set; }
 
-    
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -287,16 +288,19 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
+            entity.Property(e => e.ReportId)
+                .HasColumnName("report_id");
 
             entity.HasOne(d => d.Reward).WithMany(p => p.Rewardtransactions)
                 .HasForeignKey(d => d.RewardId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("rewardtransactions_reward_id_fkey");
 
             entity.HasOne(d => d.User).WithMany(p => p.Rewardtransactions)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("rewardtransactions_user_id_fkey");
+
+
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -348,9 +352,9 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Active'::character varying")
                 .HasColumnName("status");
-            entity.Property(e => e.Totalpoints)
+            entity.Property(e => e.TotalPoints)
                 .HasDefaultValue(0)
-                .HasColumnName("totalpoints");
+                .HasColumnName("total_points");
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
@@ -407,12 +411,45 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("wastetypes");
 
+            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
+
             entity.Property(e => e.Description)
                 .HasMaxLength(255)
                 .HasColumnName("description");
             entity.Property(e => e.Name)
                 .HasMaxLength(50)
                 .HasColumnName("name");
+            entity.Property(e => e.RewardPoints)
+                .HasDefaultValue(0)
+                .HasColumnName("reward_points");
+
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+        });
+
+        modelBuilder.Entity<CollectionDetail>(entity =>
+        {
+            entity.HasKey(e => e.DetailId).HasName("collection_details_pkey");
+
+            entity.ToTable("collection_details");
+
+            entity.Property(e => e.DetailId).HasColumnName("detail_id");
+            entity.Property(e => e.ConfirmationId).HasColumnName("confirmation_id");
+            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
+            entity.Property(e => e.ActualWeight).HasColumnName("actual_weight");
+
+            entity.HasOne(d => d.Confirmation)
+                  .WithMany(p => p.CollectionDetails)
+                  .HasForeignKey(d => d.ConfirmationId)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("collection_details_confirmation_id_fkey");
+
+            entity.HasOne(d => d.WasteType)
+                  .WithMany(p => p.CollectionDetails)
+                  .HasForeignKey(d => d.WasteTypeId)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("collection_details_waste_type_id_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

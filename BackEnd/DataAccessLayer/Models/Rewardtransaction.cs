@@ -9,7 +9,7 @@ public partial class Rewardtransaction
 
     public int UserId { get; set; }
 
-    public int RewardId { get; set; }
+    public int? RewardId { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
@@ -18,8 +18,11 @@ public partial class Rewardtransaction
     public int Points { get; set; }
 
     public string? Description { get; set; }
+    public int? ReportId { get; set; }
 
     public virtual Reward Reward { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
+
+
 }

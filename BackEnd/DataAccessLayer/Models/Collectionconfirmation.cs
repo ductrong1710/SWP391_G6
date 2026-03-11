@@ -30,4 +30,6 @@ public partial class Collectionconfirmation
     public string AfterImageUrl { get; set; } = null!;
 
     public virtual Collectorassignment Assignment { get; set; } = null!;
+
+    public virtual ICollection<CollectionDetail> CollectionDetails { get; set; } = new List<CollectionDetail>();
 }

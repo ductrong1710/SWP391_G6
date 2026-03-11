@@ -11,5 +11,11 @@ public partial class Wastetype
 
     public string? Description { get; set; }
 
+    public int RewardPoints { get; set; }
+
+    public bool IsActive { get; set; }
+
+    public virtual ICollection<CollectionDetail> CollectionDetails { get; set; } = new List<CollectionDetail>();
+
     public virtual ICollection<Wastereport> Reports { get; set; } = new List<Wastereport>();
 }
