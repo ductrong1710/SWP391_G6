@@ -37,8 +37,9 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Wastereport> Wastereports { get; set; }
 
     public virtual DbSet<Wastetype> Wastetypes { get; set; }
+    public virtual DbSet<CollectionDetail> CollectionDetails { get; set; }
 
-    
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -425,6 +426,30 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
+        });
+
+        modelBuilder.Entity<CollectionDetail>(entity =>
+        {
+            entity.HasKey(e => e.DetailId).HasName("collection_details_pkey");
+
+            entity.ToTable("collection_details");
+
+            entity.Property(e => e.DetailId).HasColumnName("detail_id");
+            entity.Property(e => e.ConfirmationId).HasColumnName("confirmation_id");
+            entity.Property(e => e.WasteTypeId).HasColumnName("waste_type_id");
+            entity.Property(e => e.ActualWeight).HasColumnName("actual_weight");
+
+            entity.HasOne(d => d.Confirmation)
+                  .WithMany(p => p.CollectionDetails)
+                  .HasForeignKey(d => d.ConfirmationId)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("collection_details_confirmation_id_fkey");
+
+            entity.HasOne(d => d.WasteType)
+                  .WithMany(p => p.CollectionDetails)
+                  .HasForeignKey(d => d.WasteTypeId)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("collection_details_waste_type_id_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);
