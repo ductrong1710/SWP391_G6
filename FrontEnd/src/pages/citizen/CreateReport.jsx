@@ -27,7 +27,6 @@ function LocationMarker({ position, setPosition, setFormData }) {
       const { lat, lng } = e.latlng;
       setPosition(e.latlng);
       map.setView(e.latlng, map.getZoom(), { animate: false });
-
       setFormData((prev) => ({
         ...prev,
         latitude: lat,
@@ -59,7 +58,7 @@ const CreateReport = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [formData, setFormData] = useState({
-    wasteTypeId: "",
+    wasteTypeIds: [], // ✅ Đổi thành array
     latitude: null,
     longitude: null,
     description: "",
@@ -82,9 +81,7 @@ const CreateReport = () => {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(`${API_BASE_URL}/waste-types`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
         setWasteTypes(response.data);
       } catch (err) {
@@ -92,9 +89,22 @@ const CreateReport = () => {
         setError("❌ Unable to load waste type list");
       }
     };
-
     fetchWasteTypes();
   }, []);
+
+  // --- XỬ LÝ CHỌN WASTE TYPE CHECKBOX ---
+  const handleWasteTypeChange = (wasteTypeId) => {
+    const id = parseInt(wasteTypeId);
+    setFormData((prev) => {
+      const already = prev.wasteTypeIds.includes(id);
+      return {
+        ...prev,
+        wasteTypeIds: already
+          ? prev.wasteTypeIds.filter((x) => x !== id)
+          : [...prev.wasteTypeIds, id],
+      };
+    });
+  };
 
   // --- HÀM TÌM KIẾM ĐỊA CHỈ ---
   const handleSearchAddress = async () => {
@@ -102,27 +112,19 @@ const CreateReport = () => {
       setError("❌ Please enter an address to search");
       return;
     }
-
     setIsSearching(true);
     setError("");
-
     try {
       const response = await axios.get(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery
         )}`
       );
-
       if (response.data && response.data.length > 0) {
         const firstResult = response.data[0];
         const lat = parseFloat(firstResult.lat);
         const lng = parseFloat(firstResult.lon);
-
-        setFormData((prev) => ({
-          ...prev,
-          latitude: lat,
-          longitude: lng,
-        }));
+        setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
         setMarkerPosition({ lat, lng });
         setSuccess(`✅ Found: ${firstResult.display_name}`);
         setTimeout(() => setSuccess(""), 3000);
@@ -145,12 +147,10 @@ const CreateReport = () => {
         setError("❌ File size exceeds 10MB");
         return;
       }
-
       if (!file.type.match(/image\/(png|jpg|jpeg)/)) {
         setError("❌ Only PNG, JPG, JPEG image files are supported");
         return;
       }
-
       setSelectedFile(file);
       setError("");
       const reader = new FileReader();
@@ -178,23 +178,16 @@ const CreateReport = () => {
   const handleGetCurrentLocation = () => {
     setLoadingLocation(true);
     setError("");
-
     if (!navigator.geolocation) {
       setError("❌ Your browser does not support GPS");
       setLoadingLocation(false);
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-
-        setFormData((prev) => ({
-          ...prev,
-          latitude: lat,
-          longitude: lng,
-        }));
+        setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
         setMarkerPosition({ lat, lng });
         setSuccess("✅ Current location obtained");
         setTimeout(() => setSuccess(""), 3000);
@@ -214,14 +207,14 @@ const CreateReport = () => {
     setError("");
     setSuccess("");
 
-    // ✅ VALIDATE
     if (!selectedFile) {
       setError("❌ Please select an image");
       return;
     }
 
-    if (!formData.wasteTypeId) {
-      setError("❌ Please select a waste type");
+    // ✅ Validate array
+    if (!formData.wasteTypeIds || formData.wasteTypeIds.length === 0) {
+      setError("❌ Please select at least one waste type");
       return;
     }
 
@@ -233,35 +226,30 @@ const CreateReport = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-
       if (!token) {
         setError("❌ You are not logged in");
         return;
       }
 
-      // ✅ PARSE VÀ FORMAT ĐÚNG CHO C# DECIMAL
       let latitude = parseFloat(formData.latitude);
       let longitude = parseFloat(formData.longitude);
-
-      // Clamp to valid range
       latitude = Math.max(-90, Math.min(90, latitude));
       longitude = Math.max(-180, Math.min(180, longitude));
 
-      const wasteTypeId = parseInt(formData.wasteTypeId);
-
       console.log("=== SUBMITTING ===");
       console.log("Image:", selectedFile.name);
-      console.log("WasteTypeId:", wasteTypeId);
+      console.log("WasteTypeIds:", formData.wasteTypeIds);
       console.log("Latitude:", latitude);
       console.log("Longitude:", longitude);
-      console.log("Description:", formData.description);
 
-      // ✅ GỬI FORMDATA - FORMAT ĐẶC BIỆT CHO C# DECIMAL
       const submitData = new FormData();
       submitData.append("Image", selectedFile);
-      submitData.append("WasteTypeId", wasteTypeId);
 
-      // ⭐ KEY: Dùng Blob để force gửi đúng type
+      // ✅ Append từng wasteTypeId
+      formData.wasteTypeIds.forEach((id, index) => {
+        submitData.append(`WasteTypeIds[${index}]`, id);
+      });
+
       submitData.append(
         "Latitude",
         new Blob([latitude.toString()], { type: "text/plain" })
@@ -271,14 +259,6 @@ const CreateReport = () => {
         new Blob([longitude.toString()], { type: "text/plain" })
       );
       submitData.append("Description", formData.description || "");
-
-      console.log("FormData prepared:", {
-        Image: selectedFile.name,
-        WasteTypeId: wasteTypeId,
-        Latitude: latitude,
-        Longitude: longitude,
-        Description: formData.description,
-      });
 
       const response = await axios.post(
         `${API_BASE_URL}/waste-reports`,
@@ -294,23 +274,18 @@ const CreateReport = () => {
       console.log("✅ Success:", response.data);
       setSuccess("✅ Report submitted successfully! Redirecting to home...");
 
-      // Reset form
       setTimeout(() => {
         setSelectedFile(null);
         setPreviewUrl(null);
         setFormData({
-          wasteTypeId: "",
+          wasteTypeIds: [],
           latitude: null,
           longitude: null,
           description: "",
         });
         setMarkerPosition(null);
         setSearchQuery("");
-
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-
+        if (fileInputRef.current) fileInputRef.current.value = "";
         window.location.href = "/citizen/home";
       }, 2000);
     } catch (err) {
@@ -322,21 +297,16 @@ const CreateReport = () => {
       if (err.response?.data) {
         const data = err.response.data;
         let errorMsg = "Server error";
-
         if (typeof data === "string") {
           errorMsg = data;
         } else if (data.message) {
           errorMsg = data.message;
         } else if (data.errors) {
           if (typeof data.errors === "object") {
-            const errorsArray = Object.entries(data.errors).map(
-              ([key, val]) => {
-                if (Array.isArray(val)) {
-                  return `${key}: ${val.join(", ")}`;
-                }
-                return `${key}: ${val}`;
-              }
-            );
+            const errorsArray = Object.entries(data.errors).map(([key, val]) => {
+              if (Array.isArray(val)) return `${key}: ${val.join(", ")}`;
+              return `${key}: ${val}`;
+            });
             errorMsg = errorsArray.join("; ");
           } else {
             errorMsg = JSON.stringify(data.errors);
@@ -344,7 +314,6 @@ const CreateReport = () => {
         } else if (data.title) {
           errorMsg = data.title;
         }
-
         setError(`❌ ${errorMsg}`);
       } else if (err.request) {
         setError("❌ Unable to connect to server. Check backend status.");
@@ -367,9 +336,7 @@ const CreateReport = () => {
       }}
     >
       <div style={{ marginBottom: "30px", textAlign: "center" }}>
-        <h2
-          style={{ color: "#1f2937", margin: "0 0 10px 0", fontSize: "28px" }}
-        >
+        <h2 style={{ color: "#1f2937", margin: "0 0 10px 0", fontSize: "28px" }}>
           📝 Create Waste Report
         </h2>
         <p style={{ color: "#6b7280", margin: 0, fontSize: "16px" }}>
@@ -394,9 +361,7 @@ const CreateReport = () => {
               boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
             }}
           >
-            <h3
-              style={{ marginTop: 0, marginBottom: "15px", color: "#1f2937" }}
-            >
+            <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#1f2937" }}>
               📷 Upload Waste Photo
             </h3>
 
@@ -420,13 +385,7 @@ const CreateReport = () => {
               }}
             >
               {previewUrl ? (
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    padding: "10px",
-                  }}
-                >
+                <div style={{ position: "relative", width: "100%", padding: "10px" }}>
                   <img
                     src={previewUrl}
                     style={{
@@ -472,7 +431,6 @@ const CreateReport = () => {
                   </small>
                 </>
               )}
-
               <input
                 id="file-input"
                 ref={fileInputRef}
@@ -483,7 +441,7 @@ const CreateReport = () => {
               />
             </div>
 
-            {/* CHỌN LOẠI RÁC */}
+            {/* ✅ CHỌN LOẠI RÁC - CHECKBOX */}
             <div style={{ marginBottom: "15px" }}>
               <label
                 style={{
@@ -493,37 +451,114 @@ const CreateReport = () => {
                   color: "#1f2937",
                 }}
               >
-                Waste Type *
+                Waste Type *{" "}
+                <span style={{ color: "#6b7280", fontWeight: "normal", fontSize: "13px" }}>
+                  (Select one or more)
+                </span>
               </label>
-              <select
-                value={formData.wasteTypeId}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    wasteTypeId: e.target.value,
-                  });
-                }}
-                required
+
+              <div
                 style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "5px",
                   border: "1px solid #ccc",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
+                  borderRadius: "8px",
+                  padding: "8px",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                  backgroundColor: "#fafafa",
                 }}
               >
-                <option value="">-- Select waste type --</option>
                 {wasteTypes && wasteTypes.length > 0 ? (
-                  wasteTypes.map((type) => (
-                    <option key={type.wasteTypeId} value={type.wasteTypeId}>
-                      {type.name}
-                    </option>
-                  ))
+                  wasteTypes.map((type) => {
+                    const isChecked = formData.wasteTypeIds.includes(type.wasteTypeId);
+                    return (
+                      <label
+                        key={type.wasteTypeId}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "8px 10px",
+                          marginBottom: "4px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          backgroundColor: isChecked ? "#dcfce7" : "transparent",
+                          border: isChecked ? "1px solid #10b981" : "1px solid transparent",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleWasteTypeChange(type.wasteTypeId)}
+                          style={{
+                            width: "16px",
+                            height: "16px",
+                            accentColor: "#10b981",
+                            cursor: "pointer",
+                          }}
+                        />
+                        <span style={{ fontSize: "14px", color: "#1f2937" }}>
+                          {type.name}
+                        </span>
+                      </label>
+                    );
+                  })
                 ) : (
-                  <option disabled>Loading list...</option>
+                  <p style={{ color: "#999", fontSize: "14px", margin: "8px" }}>
+                    Loading list...
+                  </p>
                 )}
-              </select>
+              </div>
+
+              {/* Hiển thị tags đã chọn */}
+              {formData.wasteTypeIds.length > 0 && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "6px",
+                  }}
+                >
+                  {formData.wasteTypeIds.map((id) => {
+                    const type = wasteTypes.find((t) => t.wasteTypeId === id);
+                    return (
+                      <span
+                        key={id}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          backgroundColor: "#10b981",
+                          color: "white",
+                          padding: "3px 10px",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        ✓ {type?.name}
+                        <button
+                          type="button"
+                          onClick={() => handleWasteTypeChange(id)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "white",
+                            cursor: "pointer",
+                            fontSize: "14px",
+                            padding: "0",
+                            lineHeight: 1,
+                            marginLeft: "2px",
+                          }}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* MÔ TẢ */}
@@ -568,9 +603,7 @@ const CreateReport = () => {
               boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
             }}
           >
-            <h3
-              style={{ marginTop: 0, marginBottom: "15px", color: "#1f2937" }}
-            >
+            <h3 style={{ marginTop: 0, marginBottom: "15px", color: "#1f2937" }}>
               📍 Collection Location
             </h3>
 
@@ -663,9 +696,7 @@ const CreateReport = () => {
                 marginBottom: "15px",
               }}
             >
-              {loadingLocation
-                ? "⏳ Getting location..."
-                : "📍 Use Current Location"}
+              {loadingLocation ? "⏳ Getting location..." : "📍 Use Current Location"}
             </button>
 
             {/* HIỂN THỊ TỌA ĐỘ */}

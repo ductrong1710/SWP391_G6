@@ -301,14 +301,79 @@ const ActionBar = ({
 
 // ─── Sub Components ───────────────────────────────────────────────────────────
 const StatusToggle = ({ isOnline, onToggle }) => (
-  <div className="status-toggle">
-    <span className={`status-label ${isOnline ? "text-green" : "text-gray"}`}>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+      backgroundColor: isOnline ? "#f0fdf4" : "#f9fafb",
+      border: `2px solid ${isOnline ? "#10b981" : "#d1d5db"}`,
+      borderRadius: "50px",
+      padding: "8px 16px",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+      userSelect: "none",
+    }}
+    onClick={onToggle}
+  >
+    {/* Đèn tròn nhấp nháy */}
+    <div
+      style={{
+        width: "10px",
+        height: "10px",
+        borderRadius: "50%",
+        backgroundColor: isOnline ? "#10b981" : "#9ca3af",
+        boxShadow: isOnline ? "0 0 0 3px rgba(16,185,129,0.3)" : "none",
+        animation: isOnline ? "pulse 2s infinite" : "none",
+      }}
+    />
+
+    {/* Text */}
+    <span
+      style={{
+        fontWeight: "700",
+        fontSize: "14px",
+        color: isOnline ? "#059669" : "#6b7280",
+        minWidth: "50px",
+      }}
+    >
       {isOnline ? "Online" : "Offline"}
     </span>
-    <label className="switch">
-      <input type="checkbox" checked={isOnline} onChange={onToggle} />
-      <span className="slider round" />
-    </label>
+
+    {/* Toggle switch */}
+    <div
+      style={{
+        position: "relative",
+        width: "44px",
+        height: "24px",
+        backgroundColor: isOnline ? "#10b981" : "#d1d5db",
+        borderRadius: "12px",
+        transition: "background-color 0.3s ease",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: "3px",
+          left: isOnline ? "23px" : "3px",
+          width: "18px",
+          height: "18px",
+          backgroundColor: "white",
+          borderRadius: "50%",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+          transition: "left 0.3s ease",
+        }}
+      />
+    </div>
+
+    {/* Thêm animation pulse */}
+    <style>{`
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+        70% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+        100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+      }
+    `}</style>
   </div>
 );
 
