@@ -9,7 +9,23 @@ const JOB_STATUS = {
   DECLINED: "Declined",
 };
 
-// ─── Custom Hook ──────────────────────────────────────────────────────────────
+const getStatusMeta = (status) => {
+  switch (status) {
+    case JOB_STATUS.ASSIGNED:
+      return { label: "Assigned", className: "badge-info", icon: "📋" };
+    case JOB_STATUS.ON_THE_WAY:
+      return { label: "On the way", className: "badge-primary", icon: "🚚" };
+    case JOB_STATUS.ARRIVED:
+      return { label: "Arrived", className: "badge-warning", icon: "📍" };
+    case JOB_STATUS.COMPLETED:
+      return { label: "Completed", className: "badge-completed", icon: "✅" };
+    case JOB_STATUS.DECLINED:
+      return { label: "Declined", className: "badge-danger", icon: "✕" };
+    default:
+      return { label: status || "Unknown", className: "badge-neutral", icon: "•" };
+  }
+};
+
 const useActiveJob = () => {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,8 +35,7 @@ const useActiveJob = () => {
 
   const fetchMyAssignments = async (force = false) => {
     const now = Date.now();
-    if (!force && lastFetchRef.current && now - lastFetchRef.current < 1000)
-      return;
+    if (!force && lastFetchRef.current && now - lastFetchRef.current < 1000) return;
     lastFetchRef.current = now;
 
     try {
@@ -43,68 +58,61 @@ const useActiveJob = () => {
   }, []);
 
   const markArrived = useCallback(async (assignmentId, beforePhoto) => {
-    console.log("markArrived called:", { assignmentId, beforePhoto });
-
     const form = new FormData();
     if (beforePhoto) {
-      // ✅ CHANGED: 'BeforePhoto' to 'BeforeImage'
       form.append("BeforeImage", beforePhoto, beforePhoto.name);
-      console.log(
-        "FormData BeforeImage:",
-        beforePhoto.name,
-        beforePhoto.size,
-        "bytes"
-      );
-    } else {
-      console.warn("⚠️ beforePhoto is null/undefined!");
-    }
-
-    for (let [key, val] of form.entries()) {
-      console.log("FormData entry:", key, val);
     }
 
     await api.put(`/collections/${assignmentId}/arrived`, form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+
     await fetchMyAssignments(true);
   }, []);
 
-  const completeJob = useCallback(
-    async (assignmentId, afterPhoto, actualWeight) => {
-      const form = new FormData();
-      // ✅ CHANGED: 'AfterPhoto' to 'AfterImage'
-      if (afterPhoto) form.append("AfterImage", afterPhoto, afterPhoto.name);
-      if (actualWeight) form.append("ActualWeight", actualWeight);
-      await api.put(`/collections/${assignmentId}/complete`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      await fetchMyAssignments(true);
-    },
-    []
-  );
+  const completeJob = useCallback(async (assignmentId, afterPhoto, weightsArray) => {
+    const form = new FormData();
+
+    if (afterPhoto) {
+      form.append("AfterImage", afterPhoto, afterPhoto.name);
+    }
+
+    weightsArray.forEach((item, index) => {
+      form.append(`ActualWeights[${index}].WasteTypeId`, String(item.wasteTypeId));
+      form.append(`ActualWeights[${index}].Weight`, String(item.weight));
+    });
+
+    form.append("Note", "Thu gom thành công");
+
+    await api.put(`/collections/${assignmentId}/complete`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    await fetchMyAssignments(true);
+  }, []);
 
   const declineJob = useCallback(async (assignmentId, reason) => {
     await api.put(`/collections/${assignmentId}/decline`, { reason });
     await fetchMyAssignments(true);
   }, []);
 
-  const reportIssue = useCallback(
-    async (assignmentId, issueDescription, photo) => {
-      const form = new FormData();
-      form.append("IssueDescription", issueDescription);
-      if (photo) form.append("Photo", photo);
-      await api.put(`/collections/${assignmentId}/report-issue`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      await fetchMyAssignments(true);
-    },
-    []
-  );
+  const reportIssue = useCallback(async (assignmentId, issueDescription, photo) => {
+    const form = new FormData();
+    form.append("IssueDescription", issueDescription);
+    if (photo) form.append("Photo", photo);
+
+    await api.put(`/collections/${assignmentId}/report-issue`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    await fetchMyAssignments(true);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
     fetchMyAssignments();
     const interval = setInterval(() => fetchMyAssignments(), 10000);
+
     return () => {
       clearInterval(interval);
       mountedRef.current = false;
@@ -124,49 +132,45 @@ const useActiveJob = () => {
   };
 };
 
-// ─── Tách riêng từng ActionBar theo status ────────────────────────────────────
-
-// ✅ Fix: Tách riêng component, state photo không bị reset khi status thay đổi
 const AssignedActions = ({ onStart, onDecline }) => {
   const [declineReason, setDeclineReason] = useState("");
   const [showDecline, setShowDecline] = useState(false);
 
   return (
-    <div className="bottom-action-bar">
+    <div className="settings-card action-card fade-in">
+      <div className="card-header-simple">
+        <h3>Next Action</h3>
+        <p className="text-gray">Start the trip or decline this assignment with a reason.</p>
+      </div>
+
       {showDecline ? (
-        <div>
-          <textarea
-            className="form-input"
-            placeholder="Enter decline reason..."
-            value={declineReason}
-            onChange={(e) => setDeclineReason(e.target.value)}
-            rows={3}
-            style={{ marginBottom: 8, width: "100%" }}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              className="btn-decline-trip"
-              onClick={() => onDecline(declineReason)}
-            >
+        <>
+          <div className="form-group">
+            <label>Decline Reason</label>
+            <textarea
+              className="form-input"
+              placeholder="Enter decline reason..."
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              rows={4}
+            />
+          </div>
+
+          <div className="collector-action-grid">
+            <button className="btn-danger-soft" onClick={() => onDecline(declineReason)}>
               Confirm Decline
             </button>
-            <button
-              className="btn-outline-map"
-              onClick={() => setShowDecline(false)}
-            >
+            <button className="btn-outline-map" onClick={() => setShowDecline(false)}>
               Cancel
             </button>
           </div>
-        </div>
+        </>
       ) : (
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="collector-action-grid">
           <button className="btn-start-trip" onClick={onStart}>
             🚗 Start Trip
           </button>
-          <button
-            className="btn-decline-trip"
-            onClick={() => setShowDecline(true)}
-          >
+          <button className="btn-danger-soft" onClick={() => setShowDecline(true)}>
             ✗ Decline
           </button>
         </div>
@@ -176,130 +180,210 @@ const AssignedActions = ({ onStart, onDecline }) => {
 };
 
 const OnTheWayActions = ({ onArrived }) => {
-  // ✅ Fix: state nằm trong component riêng, không bị ảnh hưởng bởi re-render của parent
   const [beforePhoto, setBeforePhoto] = useState(null);
   const fileRef = useRef(null);
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    console.log("File selected:", file?.name, file?.size);
-    setBeforePhoto(file ?? null);
+    setBeforePhoto(e.target.files[0] ?? null);
   };
 
   const handleArrived = () => {
-    // ✅ Đọc file trực tiếp từ input ref (đảm bảo luôn lấy đúng file)
     const file = fileRef.current?.files[0] ?? beforePhoto;
-    console.log("Submitting with file:", file?.name);
     onArrived(file);
   };
 
   return (
-    <div className="bottom-action-bar">
-      <label
-        className="form-group"
-        style={{ display: "block", marginBottom: 8 }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 600 }}>
-          📷 Photo before collection{" "}
-          {beforePhoto && (
-            <span style={{ color: "#10b981" }}>✓ {beforePhoto.name}</span>
-          )}
-        </span>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          style={{ display: "block", marginTop: 4 }}
-        />
-      </label>
-      <button
-        className="btn-start-trip"
-        onClick={handleArrived}
-        // ✅ Bỏ disabled để debug, sau đó có thể bật lại: disabled={!beforePhoto}
-      >
+    <div className="settings-card action-card fade-in">
+      <div className="card-header-simple">
+        <h3>Arrival Confirmation</h3>
+        <p className="text-gray">Upload the before photo and mark that you have arrived.</p>
+      </div>
+
+      <div className="collector-upload-box">
+        <label className="collector-upload-label">
+          <span className="collector-upload-title">📷 Photo before collection</span>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="collector-file-input"
+          />
+          <span className="collector-upload-hint">
+            {beforePhoto ? `✓ ${beforePhoto.name}` : "Choose an image from your device"}
+          </span>
+        </label>
+      </div>
+
+      <button className="btn-start-trip" onClick={handleArrived}>
         📍 Mark Arrived
       </button>
     </div>
   );
 };
 
-const ArrivedActions = ({ onComplete }) => {
+const ArrivedActions = ({ job, onComplete }) => {
   const [afterPhoto, setAfterPhoto] = useState(null);
-  const [actualWeight, setActualWeight] = useState("");
+  const [weights, setWeights] = useState({});
   const fileRef = useRef(null);
+  const [wasteTypesList, setWasteTypesList] = useState([]);
+
+  useEffect(() => {
+    const loadWasteTypes = async () => {
+      try {
+        const { data } = await api.get("/waste-types");
+
+        if (data && job?.wasteTypeName) {
+          const names = job.wasteTypeName.split(",").map((n) => n.trim().toLowerCase());
+
+          const matchedTypes = data.filter((t) =>
+            names.includes((t.name || "").trim().toLowerCase())
+          );
+
+          if (matchedTypes.length > 0) {
+            setWasteTypesList(
+              matchedTypes.map((t) => ({
+                wasteTypeId: t.wasteTypeId ?? t.id ?? t.WasteTypeId,
+                name: t.name,
+              }))
+            );
+          } else {
+            setWasteTypesList([
+              {
+                wasteTypeId: 1,
+                name: job.wasteTypeName || "General Waste",
+              },
+            ]);
+          }
+        } else {
+          setWasteTypesList([{ wasteTypeId: 1, name: "General Waste" }]);
+        }
+      } catch (e) {
+        setWasteTypesList([
+          {
+            wasteTypeId: 1,
+            name: job?.wasteTypeName || "General Waste",
+          },
+        ]);
+      }
+    };
+
+    loadWasteTypes();
+  }, [job]);
+
+  const handleWeightChange = (typeId, value) => {
+    setWeights((prev) => ({
+      ...prev,
+      [typeId]: value,
+    }));
+  };
 
   const handleComplete = () => {
-    const file = fileRef.current?.files[0] ?? afterPhoto;
-    onComplete(file, actualWeight);
+    if (!afterPhoto) {
+      alert("Vui lòng chụp ảnh sau khi đã thu dọn (After Image).");
+      return;
+    }
+
+    const weightsArray = [];
+    let hasValidWeight = false;
+
+    wasteTypesList.forEach((type) => {
+      const rawValue = weights[type.wasteTypeId];
+      const normalized = String(rawValue ?? "").replace(",", ".").trim();
+      const weightVal = Number(normalized);
+
+      if (!Number.isNaN(weightVal) && weightVal > 0) {
+        hasValidWeight = true;
+        weightsArray.push({
+          wasteTypeId: Number(type.wasteTypeId),
+          weight: weightVal,
+        });
+      }
+    });
+
+    if (!hasValidWeight) {
+      alert("Vui lòng nhập khối lượng (kg) hợp lệ cho ít nhất một loại rác để tính điểm thưởng!");
+      return;
+    }
+
+    onComplete(afterPhoto, weightsArray);
   };
 
   return (
-    <div className="bottom-action-bar">
-      <div className="form-group" style={{ marginBottom: 8 }}>
-        <label style={{ fontSize: 13, fontWeight: 600 }}>
-          ⚖️ Actual weight (kg)
-        </label>
-        <input
-          type="number"
-          className="form-input"
-          value={actualWeight}
-          onChange={(e) => setActualWeight(e.target.value)}
-          placeholder="Enter kg..."
-          style={{ marginTop: 4 }}
-        />
+    <div className="settings-card action-card fade-in">
+      <div className="card-header-simple">
+        <h3>Complete Collection</h3>
+        <p className="text-gray">Update actual weight, add after photo and finish the job.</p>
       </div>
-      <label
-        className="form-group"
-        style={{ display: "block", marginBottom: 8 }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 600 }}>
-          📷 Photo after collection{" "}
-          {afterPhoto && (
-            <span style={{ color: "#10b981" }}>✓ {afterPhoto.name}</span>
-          )}
-        </span>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) => setAfterPhoto(e.target.files[0] ?? null)}
-          style={{ display: "block", marginTop: 4 }}
-        />
-      </label>
-      <button
-        className="btn-start-trip"
-        onClick={handleComplete}
-        disabled={!actualWeight}
-      >
-        ✅ Complete Collection
+
+      <div className="form-group">
+        <label>Actual Waste Weight</label>
+        <div className="collector-weight-list">
+          {wasteTypesList.map((type) => (
+            <div key={type.wasteTypeId} className="collector-weight-item">
+              <div className="collector-weight-meta">
+                <span className="collector-weight-name">{type.name}</span>
+              </div>
+
+              <div className="collector-weight-input-wrap">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className="form-input collector-weight-input"
+                  value={weights[type.wasteTypeId] !== undefined ? weights[type.wasteTypeId] : ""}
+                  onChange={(e) => handleWeightChange(type.wasteTypeId, e.target.value)}
+                  placeholder="0.0"
+                />
+                <span className="collector-weight-unit">kg</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="collector-upload-box">
+        <label className="collector-upload-label">
+          <span className="collector-upload-title">📷 After Photo</span>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => setAfterPhoto(e.target.files[0] ?? null)}
+            className="collector-file-input"
+          />
+          <span className="collector-upload-hint">
+            {afterPhoto ? `✓ ${afterPhoto.name}` : "Capture or upload photo after cleanup"}
+          </span>
+        </label>
+      </div>
+
+      <button className="btn-start-trip" onClick={handleComplete}>
+        ✅ Confirm Completion
       </button>
     </div>
   );
 };
 
-// ✅ Fix: ActionBar chỉ render đúng component theo status
-const ActionBar = ({
-  job,
-  onStart,
-  onArrived,
-  onComplete,
-  onDecline,
-  onReportIssue,
-}) => {
+const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline }) => {
   const status = job?.status;
 
-  if (status === JOB_STATUS.ASSIGNED)
+  if (status === JOB_STATUS.ASSIGNED) {
     return <AssignedActions onStart={onStart} onDecline={onDecline} />;
-  if (status === JOB_STATUS.ON_THE_WAY)
+  }
+
+  if (status === JOB_STATUS.ON_THE_WAY) {
     return <OnTheWayActions onArrived={onArrived} />;
-  if (status === JOB_STATUS.ARRIVED)
-    return <ArrivedActions onComplete={onComplete} />;
+  }
+
+  if (status === JOB_STATUS.ARRIVED) {
+    return <ArrivedActions job={job} onComplete={onComplete} />;
+  }
 
   return null;
 };
 
-// ─── Sub Components ───────────────────────────────────────────────────────────
 const StatusToggle = ({ isOnline, onToggle }) => (
   <div className="status-toggle">
     <span className={`status-label ${isOnline ? "text-green" : "text-gray"}`}>
@@ -312,20 +396,74 @@ const StatusToggle = ({ isOnline, onToggle }) => (
   </div>
 );
 
-const JobStats = ({ job }) => (
-  <div className="job-stats-grid">
-    {[
-      { label: "Waste Type", value: job.wasteTypeName ?? "Unknown" },
-      { label: "Est. Weight", value: `${job.estimatedWeight ?? "N/A"} kg` },
-      { label: "Status", value: job.status ?? "Unknown" },
-    ].map(({ label, value }) => (
-      <div className="stat-box" key={label}>
-        <div className="label">{label}</div>
-        <div className="val">{value}</div>
+const JobSummaryCards = ({ job }) => {
+  const statusMeta = getStatusMeta(job?.status);
+
+  return (
+    <div className="stats-summary-grid">
+      <div className="summary-card">
+        <div className="summary-val">{job?.estimatedWeight ?? 0} kg</div>
+        <div className="summary-label">Estimated Weight</div>
       </div>
-    ))}
-  </div>
-);
+      <div className="summary-card">
+        <div className="summary-val" style={{ fontSize: 18 }}>
+          {statusMeta.icon} {statusMeta.label}
+        </div>
+        <div className="summary-label">Current Status</div>
+      </div>
+    </div>
+  );
+};
+
+const JobInfoCard = ({ job }) => {
+  const statusMeta = getStatusMeta(job?.status);
+
+  return (
+    <div className="settings-card fade-in">
+      <div className="hc-header">
+        <div className="hc-left">
+          <strong>Job #{job.assignmentId}</strong>
+          <span className={`collector-badge ${statusMeta.className}`}>{statusMeta.label}</span>
+        </div>
+        <div className="hc-right">
+          <span className="badge-waste">{job.wasteTypeName || "Waste"}</span>
+        </div>
+      </div>
+
+      <div className="collector-detail-grid">
+        <div className="collector-detail-card">
+          <div className="collector-detail-label">Citizen</div>
+          <div className="collector-detail-value">{job.citizenName ?? "Unknown"}</div>
+        </div>
+        <div className="collector-detail-card">
+          <div className="collector-detail-label">Phone</div>
+          <div className="collector-detail-value">{job.citizenPhone ?? "Not available"}</div>
+        </div>
+      </div>
+
+      <div className="hc-row">
+        <span className="icon-gray">📍</span>
+        <span className="text-gray">{job.description ?? job.address ?? "No address"}</span>
+      </div>
+
+      <div className="job-stats-grid collector-stats-grid">
+        <div className="stat-box">
+          <div className="label">Waste Type</div>
+          <div className="val">{job.wasteTypeName ?? "Unknown"}</div>
+        </div>
+        <div className="stat-box">
+          <div className="label">Estimated Weight</div>
+          <div className="val">{job.estimatedWeight ?? "N/A"} kg</div>
+        </div>
+      </div>
+
+      <div className="note-box">
+        <div className="note-title">📄 Customer Note</div>
+        <div className="note-content">{job.note ?? "No notes"}</div>
+      </div>
+    </div>
+  );
+};
 
 const ErrorBanner = ({ message, onClose }) => (
   <div className="error-banner">
@@ -337,16 +475,21 @@ const ErrorBanner = ({ message, onClose }) => (
 );
 
 const EmptyState = () => (
-  <div className="empty-state">
+  <div className="settings-card empty-state-card fade-in">
     <div className="empty-icon">📭</div>
     <p className="empty-title">No active job assigned</p>
-    <p className="text-sm text-gray">
-      You will be notified when a new job is assigned.
-    </p>
+    <p className="text-sm text-gray">You will be notified when a new job is assigned.</p>
   </div>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+const LoadingState = () => (
+  <div className="settings-card empty-state-card">
+    <div className="empty-icon">⏳</div>
+    <p className="empty-title">Loading active job...</p>
+    <p className="text-sm text-gray">Please wait a moment.</p>
+  </div>
+);
+
 const ActiveJob = () => {
   const [isOnline, setIsOnline] = useState(true);
   const {
@@ -358,32 +501,36 @@ const ActiveJob = () => {
     markArrived,
     completeJob,
     declineJob,
-    reportIssue,
   } = useActiveJob();
 
-  // ✅ useCallback để tránh tạo function mới mỗi render → tránh re-render ActionBar
   const withErrorHandler = useCallback(
-    (fn) =>
-      async (...args) => {
-        try {
-          await fn(...args);
-        } catch (err) {
-          console.error("Action error:", err?.response?.data);
-          setError(err.response?.data?.message || "An error occurred.");
-        }
-      },
+    (fn) => async (...args) => {
+      try {
+        await fn(...args);
+      } catch (err) {
+        console.error("Action error:", err?.response?.data);
+        setError(err.response?.data?.message || "An error occurred.");
+      }
+    },
     [setError]
   );
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="loading-container">
-        <h3>Loading...</h3>
+      <div className="col-page-container fade-in">
+        <div className="col-page-header">
+          <div>
+            <h2>Active Job</h2>
+            <p className="text-gray">Current collection assignment</p>
+          </div>
+        </div>
+        <LoadingState />
       </div>
     );
+  }
 
   return (
-    <div className="col-active-job fade-in">
+    <div className="col-page-container fade-in">
       {error && <ErrorBanner message={error} onClose={() => setError("")} />}
 
       <div className="col-page-header">
@@ -391,63 +538,26 @@ const ActiveJob = () => {
           <h2>Active Job</h2>
           <p className="text-gray">Current collection assignment</p>
         </div>
-        <StatusToggle
-          isOnline={isOnline}
-          onToggle={() => setIsOnline((prev) => !prev)}
-        />
+        <StatusToggle isOnline={isOnline} onToggle={() => setIsOnline((prev) => !prev)} />
       </div>
 
       {!job ? (
         <EmptyState />
       ) : (
-        <div className="job-card">
-          <div className="job-header">
-            <h3>Job #{job.assignmentId}</h3>
-            <span className="badge-assigned">{job.status ?? "Unknown"}</span>
-          </div>
-
-          <div className="customer-info">
-            <div className="info-row">
-              <span className="icon-marker">📍</span>
-              <div>
-                <strong>{job.citizenName ?? "Unknown"}</strong>
-                <div className="text-gray text-sm">
-                  {job.description ?? job.address ?? "No address"}
-                </div>
-              </div>
-            </div>
-            {job.citizenPhone && (
-              <div className="info-row mt-2">
-                <span className="icon-phone">📞</span>
-                <div className="text-green font-bold">{job.citizenPhone}</div>
-              </div>
-            )}
-          </div>
-
-          <JobStats job={job} />
-
-          <div className="note-box">
-            <div className="note-title">📄 Customer Note</div>
-            <div className="note-content">{job.note ?? "No notes"}</div>
-          </div>
+        <>
+          <JobSummaryCards job={job} />
+          <JobInfoCard job={job} />
 
           <ActionBar
             job={job}
             onStart={withErrorHandler(() => startTrip(job.assignmentId))}
-            onArrived={withErrorHandler((photo) =>
-              markArrived(job.assignmentId, photo)
+            onArrived={withErrorHandler((photo) => markArrived(job.assignmentId, photo))}
+            onComplete={withErrorHandler((photo, weightsArray) =>
+              completeJob(job.assignmentId, photo, weightsArray)
             )}
-            onComplete={withErrorHandler((photo, weight) =>
-              completeJob(job.assignmentId, photo, weight)
-            )}
-            onDecline={withErrorHandler((reason) =>
-              declineJob(job.assignmentId, reason)
-            )}
-            onReportIssue={withErrorHandler((desc, photo) =>
-              reportIssue(job.assignmentId, desc, photo)
-            )}
+            onDecline={withErrorHandler((reason) => declineJob(job.assignmentId, reason))}
           />
-        </div>
+        </>
       )}
     </div>
   );

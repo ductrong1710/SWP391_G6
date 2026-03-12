@@ -47,6 +47,17 @@ const assignmentService = {
 
   // Enterprise/Admin: Get all collectors (delegate to userService)
   getCollectors: () => userService.getCollectors(),
+
+  // Collector: Get all my assignments
+  getMyAssignments: async () => {
+    try {
+      const response = await api.get("/assignments/my-assignments");
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (err) {
+      console.warn("⚠️ GET /assignments/my-assignments failed:", err?.response?.status || err.message);
+      return [];
+    }
+  },
 };
 
 export default assignmentService;

@@ -1,6 +1,8 @@
 import api from "./api";
 
 const wasteReportService = {
+
+  
   // Get all waste reports
   getAllReports: async () => {
     const response = await api.get("/waste-reports");
