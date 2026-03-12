@@ -20,8 +20,7 @@ const History = () => {
     try {
       setLoading(true);
       setError("");
-      const allReports = await wasteReportService.getAllReports(token);
-
+      const allReports = await wasteReportService.getAllReports();
       // Lọc báo cáo của citizen hiện tại
       let filtered = allReports;
 

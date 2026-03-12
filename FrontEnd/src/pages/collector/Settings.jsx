@@ -1,8 +1,9 @@
-// src/pages/collector/Settings.jsx
 import React, { useState } from 'react';
+import authService from '../../services/authService'; 
 
 const Settings = () => {
   const [subTab, setSubTab] = useState('general');
+  const user = authService.getCurrentUser(); 
 
   return (
     <div className="col-page-container fade-in">
@@ -57,37 +58,24 @@ const Settings = () => {
           <div className="form-grid">
             <div className="form-group">
               <label>Full Name</label>
-              <input type="text" className="form-input" defaultValue="Mike Wilson" />
+              <input type="text" className="form-input" defaultValue={user?.fullName || ""} />
             </div>
             <div className="form-group">
               <label>Email Address</label>
-              <input type="email" className="form-input" defaultValue="mike.wilson@example.com" />
-            </div>
-            <div className="form-group">
-              <label>Phone Number</label>
-              <input type="text" className="form-input" defaultValue="+1 (555) 000-0000" />
+              <input type="email" className="form-input" defaultValue={user?.email || ""} disabled style={{backgroundColor: '#f3f4f6'}} />
             </div>
             <div className="form-group">
               <label>Account Type</label>
-              <input type="text" className="form-input disabled" value="Collector" disabled />
+              <input type="text" className="form-input disabled" value={user?.roleName || "Collector"} disabled />
             </div>
-            <div className="form-group full-width">
-              <label>Address</label>
-              <input type="text" className="form-input" placeholder="Enter your street address" />
+            <div className="form-actions">
+              <button className="btn-save">Save Changes</button>
             </div>
-            <div className="form-row-3">
-              <div className="form-group"><label>City</label><input type="text" className="form-input" placeholder="City" /></div>
-              <div className="form-group"><label>State/Province</label><input type="text" className="form-input" placeholder="State" /></div>
-              <div className="form-group"><label>ZIP Code</label><input type="text" className="form-input" placeholder="ZIP" /></div>
-            </div>
-          </div>
-          <div className="form-actions">
-            <button className="btn-save">Save Changes</button>
           </div>
         </div>
       )}
 
-      {/* --- TAB 2: SECURITY (Mới thêm) --- */}
+      {/* --- TAB 2: SECURITY --- */}
       {subTab === 'security' && (
         <div className="fade-in">
           {/* Change Password Section */}
@@ -135,7 +123,7 @@ const Settings = () => {
         </div>
       )}
 
-      {/* --- TAB 3: PREFERENCES (Mới thêm) --- */}
+      {/* --- TAB 3: PREFERENCES --- */}
       {subTab === 'preferences' && (
         <div className="fade-in">
           <div className="settings-card mb-4">

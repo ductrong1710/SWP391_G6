@@ -1,60 +1,38 @@
 // src/pages/citizen/Dashboard.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import wasteReportService from "../../services/wasteReportService";
+import rewardService from "../../services/rewardService";
 
 const Dashboard = () => {
+  const [activeRequests, setActiveRequests] = useState([]);
+  const [totalPoints, setTotalPoints] = useState(0);
   const [startIndex, setStartIndex] = useState(0);
   const itemsPerPage = 3;
 
-  const activeRequests = [
-    {
-      id: 1,
-      type: "Plastic",
-      weight: "2.5 kg",
-      status: "Pending",
-      date: "Jan 6, 2026",
-      progress: 30,
-    },
-    {
-      id: 2,
-      type: "Electronics",
-      weight: "1.2 kg",
-      status: "On Way",
-      date: "Jan 5, 2026",
-      progress: 60,
-    },
-    {
-      id: 3,
-      type: "Paper",
-      weight: "4.0 kg",
-      status: "Collected",
-      date: "Jan 4, 2026",
-      progress: 100,
-    },
-    {
-      id: 4,
-      type: "Glass",
-      weight: "3.0 kg",
-      status: "Pending",
-      date: "Jan 3, 2026",
-      progress: 20,
-    },
-    {
-      id: 5,
-      type: "Metal",
-      weight: "5.5 kg",
-      status: "Pending",
-      date: "Jan 2, 2026",
-      progress: 10,
-    },
-    {
-      id: 6,
-      type: "Organic",
-      weight: "1.0 kg",
-      status: "Pending",
-      date: "Jan 1, 2026",
-      progress: 5,
-    },
-  ];
+  // THÊM ĐOẠN NÀY VÀO ĐỂ GỌI API
+  useEffect(() => {
+    // 1. Lấy tổng điểm thưởng
+    rewardService.getMyBalance()
+      .then(res => setTotalPoints(res.totalPoints || 0))
+      .catch(err => console.log(err));
+
+    // 2. Lấy danh sách báo cáo để hiển thị các request đang active
+    wasteReportService.getAllReports()
+      .then(data => {
+        // Lọc ra các request chưa hoàn thành (Pending, OnTheWay, Assigned...)
+        const active = data.filter(r => r.status !== 'Completed' && r.status !== 'Rejected');
+        const formattedRequests = active.map(r => ({
+          id: r.wastereportId || r.id,
+          type: r.wastetype?.name || "Waste",
+          weight: "Updating...",
+          status: r.status,
+          date: new Date(r.createdAt).toLocaleDateString(),
+          progress: r.status === 'Pending' ? 20 : (r.status === 'Assigned' ? 50 : 80)
+        }));
+        setActiveRequests(formattedRequests);
+      })
+      .catch(err => console.log(err));
+  }, []);
 
   const handleNext = () => {
     if (startIndex + itemsPerPage < activeRequests.length) {
@@ -116,7 +94,7 @@ const Dashboard = () => {
         <div className="stat-card">
           <div>
             <div className="stat-label">Total Green Points</div>
-            <div className="stat-value">2,500</div>
+            <div className="stat-value">{totalPoints}</div>
             <div className="stat-change">+150 this week</div>
           </div>
           <div className="icon-box">🍃</div>

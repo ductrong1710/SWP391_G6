@@ -1,4 +1,6 @@
+// src/pages/citizen/CreateReport.jsx
 import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import {
   MapContainer,
   TileLayer,
@@ -9,7 +11,7 @@ import {
 import L from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
-import axios from "axios";
+import wasteReportService from "../../services/wasteReportService";
 
 // --- KHẮC PHỤC LỖI MẤT ICON CỦA LEAFLET ---
 let DefaultIcon = L.icon({
@@ -20,7 +22,6 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- COMPONENT CON: XỬ LÝ CLICK TRÊN BẢN ĐỒ ---
 function LocationMarker({ position, setPosition, setFormData }) {
   const map = useMapEvents({
     click(e) {
@@ -38,7 +39,6 @@ function LocationMarker({ position, setPosition, setFormData }) {
   return position === null ? null : <Marker position={position}></Marker>;
 }
 
-// --- COMPONENT CON: TỰ ĐỘNG DI CHUYỂN MAP KHI CÓ TỌA ĐỘ MỚI ---
 function RecenterAutomatically({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
@@ -49,8 +49,6 @@ function RecenterAutomatically({ lat, lng }) {
   return null;
 }
 
-const API_BASE_URL = "http://localhost:5021/api";
-
 const CreateReport = () => {
   const fileInputRef = useRef(null);
 
@@ -59,13 +57,12 @@ const CreateReport = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [formData, setFormData] = useState({
-    wasteTypeId: "",
+    wasteTypeIds: [], // ĐỔI THÀNH MẢNG ĐỂ CHỨA NHIỀU ID
     latitude: null,
     longitude: null,
     description: "",
   });
 
-  // State quản lý bản đồ & Tìm kiếm
   const [markerPosition, setMarkerPosition] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -76,27 +73,19 @@ const CreateReport = () => {
   const [success, setSuccess] = useState("");
   const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // --- FETCH WASTE TYPES ---
   useEffect(() => {
     const fetchWasteTypes = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(`${API_BASE_URL}/waste-types`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setWasteTypes(response.data);
+        const data = await wasteReportService.getWasteTypes();
+        setWasteTypes(data);
       } catch (err) {
         console.error("Error fetching waste types:", err);
         setError("❌ Unable to load waste type list");
       }
     };
-
     fetchWasteTypes();
   }, []);
 
-  // --- HÀM TÌM KIẾM ĐỊA CHỈ ---
   const handleSearchAddress = async () => {
     if (!searchQuery.trim()) {
       setError("❌ Please enter an address to search");
@@ -137,7 +126,6 @@ const CreateReport = () => {
     }
   };
 
-  // --- XỬ LÝ FILE ẢNH ---
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -145,12 +133,10 @@ const CreateReport = () => {
         setError("❌ File size exceeds 10MB");
         return;
       }
-
       if (!file.type.match(/image\/(png|jpg|jpeg)/)) {
         setError("❌ Only PNG, JPG, JPEG image files are supported");
         return;
       }
-
       setSelectedFile(file);
       setError("");
       const reader = new FileReader();
@@ -174,7 +160,6 @@ const CreateReport = () => {
     }
   };
 
-  // --- LẤY VỊ TRÍ GPS ---
   const handleGetCurrentLocation = () => {
     setLoadingLocation(true);
     setError("");
@@ -208,20 +193,33 @@ const CreateReport = () => {
     );
   };
 
-  // --- GỬI BÁO CÁO ---
+  // --- XỬ LÝ CHỌN CHECKBOX ---
+  const handleCheckboxChange = (e) => {
+    const id = parseInt(e.target.value);
+    setFormData((prev) => {
+      if (e.target.checked) {
+        return { ...prev, wasteTypeIds: [...prev.wasteTypeIds, id] };
+      } else {
+        return {
+          ...prev,
+          wasteTypeIds: prev.wasteTypeIds.filter((val) => val !== id),
+        };
+      }
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    // ✅ VALIDATE
     if (!selectedFile) {
       setError("❌ Please select an image");
       return;
     }
 
-    if (!formData.wasteTypeId) {
-      setError("❌ Please select a waste type");
+    if (formData.wasteTypeIds.length === 0) {
+      setError("❌ Please select at least one waste type");
       return;
     }
 
@@ -232,36 +230,15 @@ const CreateReport = () => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
 
-      if (!token) {
-        setError("❌ You are not logged in");
-        return;
-      }
-
-      // ✅ PARSE VÀ FORMAT ĐÚNG CHO C# DECIMAL
       let latitude = parseFloat(formData.latitude);
       let longitude = parseFloat(formData.longitude);
 
-      // Clamp to valid range
       latitude = Math.max(-90, Math.min(90, latitude));
       longitude = Math.max(-180, Math.min(180, longitude));
 
-      const wasteTypeId = parseInt(formData.wasteTypeId);
-
-      console.log("=== SUBMITTING ===");
-      console.log("Image:", selectedFile.name);
-      console.log("WasteTypeId:", wasteTypeId);
-      console.log("Latitude:", latitude);
-      console.log("Longitude:", longitude);
-      console.log("Description:", formData.description);
-
-      // ✅ GỬI FORMDATA - FORMAT ĐẶC BIỆT CHO C# DECIMAL
       const submitData = new FormData();
       submitData.append("Image", selectedFile);
-      submitData.append("WasteTypeId", wasteTypeId);
-
-      // ⭐ KEY: Dùng Blob để force gửi đúng type
       submitData.append(
         "Latitude",
         new Blob([latitude.toString()], { type: "text/plain" })
@@ -272,34 +249,20 @@ const CreateReport = () => {
       );
       submitData.append("Description", formData.description || "");
 
-      console.log("FormData prepared:", {
-        Image: selectedFile.name,
-        WasteTypeId: wasteTypeId,
-        Latitude: latitude,
-        Longitude: longitude,
-        Description: formData.description,
+      // NẠP TẤT CẢ CÁC ID LOẠI RÁC ĐÃ CHỌN VÀO FORMDATA
+      formData.wasteTypeIds.forEach((id) => {
+        submitData.append("WasteTypeIds", id);
       });
 
-      const response = await axios.post(
-        `${API_BASE_URL}/waste-reports`,
-        submitData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      await wasteReportService.createReport(submitData);
 
-      console.log("✅ Success:", response.data);
       setSuccess("✅ Report submitted successfully! Redirecting to home...");
 
-      // Reset form
       setTimeout(() => {
         setSelectedFile(null);
         setPreviewUrl(null);
         setFormData({
-          wasteTypeId: "",
+          wasteTypeIds: [],
           latitude: null,
           longitude: null,
           description: "",
@@ -310,47 +273,18 @@ const CreateReport = () => {
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
-
         window.location.href = "/citizen/home";
       }, 2000);
     } catch (err) {
-      console.error("❌ Full Error:", err);
-      console.error("Response Data:", err.response?.data);
-      console.error("Response Status:", err.response?.status);
-      console.error("Response Headers:", err.response?.headers);
-
+      console.error("❌ Error submitting report:", err);
+      let errorMsg = "Server error";
       if (err.response?.data) {
         const data = err.response.data;
-        let errorMsg = "Server error";
-
-        if (typeof data === "string") {
-          errorMsg = data;
-        } else if (data.message) {
-          errorMsg = data.message;
-        } else if (data.errors) {
-          if (typeof data.errors === "object") {
-            const errorsArray = Object.entries(data.errors).map(
-              ([key, val]) => {
-                if (Array.isArray(val)) {
-                  return `${key}: ${val.join(", ")}`;
-                }
-                return `${key}: ${val}`;
-              }
-            );
-            errorMsg = errorsArray.join("; ");
-          } else {
-            errorMsg = JSON.stringify(data.errors);
-          }
-        } else if (data.title) {
-          errorMsg = data.title;
-        }
-
-        setError(`❌ ${errorMsg}`);
-      } else if (err.request) {
-        setError("❌ Unable to connect to server. Check backend status.");
-      } else {
-        setError(`❌ An error occurred: ${err.message}`);
+        if (typeof data === "string") errorMsg = data;
+        else if (data.message) errorMsg = data.message;
+        else if (data.title) errorMsg = data.title;
       }
+      setError(`❌ ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -483,7 +417,7 @@ const CreateReport = () => {
               />
             </div>
 
-            {/* CHỌN LOẠI RÁC */}
+            {/* CHỌN LOẠI RÁC THEO KIỂU CHECKBOX */}
             <div style={{ marginBottom: "15px" }}>
               <label
                 style={{
@@ -493,37 +427,50 @@ const CreateReport = () => {
                   color: "#1f2937",
                 }}
               >
-                Waste Type *
+                Waste Types * (You can select multiple)
               </label>
-              <select
-                value={formData.wasteTypeId}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    wasteTypeId: e.target.value,
-                  });
-                }}
-                required
+              <div
                 style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "5px",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                  padding: "15px",
                   border: "1px solid #ccc",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
+                  borderRadius: "5px",
+                  backgroundColor: "#fafafa",
                 }}
               >
-                <option value="">-- Select waste type --</option>
                 {wasteTypes && wasteTypes.length > 0 ? (
                   wasteTypes.map((type) => (
-                    <option key={type.wasteTypeId} value={type.wasteTypeId}>
+                    <label
+                      key={type.wasteTypeId}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        backgroundColor: "white",
+                        padding: "6px 12px",
+                        border: "1px solid #ddd",
+                        borderRadius: "20px",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        value={type.wasteTypeId}
+                        checked={formData.wasteTypeIds.includes(type.wasteTypeId)}
+                        onChange={handleCheckboxChange}
+                        style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                      />
                       {type.name}
-                    </option>
+                    </label>
                   ))
                 ) : (
-                  <option disabled>Loading list...</option>
+                  <span style={{ color: "#999" }}>Loading list...</span>
                 )}
-              </select>
+              </div>
             </div>
 
             {/* MÔ TẢ */}
