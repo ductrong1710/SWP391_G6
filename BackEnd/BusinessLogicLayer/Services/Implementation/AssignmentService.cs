@@ -313,20 +313,20 @@ namespace BusinessLogicLayer.Services.Implementation
                 AssignedAt = a.AssignedAt,
                 StartedAt = a.StartedAt,
                 ArrivedAt = a.ArrivedAt,
-                CompletedAt = a.Collectionconfirmation?.ConfirmedAt,  // From confirmation
+                CompletedAt = a.Collectionconfirmation?.ConfirmedAt,
                 BeforeImageUrl = a.BeforeImageUrl,
 
-                // Enterprise info
                 EnterpriseId = a.Request?.EnterpriseId ?? 0,
                 EnterpriseName = a.Request?.Enterprise?.FullName,
                 EnterprisePhone = a.Request?.Enterprise?.Phone,
 
-                // Waste report info
                 ReportId = a.Request?.ReportId ?? 0,
 
+                WasteTypeIds = a.Request?.Report?.WasteTypes?.Select(wt => wt.WasteTypeId).ToList() ?? new List<int>(),
+
                 WasteTypeName = a.Request?.Report?.WasteTypes != null
-                    ? string.Join(", ", a.Request.Report.WasteTypes.Select(wt => wt.Name))
-                    : string.Empty,
+        ? string.Join(", ", a.Request.Report.WasteTypes.Select(wt => wt.Name))
+        : string.Empty,
 
                 ImageUrl = a.Request?.Report?.ImageUrl,
                 Latitude = a.Request?.Report?.Latitude,
@@ -335,10 +335,18 @@ namespace BusinessLogicLayer.Services.Implementation
                 ReportStatus = a.Request?.Report?.Status,
                 ReportCreatedAt = a.Request?.Report?.CreatedAt,
 
-                // Citizen info
                 CitizenName = a.Request?.Report?.SubmittedByNavigation?.FullName,
-                CitizenPhone = a.Request?.Report?.SubmittedByNavigation?.Phone
+                CitizenPhone = a.Request?.Report?.SubmittedByNavigation?.Phone,
+
+                TotalCollectedWeight = a.Collectionconfirmation?.CollectionDetails?.Sum(d => d.ActualWeight) ?? 0,
+
+                CollectedWasteSummary = a.Collectionconfirmation?.CollectionDetails != null
+        && a.Collectionconfirmation.CollectionDetails.Any()
+        ? string.Join(", ", a.Collectionconfirmation.CollectionDetails.Select(d =>
+            $"{d.WasteType?.Name ?? $"Type {d.WasteTypeId}"}: {d.ActualWeight:0.##} kg"))
+        : null
             }).ToList();
+
         }
 
         public async Task<MyAssignmentDto?> GetAssignmentDetailAsync(int assignmentId, int collectorId)
@@ -363,20 +371,20 @@ namespace BusinessLogicLayer.Services.Implementation
                 AssignedAt = assignment.AssignedAt,
                 StartedAt = assignment.StartedAt,
                 ArrivedAt = assignment.ArrivedAt,
-                CompletedAt = assignment.Collectionconfirmation?.ConfirmedAt,  // From confirmation
+                CompletedAt = assignment.Collectionconfirmation?.ConfirmedAt,
                 BeforeImageUrl = assignment.BeforeImageUrl,
 
-                // Enterprise info
                 EnterpriseId = assignment.Request?.EnterpriseId ?? 0,
                 EnterpriseName = assignment.Request?.Enterprise?.FullName,
                 EnterprisePhone = assignment.Request?.Enterprise?.Phone,
 
-                // Waste report info
                 ReportId = assignment.Request?.ReportId ?? 0,
 
+                WasteTypeIds = assignment.Request?.Report?.WasteTypes?.Select(wt => wt.WasteTypeId).ToList() ?? new List<int>(),
+
                 WasteTypeName = assignment.Request?.Report?.WasteTypes != null
-                    ? string.Join(", ", assignment.Request.Report.WasteTypes.Select(wt => wt.Name))
-                    : string.Empty,
+        ? string.Join(", ", assignment.Request.Report.WasteTypes.Select(wt => wt.Name))
+        : string.Empty,
 
                 ImageUrl = assignment.Request?.Report?.ImageUrl,
                 Latitude = assignment.Request?.Report?.Latitude,
@@ -385,9 +393,16 @@ namespace BusinessLogicLayer.Services.Implementation
                 ReportStatus = assignment.Request?.Report?.Status,
                 ReportCreatedAt = assignment.Request?.Report?.CreatedAt,
 
-                // Citizen info
                 CitizenName = assignment.Request?.Report?.SubmittedByNavigation?.FullName,
-                CitizenPhone = assignment.Request?.Report?.SubmittedByNavigation?.Phone
+                CitizenPhone = assignment.Request?.Report?.SubmittedByNavigation?.Phone,
+
+                TotalCollectedWeight = assignment.Collectionconfirmation?.CollectionDetails?.Sum(d => d.ActualWeight) ?? 0,
+
+                CollectedWasteSummary = assignment.Collectionconfirmation?.CollectionDetails != null
+        && assignment.Collectionconfirmation.CollectionDetails.Any()
+        ? string.Join(", ", assignment.Collectionconfirmation.CollectionDetails.Select(d =>
+            $"{d.WasteType?.Name ?? $"Type {d.WasteTypeId}"}: {d.ActualWeight:0.##} kg"))
+        : null
             };
         }
     }

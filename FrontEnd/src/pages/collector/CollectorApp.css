@@ -26,9 +26,40 @@
 .col-nav-item { border: none; background: transparent; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; display: flex; gap: 6px; }
 .col-nav-item.active { background: #d1fae5; color: #059669; }
 
-.col-profile { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.col-avatar-placeholder { width: 30px; height: 30px; background: #cbd5e1; border-radius: 50%; }
-.col-username { font-size: 13px; font-weight: 500; }
+.col-header-actions { display: flex; align-items: center; gap: 12px; }
+.header-bell-btn { color: #f59e0b; padding: 6px; }
+.col-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 10px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.18);
+}
+.col-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  background: white;
+  color: #059669;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.col-username {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+}
+.col-chevron { font-size: 11px; color: rgba(255,255,255,0.9); }
 
 /* ACTIVE JOB PAGE */
 .col-page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
@@ -278,12 +309,6 @@ input:checked + .slider:before { transform: translateX(20px); }
 .dd-item:hover { background: #f1f5f9; }
 .dd-item.text-red { color: #dc2626; }
 .dd-item.text-red:hover { background: #fef2f2; }
-
-/* Responsive */
-@media (max-width: 600px) {
-  .form-grid, .form-row-3 { grid-template-columns: 1fr; }
-  .full-width, .form-row-3 { grid-column: span 1; }
-}
 
 /* =========================================
    ADDITIONAL SETTINGS STYLES

@@ -137,13 +137,14 @@ namespace WasteCollectionPlatform.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("Rate limit", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex)
             {
-                return StatusCode(StatusCodes.Status429TooManyRequests, new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
+
         }
 
-        
+
         /// <summary>
         /// Citizen: Update waste report
         /// </summary>

@@ -64,11 +64,13 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
-                .Include(x => x.Collectionconfirmation)  
+                .Include(x => x.Collectionconfirmation)
+                    .ThenInclude(c => c.CollectionDetails)
+                        .ThenInclude(d => d.WasteType)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
-                    .ThenInclude(r => r.WasteTypes) 
+                    .ThenInclude(r => r.WasteTypes)
                 .Include(x => x.Request.Report.SubmittedByNavigation)
                 .Where(x => x.AssignedCollector == collectorId)
                 .OrderByDescending(x => x.AssignedAt)
@@ -80,11 +82,13 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
-                .Include(x => x.Collectionconfirmation)  
+                .Include(x => x.Collectionconfirmation)
+                    .ThenInclude(c => c.CollectionDetails)
+                        .ThenInclude(d => d.WasteType)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
-                    .ThenInclude(r => r.WasteTypes) 
+                    .ThenInclude(r => r.WasteTypes)
                 .Include(x => x.Request.Report.SubmittedByNavigation)
                 .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         }

@@ -7,9 +7,7 @@ namespace BusinessLogicLayer.Services.Implementation
 {
     public class WasteReportService : IWasteReportService
     {
-        private const int MaxReportsPerMinute = 2;
         private const int DuplicateRadiusMeters = 30;
-        private const int DuplicateTimeWindowMinutes = 30;
         private readonly IUnitOfWork _uow;
 
         public WasteReportService(IUnitOfWork uow)
@@ -50,26 +48,16 @@ namespace BusinessLogicLayer.Services.Implementation
                 wasteTypes.Add(wt);
             }
 
-            var sinceUtc = DateTime.UtcNow.AddMinutes(-1);
-            var recentCount = await _uow.WasteReports.CountByUserSinceAsync(userId, sinceUtc);
-            if (recentCount >= MaxReportsPerMinute)
-            {
-                throw new InvalidOperationException("Rate limit exceeded: max 2 waste reports per minute");
-            }
-
             var nowUtc = DateTime.UtcNow;
-            var duplicateCheckSince = nowUtc.AddMinutes(-DuplicateTimeWindowMinutes);
-
             var latDelta = 0.001m;
             var lonDelta = 0.001m;
 
-            var nearbyReports = await _uow.WasteReports.FindNearbyReportsAsync(
-                dto.WasteTypeIds, 
+            var nearbyReports = await _uow.WasteReports.FindPotentialDuplicatesAsync(
+                dto.WasteTypeIds,
                 dto.Latitude,
                 dto.Longitude,
                 latDelta,
-                lonDelta,
-                duplicateCheckSince
+                lonDelta
             );
 
             var isDuplicate = nearbyReports.Any(r =>
@@ -77,7 +65,10 @@ namespace BusinessLogicLayer.Services.Implementation
                 <= DuplicateRadiusMeters
             );
 
-            var status = isDuplicate ? "Duplicate" : "Pending";
+            if (isDuplicate)
+            {
+                throw new InvalidOperationException("A similar waste report already exists in this location.");
+            }
 
             var entity = new Wastereport
             {
@@ -86,7 +77,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
                 Description = dto.Description,
-                Status = status,
+                Status = "Pending",
                 CreatedAt = nowUtc,
                 WasteTypes = wasteTypes 
             };
@@ -284,6 +275,28 @@ namespace BusinessLogicLayer.Services.Implementation
                     throw new ArgumentException($"WasteTypeId {id} is invalid");
                 }
                 newWasteTypes.Add(wt);
+            }
+
+            var latDelta = 0.001m;
+            var lonDelta = 0.001m;
+
+            var nearbyReports = await _uow.WasteReports.FindPotentialDuplicatesAsync(
+                dto.WasteTypeIds,
+                dto.Latitude,
+                dto.Longitude,
+                latDelta,
+                lonDelta,
+                reportId
+            );
+
+            var isDuplicate = nearbyReports.Any(r =>
+                CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude)
+                <= DuplicateRadiusMeters
+            );
+
+            if (isDuplicate)
+            {
+                throw new InvalidOperationException("A similar waste report already exists in this location.");
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Image))
