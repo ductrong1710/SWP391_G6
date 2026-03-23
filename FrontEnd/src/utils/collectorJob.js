@@ -2,24 +2,38 @@ export const JOB_STATUS = {
   ASSIGNED: "Assigned",
   ON_THE_WAY: "OnTheWay",
   ARRIVED: "Arrived",
+  REPORTED_ISSUE: "ReportedIssue",
+  FAILED: "Failed",
   COMPLETED: "Completed",
   DECLINED: "Declined",
 };
 
+export const COLLECTION_ISSUE_TYPES = [
+  { value: "WasteNotFound", label: "Waste not found" },
+  { value: "WrongAddress", label: "Wrong address" },
+  { value: "WasteTypeMismatch", label: "Waste type mismatch" },
+  { value: "CitizenUnavailable", label: "Citizen unavailable" },
+  { value: "Other", label: "Other" },
+];
+
 export const getStatusMeta = (status) => {
   switch (status) {
     case JOB_STATUS.ASSIGNED:
-      return { label: "Assigned", className: "badge-info", icon: "📋" };
+      return { label: "Assigned", className: "badge-info", icon: "A" };
     case JOB_STATUS.ON_THE_WAY:
-      return { label: "On the way", className: "badge-primary", icon: "🚚" };
+      return { label: "On the way", className: "badge-primary", icon: "T" };
     case JOB_STATUS.ARRIVED:
-      return { label: "Arrived", className: "badge-warning", icon: "📍" };
+      return { label: "Arrived", className: "badge-warning", icon: "R" };
+    case JOB_STATUS.REPORTED_ISSUE:
+      return { label: "Issue reported", className: "badge-danger", icon: "!" };
+    case JOB_STATUS.FAILED:
+      return { label: "Failed", className: "badge-danger", icon: "X" };
     case JOB_STATUS.COMPLETED:
-      return { label: "Completed", className: "badge-completed", icon: "✅" };
+      return { label: "Completed", className: "badge-completed", icon: "C" };
     case JOB_STATUS.DECLINED:
-      return { label: "Declined", className: "badge-danger", icon: "✕" };
+      return { label: "Declined", className: "badge-danger", icon: "D" };
     default:
-      return { label: status || "Unknown", className: "badge-neutral", icon: "•" };
+      return { label: status || "Unknown", className: "badge-neutral", icon: "-" };
   }
 };
 
@@ -87,17 +101,18 @@ export const buildCompletionFormData = (afterPhoto, weightsArray) => {
     formData.append(`ActualWeights[${index}].Weight`, String(item.weight));
   });
 
-  formData.append("Note", "Thu gom thành công");
+  formData.append("Note", "Collection completed");
 
   return formData;
 };
 
-export const buildIssueFormData = (issueDescription, photo) => {
+export const buildIssueFormData = (issueType, description, proofImage) => {
   const formData = new FormData();
-  formData.append("IssueDescription", issueDescription);
+  formData.append("IssueType", issueType);
+  formData.append("Description", description);
 
-  if (photo) {
-    formData.append("Photo", photo);
+  if (proofImage) {
+    formData.append("ProofImage", proofImage, proofImage.name);
   }
 
   return formData;

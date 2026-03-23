@@ -1,5 +1,6 @@
 import api from "./api";
 
+
 const normalizeCollectionRequest = (item) => ({
   requestId: item.requestId ?? item.RequestId ?? null,
   reportId: item.reportId ?? item.ReportId ?? null,
@@ -25,28 +26,49 @@ const normalizeAssignment = (item) => ({
   assignmentId: item.assignmentId ?? item.AssignmentId ?? null,
   requestId: item.requestId ?? item.RequestId ?? null,
   status: item.status ?? item.Status ?? "",
+
   assignedAt: item.assignedAt ?? item.AssignedAt ?? null,
   startedAt: item.startedAt ?? item.StartedAt ?? null,
   arrivedAt: item.arrivedAt ?? item.ArrivedAt ?? null,
   completedAt: item.completedAt ?? item.CompletedAt ?? null,
+
   beforeImageUrl: item.beforeImageUrl ?? item.BeforeImageUrl ?? "",
+  afterImageUrl: item.afterImageUrl ?? item.AfterImageUrl ?? "",
+  completionNote: item.completionNote ?? item.CompletionNote ?? "",
+
   enterpriseId: item.enterpriseId ?? item.EnterpriseId ?? null,
   enterpriseName: item.enterpriseName ?? item.EnterpriseName ?? "",
   enterprisePhone: item.enterprisePhone ?? item.EnterprisePhone ?? "",
+
   reportId: item.reportId ?? item.ReportId ?? null,
+  reportImageUrl: item.reportImageUrl ?? item.ReportImageUrl ?? "",
+
   wasteTypeIds: item.wasteTypeIds ?? item.WasteTypeIds ?? [],
   wasteTypeName: item.wasteTypeName ?? item.WasteTypeName ?? "",
-  imageUrl: item.imageUrl ?? item.ImageUrl ?? "",
+  wasteItems: item.wasteItems ?? item.WasteItems ?? [],
+
   latitude: Number(item.latitude ?? item.Latitude ?? 0),
   longitude: Number(item.longitude ?? item.Longitude ?? 0),
   description: item.description ?? item.Description ?? "",
+
   reportStatus: item.reportStatus ?? item.ReportStatus ?? "",
   reportCreatedAt: item.reportCreatedAt ?? item.ReportCreatedAt ?? null,
+
   citizenName: item.citizenName ?? item.CitizenName ?? "",
   citizenPhone: item.citizenPhone ?? item.CitizenPhone ?? "",
-  totalCollectedWeight: Number(item.totalCollectedWeight ?? item.TotalCollectedWeight ?? 0),
-  collectedWasteSummary: item.collectedWasteSummary ?? item.CollectedWasteSummary ?? "",
+
+  note: item.note ?? item.Note ?? "",
+  issueReport: item.issueReport ?? item.IssueReport ?? "",
+  issueReason: item.issueReason ?? item.IssueReason ?? "",
+  issueImageUrl: item.issueImageUrl ?? item.IssueImageUrl ?? "",
+
+  totalCollectedWeight: Number(
+    item.totalCollectedWeight ?? item.TotalCollectedWeight ?? 0
+  ),
+  collectedWasteSummary:
+    item.collectedWasteSummary ?? item.CollectedWasteSummary ?? "",
 });
+
 
 
 const assignmentService = {

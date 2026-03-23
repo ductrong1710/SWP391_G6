@@ -20,8 +20,12 @@ const normalizeUser = (user) => {
     email: user.email ?? user.Email ?? "",
     roleId,
     roleName: user.roleName ?? user.RoleName ?? ROLE_NAMES[roleId] ?? "",
+    isAvailable: Boolean(user.isAvailable ?? user.IsAvailable ?? false),
+    availabilityUpdatedAt:
+      user.availabilityUpdatedAt ?? user.AvailabilityUpdatedAt ?? null,
   };
 };
+
 
 const authService = {
   register: async (userData) => {
@@ -63,6 +67,14 @@ const authService = {
   getCurrentUser: () => {
     const userStr = localStorage.getItem("user");
     return userStr ? JSON.parse(userStr) : null;
+  },
+
+  updateCurrentUser: (partialUser) => {
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) return;
+
+    const updatedUser = { ...currentUser, ...partialUser };
+    localStorage.setItem("user", JSON.stringify(updatedUser));
   },
 
   isAuthenticated: () => !!localStorage.getItem("token"),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import assignmentService from "../services/assignmentService";
 import collectionService from "../services/collectionService";
 import {
@@ -7,8 +7,37 @@ import {
   buildIssueFormData,
 } from "../utils/collectorJob";
 
+const VISIBLE_STATUSES = [
+  "Assigned",
+  "OnTheWay",
+  "Arrived",
+  "ReportedIssue",
+  "Failed",
+];
+
+const STATUS_PRIORITY = {
+  OnTheWay: 1,
+  Arrived: 2,
+  ReportedIssue: 3,
+  Failed: 4,
+  Assigned: 5,
+  Completed: 6,
+  Declined: 7,
+  Cancelled: 8,
+};
+
+const sortAssignments = (items) =>
+  [...items].sort((a, b) => {
+    const statusDiff =
+      (STATUS_PRIORITY[a.status] ?? 999) - (STATUS_PRIORITY[b.status] ?? 999);
+
+    if (statusDiff !== 0) return statusDiff;
+
+    return new Date(b.assignedAt ?? 0) - new Date(a.assignedAt ?? 0);
+  });
+
 const useActiveJob = () => {
-  const [job, setJob] = useState(null);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const mountedRef = useRef(true);
@@ -16,6 +45,7 @@ const useActiveJob = () => {
 
   const fetchMyAssignments = useCallback(async (force = false) => {
     const now = Date.now();
+
     if (!force && lastFetchRef.current && now - lastFetchRef.current < 1000) {
       return;
     }
@@ -24,18 +54,20 @@ const useActiveJob = () => {
 
     try {
       const data = await assignmentService.getMyAssignments();
-      if (!mountedRef.current) {
-        return;
-      }
 
-      setJob(Array.isArray(data) && data.length > 0 ? data[0] : null);
-    } catch {
-      if (!mountedRef.current) {
-        return;
-      }
+      if (!mountedRef.current) return;
 
-      setJob(null);
-      setError("Unable to load assignment.");
+      const visibleJobs = Array.isArray(data)
+        ? sortAssignments(data).filter((item) => VISIBLE_STATUSES.includes(item.status))
+        : [];
+
+      setJobs(visibleJobs);
+    } catch (err) {
+      if (!mountedRef.current) return;
+
+      setJobs([]);
+      setError(err?.response?.data?.message || "Unable to load assignments.");
+
       window.setTimeout(() => {
         if (mountedRef.current) {
           setError("");
@@ -87,10 +119,10 @@ const useActiveJob = () => {
   );
 
   const reportIssue = useCallback(
-    async (assignmentId, issueDescription, photo) => {
+    async (assignmentId, issueType, description, proofImage) => {
       await collectionService.reportIssue(
         assignmentId,
-        buildIssueFormData(issueDescription, photo)
+        buildIssueFormData(issueType, description, proofImage)
       );
       await fetchMyAssignments(true);
     },
@@ -100,19 +132,33 @@ const useActiveJob = () => {
   useEffect(() => {
     mountedRef.current = true;
     fetchMyAssignments();
-    const interval = window.setInterval(() => fetchMyAssignments(), 10000);
+
+    const interval = window.setInterval(() => {
+      fetchMyAssignments();
+    }, 10000);
 
     return () => {
-      window.clearInterval(interval);
       mountedRef.current = false;
+      window.clearInterval(interval);
     };
   }, [fetchMyAssignments]);
 
+  const currentJob = useMemo(() => {
+    return (
+      jobs.find((item) => item.status === "OnTheWay" || item.status === "Arrived") ||
+      jobs.find((item) => item.status === "ReportedIssue" || item.status === "Failed") ||
+      jobs.find((item) => item.status === "Assigned") ||
+      null
+    );
+  }, [jobs]);
+
   return {
-    job,
+    jobs,
+    currentJob,
     loading,
     error,
     setError,
+    refreshAssignments: fetchMyAssignments,
     startTrip,
     markArrived,
     completeJob,

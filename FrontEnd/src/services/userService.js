@@ -8,7 +8,11 @@ const normalizeUser = (user) => ({
   roleName: user.roleName ?? user.RoleName ?? "",
   status: user.status ?? user.Status ?? "",
   createdAt: user.createdAt ?? user.CreatedAt ?? null,
+  isAvailable: Boolean(user.isAvailable ?? user.IsAvailable ?? false),
+  availabilityUpdatedAt:
+    user.availabilityUpdatedAt ?? user.AvailabilityUpdatedAt ?? null,
 });
+
 
 const userService = {
   getAllUsers: async () => {
@@ -28,6 +32,11 @@ const userService = {
     } catch {
       return [];
     }
+  },
+  
+  updateMyAvailability: async (isAvailable) => {
+  const response = await api.put("/users/me/availability", { isAvailable });
+  return normalizeUser(response.data);
   },
 };
 
