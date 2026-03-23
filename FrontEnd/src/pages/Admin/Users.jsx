@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import userService from "../../services/userService";
+import { toast } from "react-toastify";
 import "./Admin.css";
+
+const ROLE_OPTIONS = [
+  { id: 1, name: "Citizen" },
+  { id: 2, name: "Enterprise" },
+  { id: 3, name: "Collector" },
+  { id: 4, name: "Admin" },
+];
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -9,31 +17,35 @@ export default function Users() {
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  // Edit modal state
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({ fullName: "", phone: "", roleId: 0, status: "" });
+  const [saving, setSaving] = useState(false);
+
+  // Action menu
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await userService.getAllUsers();
+      setUsers(data);
+    } catch {
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-
-    const loadUsers = async () => {
-      try {
-        setLoading(true);
-        const data = await userService.getAllUsers();
-        if (mounted) {
-          setUsers(data);
-        }
-      } catch (error) {
-        if (mounted) {
-          setUsers([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
     loadUsers();
-    return () => {
-      mounted = false;
-    };
+  }, []);
+
+  // Close action menu on outside click
+  useEffect(() => {
+    const handler = () => setOpenMenuId(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
   }, []);
 
   const roles = useMemo(
@@ -58,31 +70,69 @@ export default function Users() {
   }, [users, q, roleFilter, statusFilter]);
 
   const formatDate = (value) => {
-    if (!value) {
-      return "N/A";
-    }
-
+    if (!value) return "N/A";
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? "N/A"
-      : date.toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
+      : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   };
 
   const initialsOf = (name) => {
-    if (!name) {
-      return "NA";
-    }
-
+    if (!name) return "NA";
     const parts = name.trim().split(" ").filter(Boolean);
-    if (parts.length === 1) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
-
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  };
+
+  // ── Edit handlers ──
+  const openEdit = (user) => {
+    setEditingUser(user);
+    setEditForm({
+      fullName: user.fullName || "",
+      phone: user.phone || "",
+      roleId: user.roleId || ROLE_OPTIONS.find((r) => r.name === user.roleName)?.id || 1,
+      status: user.status || "Active",
+    });
+    setOpenMenuId(null);
+  };
+
+  const handleSave = async () => {
+    if (!editingUser) return;
+    setSaving(true);
+    try {
+      await userService.updateUser(editingUser.userId, editForm);
+      toast.success("User updated successfully");
+      setEditingUser(null);
+      loadUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update user");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Deactivate / Activate ──
+  const handleDeactivate = async (userId) => {
+    setOpenMenuId(null);
+    if (!window.confirm("Are you sure you want to deactivate this user?")) return;
+    try {
+      await userService.deactivateUser(userId);
+      toast.success("User deactivated");
+      loadUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to deactivate");
+    }
+  };
+
+  const handleActivate = async (userId) => {
+    setOpenMenuId(null);
+    try {
+      await userService.activateUser(userId);
+      toast.success("User activated");
+      loadUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to activate");
+    }
   };
 
   return (
@@ -92,6 +142,7 @@ export default function Users() {
         <p className="text-gray">Manage all platform users and their permissions</p>
       </div>
 
+      {/* Filters */}
       <div className="admin-card mb-4 filter-bar">
         <div className="search-wrapper">
           <span className="search-icon">🔍</span>
@@ -102,90 +153,112 @@ export default function Users() {
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-
         <div className="filter-actions">
           <select className="filter-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
             {roles.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
+              <option key={role} value={role}>{role}</option>
             ))}
           </select>
-
-          <select
-            className="filter-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
+          <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
+              <option key={status} value={status}>{status}</option>
             ))}
           </select>
         </div>
       </div>
 
+      {/* Table */}
       <div className="admin-card no-padding">
         <table className="admin-table">
           <thead>
             <tr>
-              <th style={{ width: "35%" }}>User</th>
-              <th style={{ width: "18%" }}>Role</th>
-              <th style={{ width: "18%" }}>Status</th>
-              <th style={{ width: "18%" }}>Joined</th>
-              <th style={{ width: "11%" }} className="text-right">
-                Actions
-              </th>
+              <th style={{ width: "31%" }}>User</th>
+              <th style={{ width: "16%" }}>Role</th>
+              <th style={{ width: "14%" }}>Status</th>
+              <th style={{ width: "12%" }}>Phone</th>
+              <th style={{ width: "17%" }}>Joined</th>
+              <th style={{ width: "10%" }}></th>
             </tr>
           </thead>
-
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={5} className="text-gray-sm" style={{ padding: 24 }}>
-                  Loading...
-                </td>
-              </tr>
+              <tr><td colSpan={6} style={{ padding: 24 }}>Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="text-gray-sm" style={{ padding: 24, textAlign: "center" }}>
-                  No users found
-                </td>
-              </tr>
+              <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>No users found</td></tr>
             ) : (
               filtered.map((user) => (
                 <tr key={user.userId ?? user.email}>
                   <td>
                     <div className="user-cell">
-                      <div className="user-avatar" aria-hidden>
-                        {initialsOf(user.fullName)}
-                      </div>
+                      <div className="user-avatar" aria-hidden>{initialsOf(user.fullName)}</div>
                       <div>
                         <div className="u-name">{user.fullName || "Unknown"}</div>
                         <div className="u-email">{user.email || "No email"}</div>
                       </div>
                     </div>
                   </td>
-
                   <td>
                     <span className={`role-badge ${(user.roleName || "unknown").toLowerCase()}`}>
                       {user.roleName || "Unknown"}
                     </span>
                   </td>
-
                   <td>
                     <span className={`status-badge ${(user.status || "unknown").toLowerCase()}`}>
                       {user.status || "Unknown"}
                     </span>
                   </td>
-
+                  <td style={{ color: "#64748b", fontSize: 13 }}>{user.phone || "—"}</td>
                   <td className="text-gray-sm">{formatDate(user.createdAt)}</td>
-
-                  <td className="text-right">
-                    <button className="btn-action-dots" type="button" disabled>
+                  <td className="text-right" style={{ position: "relative" }}>
+                    <button
+                      className="btn-action-dots"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === user.userId ? null : user.userId);
+                      }}
+                    >
                       ⋮
                     </button>
+                    {openMenuId === user.userId && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: 36,
+                          background: "#fff",
+                          borderRadius: 8,
+                          boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                          border: "1px solid #e2e8f0",
+                          zIndex: 50,
+                          minWidth: 160,
+                          overflow: "hidden",
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          style={menuBtnStyle}
+                          onClick={() => openEdit(user)}
+                        >
+                          ✏️ Edit User
+                        </button>
+                        {user.status === "Inactive" ? (
+                          <button
+                            style={{ ...menuBtnStyle, color: "#059669" }}
+                            onClick={() => handleActivate(user.userId)}
+                          >
+                            ✅ Activate
+                          </button>
+                        ) : (
+                          <button
+                            style={{ ...menuBtnStyle, color: "#ef4444" }}
+                            onClick={() => handleDeactivate(user.userId)}
+                          >
+                            🚫 Deactivate
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
@@ -193,6 +266,147 @@ export default function Users() {
           </tbody>
         </table>
       </div>
+
+      {/* Edit Modal */}
+      {editingUser && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setEditingUser(null)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              padding: 28,
+              width: 440,
+              maxHeight: "80vh",
+              overflow: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700 }}>Edit User</h3>
+            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 20 }}>
+            </div>
+
+            {/* Full Name */}
+            <label style={labelStyle}>Full Name</label>
+            <input
+              style={inputStyle}
+              value={editForm.fullName}
+              onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+              placeholder="Full name"
+            />
+
+            {/* Phone */}
+            <label style={labelStyle}>Phone</label>
+            <input
+              style={inputStyle}
+              value={editForm.phone}
+              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              placeholder="Phone number"
+            />
+
+            {/* Role */}
+            <label style={labelStyle}>Role</label>
+            <select
+              style={inputStyle}
+              value={editForm.roleId}
+              onChange={(e) => setEditForm({ ...editForm, roleId: Number(e.target.value) })}
+            >
+              {ROLE_OPTIONS.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+
+            {/* Status */}
+            <label style={labelStyle}>Status</label>
+            <select
+              style={inputStyle}
+              value={editForm.status}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+
+            {/* Buttons */}
+            <div style={{ display: "flex", gap: 10, marginTop: 24, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setEditingUser(null)}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                  background: "#fff",
+                  color: "#475569",
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  padding: "8px 24px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: saving ? "#94a3b8" : "#10b981",
+                  color: "#fff",
+                  cursor: saving ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const menuBtnStyle = {
+  display: "block",
+  width: "100%",
+  padding: "10px 16px",
+  border: "none",
+  background: "transparent",
+  textAlign: "left",
+  cursor: "pointer",
+  fontSize: 14,
+  color: "#334155",
+  transition: "background 0.15s",
+};
+
+const labelStyle = {
+  display: "block",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "#334155",
+  marginBottom: 4,
+  marginTop: 14,
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "9px 12px",
+  borderRadius: 8,
+  border: "1px solid #e2e8f0",
+  fontSize: 14,
+  color: "#0f172a",
+  outline: "none",
+  boxSizing: "border-box",
+};

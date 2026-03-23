@@ -64,11 +64,7 @@ namespace BusinessLogicLayer.Services.Implementation
             if (user == null)
                 throw new InvalidOperationException("User not found");
 
-            if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
-            {
-                if (await _uow.Users.EmailExistsExceptAsync(request.Email, id))
-                    throw new InvalidOperationException("Email already exists");
-            }
+            // Email is NOT allowed to be changed by admin
 
             if (!string.IsNullOrWhiteSpace(request.Phone) && request.Phone != user.Phone)
             {
@@ -79,9 +75,6 @@ namespace BusinessLogicLayer.Services.Implementation
             if (!string.IsNullOrWhiteSpace(request.FullName))
                 user.FullName = request.FullName;
 
-            if (!string.IsNullOrWhiteSpace(request.Email))
-                user.Email = request.Email;
-
             if (!string.IsNullOrWhiteSpace(request.Phone))
                 user.Phone = request.Phone;
 
@@ -91,6 +84,34 @@ namespace BusinessLogicLayer.Services.Implementation
             if (!string.IsNullOrWhiteSpace(request.Status))
                 user.Status = request.Status;
 
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync();
+
+            var updated = await _uow.Users.GetByIdAsync(id);
+            return MapToDto(updated!);
+        }
+
+        public async Task<UserResponseDto> SoftDeleteUserAsync(int id)
+        {
+            var user = await _uow.Users.GetByIdAsync(id);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+
+            user.Status = "Inactive";
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync();
+
+            var updated = await _uow.Users.GetByIdAsync(id);
+            return MapToDto(updated!);
+        }
+
+        public async Task<UserResponseDto> ReactivateUserAsync(int id)
+        {
+            var user = await _uow.Users.GetByIdAsync(id);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+
+            user.Status = "Active";
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
 
