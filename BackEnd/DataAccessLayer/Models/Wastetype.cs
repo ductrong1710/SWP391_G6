@@ -1,4 +1,7 @@
-﻿namespace DataAccessLayer.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace DataAccessLayer.Models;
 
 public partial class Wastetype
 {
@@ -8,5 +11,11 @@ public partial class Wastetype
 
     public string? Description { get; set; }
 
-    public virtual ICollection<Wastereport> Wastereports { get; set; } = new List<Wastereport>();
+    public int RewardPoints { get; set; }
+
+    public bool IsActive { get; set; }
+
+    public virtual ICollection<CollectionDetail> CollectionDetails { get; set; } = new List<CollectionDetail>();
+
+    public virtual ICollection<Wastereport> Reports { get; set; } = new List<Wastereport>();
 }

@@ -1,7 +1,9 @@
 using BusinessLogicLayer;
 using DataAccessLayer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 
@@ -13,6 +15,18 @@ namespace WasteCollectionPlatform
         {
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
             var builder = WebApplication.CreateBuilder(args);
+
+            // Force invariant culture để parse số thập phân theo dấu "."
+            var invariantCulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentCulture = invariantCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = invariantCulture;
+
+            builder.Services.Configure<RequestLocalizationOptions>(options =>
+            {
+                options.DefaultRequestCulture = new RequestCulture(invariantCulture);
+                options.SupportedCultures = new[] { invariantCulture };
+                options.SupportedUICultures = new[] { invariantCulture };
+            });
 
             // 1. Cấu hình DB Context
             builder.Services.AddMemoryCache();
@@ -104,6 +118,9 @@ namespace WasteCollectionPlatform
             });
 
             var app = builder.Build();
+
+            // Áp dụng localization (culture) cho request pipeline
+            app.UseRequestLocalization();
 
             if (app.Environment.IsDevelopment())
             {

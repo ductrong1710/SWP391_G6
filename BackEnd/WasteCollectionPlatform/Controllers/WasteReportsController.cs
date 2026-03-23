@@ -22,7 +22,7 @@ namespace WasteCollectionPlatform.Controllers
             public decimal Latitude { get; set; }
             public decimal Longitude { get; set; }
             public string? Description { get; set; }
-            public int WasteTypeId { get; set; }
+            public List<int> WasteTypeIds { get; set; } = new List<int>();
         }
 
         public class UpdateWasteReportForm
@@ -31,7 +31,7 @@ namespace WasteCollectionPlatform.Controllers
             public decimal Latitude { get; set; }
             public decimal Longitude { get; set; }
             public string? Description { get; set; }
-            public int WasteTypeId { get; set; }
+            public List<int> WasteTypeIds { get; set; } = new List<int>();
         }
 
 
@@ -127,7 +127,7 @@ namespace WasteCollectionPlatform.Controllers
                     Latitude = form.Latitude,
                     Longitude = form.Longitude,
                     Description = form.Description,
-                    WasteTypeId = form.WasteTypeId
+                    WasteTypeIds = form.WasteTypeIds
                 };
 
                 var created = await _service.CreateAsync(userId, dto);
@@ -137,13 +137,14 @@ namespace WasteCollectionPlatform.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("Rate limit", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex)
             {
-                return StatusCode(StatusCodes.Status429TooManyRequests, new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
+
         }
 
-        
+
         /// <summary>
         /// Citizen: Update waste report
         /// </summary>
@@ -173,7 +174,7 @@ namespace WasteCollectionPlatform.Controllers
                     Latitude = form.Latitude,
                     Longitude = form.Longitude,
                     Description = form.Description,
-                    WasteTypeId = form.WasteTypeId
+                    WasteTypeIds = form.WasteTypeIds
                 };
 
                 var updated = await _service.UpdateAsync(id, userId, dto);

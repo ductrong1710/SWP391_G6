@@ -134,6 +134,24 @@ namespace BusinessLogicLayer.Services.Implementation
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
         }
+        public async Task<UserResponseDto> UpdateCollectorAvailabilityAsync(int userId, bool isAvailable)
+        {
+            var user = await _uow.Users.GetByIdAsync(userId);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+
+            if (!string.Equals(user.Role?.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Only collectors can update availability");
+
+            user.IsAvailable = isAvailable;
+            user.AvailabilityUpdatedAt = DateTime.UtcNow;
+
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync();
+
+            var updated = await _uow.Users.GetByIdAsync(userId);
+            return MapToDto(updated!);
+        }
 
         private static UserResponseDto MapToDto(User user)
         {
@@ -145,8 +163,12 @@ namespace BusinessLogicLayer.Services.Implementation
                 Phone = user.Phone ?? string.Empty,
                 RoleName = user.Role?.RoleName ?? string.Empty,
                 Status = user.Status ?? string.Empty,
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                IsAvailable = user.IsAvailable,
+                AvailabilityUpdatedAt = user.AvailabilityUpdatedAt
             };
         }
+
+        
     }
 }

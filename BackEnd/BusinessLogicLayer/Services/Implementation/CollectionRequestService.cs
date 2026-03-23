@@ -29,8 +29,9 @@ namespace BusinessLogicLayer.Services.Implementation
                 CreatedAt = r.CreatedAt,
 
                 // Waste report info
-                WasteTypeId = r.Report?.WasteTypeId.ToString(),
-                WasteTypeName = r.Report?.WasteType?.Name,
+                WasteTypeId = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.WasteTypeId)) : string.Empty,
+                WasteTypeName = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.Name)) : string.Empty,
+
                 ReportImageUrl = r.Report?.ImageUrl,
                 Latitude = r.Report?.Latitude,
                 Longitude = r.Report?.Longitude,
@@ -78,8 +79,9 @@ namespace BusinessLogicLayer.Services.Implementation
                     SubmittedBy = request.Report.SubmittedBy,
                     CitizenName = request.Report.SubmittedByNavigation?.FullName,
                     CitizenEmail = request.Report.SubmittedByNavigation?.Email,
-                    WasteTypeId = request.Report.WasteTypeId,
-                    WasteTypeName = request.Report.WasteType?.Name,
+                    WasteTypeIds = request.Report.WasteTypes?.Select(wt => wt.WasteTypeId).ToList() ?? new List<int>(),
+                    WasteTypeNames = request.Report.WasteTypes?.Select(wt => wt.Name).ToList() ?? new List<string>(),
+
                     ImageUrl = request.Report.ImageUrl,
                     Latitude = request.Report.Latitude,
                     Longitude = request.Report.Longitude,
@@ -118,8 +120,9 @@ namespace BusinessLogicLayer.Services.Implementation
                 CreatedAt = r.CreatedAt,
 
                 // Waste report info
-                WasteTypeId = r.Report?.WasteTypeId.ToString(),
-                WasteTypeName = r.Report?.WasteType?.Name,
+                WasteTypeId = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.WasteTypeId)) : string.Empty,
+                WasteTypeName = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.Name)) : string.Empty,
+
                 ReportImageUrl = r.Report?.ImageUrl,
                 Latitude = r.Report?.Latitude,
                 Longitude = r.Report?.Longitude,

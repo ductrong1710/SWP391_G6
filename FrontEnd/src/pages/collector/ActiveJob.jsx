@@ -1,305 +1,113 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import api from "../../services/api";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import L from "leaflet";
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+import "leaflet/dist/leaflet.css";
+import ArrivedActions from "../../components/collector/ArrivedActions";
+import AssignedActions from "../../components/collector/AssignedActions";
+import OnTheWayActions from "../../components/collector/OnTheWayActions";
+import useActiveJob from "../../hooks/useActiveJob";
+import {  
+  COLLECTION_ISSUE_TYPES,
+  getStatusMeta,
+  JOB_STATUS, } from "../../utils/collectorJob";
+import userService from "../../services/userService";
+import authService from "../../services/authService";
 
-const JOB_STATUS = {
-  ASSIGNED: "Assigned",
-  ON_THE_WAY: "OnTheWay",
-  ARRIVED: "Arrived",
-  COMPLETED: "Completed",
-  DECLINED: "Declined",
+
+const DEFAULT_CENTER = [10.7769, 106.7009];
+
+L.Marker.prototype.options.icon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+const formatDateTime = (value) => {
+  if (!value) return "N/A";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString("en-US");
 };
 
-// ─── Custom Hook ──────────────────────────────────────────────────────────────
-const useActiveJob = () => {
-  const [job, setJob] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const mountedRef = useRef(true);
-  const lastFetchRef = useRef(null);
+const formatLocation = (job) => {
+  const hasLat = typeof job?.latitude === "number" && !Number.isNaN(job.latitude);
+  const hasLng = typeof job?.longitude === "number" && !Number.isNaN(job.longitude);
 
-  const fetchMyAssignments = async (force = false) => {
-    const now = Date.now();
-    if (!force && lastFetchRef.current && now - lastFetchRef.current < 1000)
-      return;
-    lastFetchRef.current = now;
+  if (hasLat && hasLng && job.latitude !== 0 && job.longitude !== 0) {
+    return `${job.latitude}, ${job.longitude}`;
+  }
 
-    try {
-      const { data } = await api.get("/assignments/my-assignments");
-      if (!mountedRef.current) return;
-      setJob(Array.isArray(data) && data.length > 0 ? data[0] : null);
-    } catch (err) {
-      if (!mountedRef.current) return;
-      setJob(null);
-      setError("Unable to load assignment.");
-      setTimeout(() => setError(""), 3000);
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  };
-
-  const startTrip = useCallback(async (assignmentId) => {
-    await api.put(`/collections/${assignmentId}/start`, {});
-    await fetchMyAssignments(true);
-  }, []);
-
-  const markArrived = useCallback(async (assignmentId, beforePhoto) => {
-    console.log("markArrived called:", { assignmentId, beforePhoto });
-
-    const form = new FormData();
-    if (beforePhoto) {
-      // ✅ CHANGED: 'BeforePhoto' to 'BeforeImage'
-      form.append("BeforeImage", beforePhoto, beforePhoto.name);
-      console.log(
-        "FormData BeforeImage:",
-        beforePhoto.name,
-        beforePhoto.size,
-        "bytes"
-      );
-    } else {
-      console.warn("⚠️ beforePhoto is null/undefined!");
-    }
-
-    for (let [key, val] of form.entries()) {
-      console.log("FormData entry:", key, val);
-    }
-
-    await api.put(`/collections/${assignmentId}/arrived`, form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    await fetchMyAssignments(true);
-  }, []);
-
-  const completeJob = useCallback(
-    async (assignmentId, afterPhoto, actualWeight) => {
-      const form = new FormData();
-      // ✅ CHANGED: 'AfterPhoto' to 'AfterImage'
-      if (afterPhoto) form.append("AfterImage", afterPhoto, afterPhoto.name);
-      if (actualWeight) form.append("ActualWeight", actualWeight);
-      await api.put(`/collections/${assignmentId}/complete`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      await fetchMyAssignments(true);
-    },
-    []
-  );
-
-  const declineJob = useCallback(async (assignmentId, reason) => {
-    await api.put(`/collections/${assignmentId}/decline`, { reason });
-    await fetchMyAssignments(true);
-  }, []);
-
-  const reportIssue = useCallback(
-    async (assignmentId, issueDescription, photo) => {
-      const form = new FormData();
-      form.append("IssueDescription", issueDescription);
-      if (photo) form.append("Photo", photo);
-      await api.put(`/collections/${assignmentId}/report-issue`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      await fetchMyAssignments(true);
-    },
-    []
-  );
-
-  useEffect(() => {
-    mountedRef.current = true;
-    fetchMyAssignments();
-    const interval = setInterval(() => fetchMyAssignments(), 10000);
-    return () => {
-      clearInterval(interval);
-      mountedRef.current = false;
-    };
-  }, []);
-
-  return {
-    job,
-    loading,
-    error,
-    setError,
-    startTrip,
-    markArrived,
-    completeJob,
-    declineJob,
-    reportIssue,
-  };
+  return "No location available";
 };
 
-// ─── Tách riêng từng ActionBar theo status ────────────────────────────────────
+const getWasteTypeList = (job) => {
+  if (Array.isArray(job?.wasteItems) && job.wasteItems.length > 0) {
+    return job.wasteItems;
+  }
 
-// ✅ Fix: Tách riêng component, state photo không bị reset khi status thay đổi
-const AssignedActions = ({ onStart, onDecline }) => {
-  const [declineReason, setDeclineReason] = useState("");
-  const [showDecline, setShowDecline] = useState(false);
+  if (job?.wasteTypeName) {
+    return job.wasteTypeName
+      .split(",")
+      .map((name, index) => ({
+        wasteTypeId: index + 1,
+        wasteTypeName: name.trim(),
+      }))
+      .filter((item) => item.wasteTypeName);
+  }
 
-  return (
-    <div className="bottom-action-bar">
-      {showDecline ? (
-        <div>
-          <textarea
-            className="form-input"
-            placeholder="Enter decline reason..."
-            value={declineReason}
-            onChange={(e) => setDeclineReason(e.target.value)}
-            rows={3}
-            style={{ marginBottom: 8, width: "100%" }}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              className="btn-decline-trip"
-              onClick={() => onDecline(declineReason)}
-            >
-              Confirm Decline
-            </button>
-            <button
-              className="btn-outline-map"
-              onClick={() => setShowDecline(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn-start-trip" onClick={onStart}>
-            🚗 Start Trip
-          </button>
-          <button
-            className="btn-decline-trip"
-            onClick={() => setShowDecline(true)}
-          >
-            ✗ Decline
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  return [];
 };
 
-const OnTheWayActions = ({ onArrived }) => {
-  // ✅ Fix: state nằm trong component riêng, không bị ảnh hưởng bởi re-render của parent
-  const [beforePhoto, setBeforePhoto] = useState(null);
-  const fileRef = useRef(null);
+const getJobMapCenter = (job) => {
+  const lat = Number(job?.latitude);
+  const lng = Number(job?.longitude);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    console.log("File selected:", file?.name, file?.size);
-    setBeforePhoto(file ?? null);
-  };
+  if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat !== 0 && lng !== 0) {
+    return [lat, lng];
+  }
 
-  const handleArrived = () => {
-    // ✅ Đọc file trực tiếp từ input ref (đảm bảo luôn lấy đúng file)
-    const file = fileRef.current?.files[0] ?? beforePhoto;
-    console.log("Submitting with file:", file?.name);
-    onArrived(file);
-  };
-
-  return (
-    <div className="bottom-action-bar">
-      <label
-        className="form-group"
-        style={{ display: "block", marginBottom: 8 }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 600 }}>
-          📷 Photo before collection{" "}
-          {beforePhoto && (
-            <span style={{ color: "#10b981" }}>✓ {beforePhoto.name}</span>
-          )}
-        </span>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          style={{ display: "block", marginTop: 4 }}
-        />
-      </label>
-      <button
-        className="btn-start-trip"
-        onClick={handleArrived}
-        // ✅ Bỏ disabled để debug, sau đó có thể bật lại: disabled={!beforePhoto}
-      >
-        📍 Mark Arrived
-      </button>
-    </div>
-  );
+  return DEFAULT_CENTER;
 };
 
-const ArrivedActions = ({ onComplete }) => {
-  const [afterPhoto, setAfterPhoto] = useState(null);
-  const [actualWeight, setActualWeight] = useState("");
-  const fileRef = useRef(null);
+const shouldShowEvidence = (status) =>
+  [
+    JOB_STATUS.ON_THE_WAY,
+    JOB_STATUS.ARRIVED,
+    JOB_STATUS.REPORTED_ISSUE,
+    JOB_STATUS.FAILED,
+    JOB_STATUS.COMPLETED,
+  ].includes(status);
 
-  const handleComplete = () => {
-    const file = fileRef.current?.files[0] ?? afterPhoto;
-    onComplete(file, actualWeight);
-  };
+const ErrorBanner = ({ message, onClose }) => (
+  <div className="error-banner">
+    {message}
+    <button onClick={onClose} className="alert-close">
+      x
+    </button>
+  </div>
+);
 
-  return (
-    <div className="bottom-action-bar">
-      <div className="form-group" style={{ marginBottom: 8 }}>
-        <label style={{ fontSize: 13, fontWeight: 600 }}>
-          ⚖️ Actual weight (kg)
-        </label>
-        <input
-          type="number"
-          className="form-input"
-          value={actualWeight}
-          onChange={(e) => setActualWeight(e.target.value)}
-          placeholder="Enter kg..."
-          style={{ marginTop: 4 }}
-        />
-      </div>
-      <label
-        className="form-group"
-        style={{ display: "block", marginBottom: 8 }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 600 }}>
-          📷 Photo after collection{" "}
-          {afterPhoto && (
-            <span style={{ color: "#10b981" }}>✓ {afterPhoto.name}</span>
-          )}
-        </span>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) => setAfterPhoto(e.target.files[0] ?? null)}
-          style={{ display: "block", marginTop: 4 }}
-        />
-      </label>
-      <button
-        className="btn-start-trip"
-        onClick={handleComplete}
-        disabled={!actualWeight}
-      >
-        ✅ Complete Collection
-      </button>
-    </div>
-  );
-};
+const LoadingState = () => (
+  <div className="settings-card empty-state-card active-dispatch-empty">
+    <div className="empty-icon">...</div>
+    <p className="empty-title">Loading active jobs...</p>
+    <p className="text-sm text-gray">Please wait a moment.</p>
+  </div>
+);
 
-// ✅ Fix: ActionBar chỉ render đúng component theo status
-const ActionBar = ({
-  job,
-  onStart,
-  onArrived,
-  onComplete,
-  onDecline,
-  onReportIssue,
-}) => {
-  const status = job?.status;
+const EmptyState = () => (
+  <div className="settings-card empty-state-card active-dispatch-empty fade-in">
+    <div className="empty-icon">-</div>
+    <p className="empty-title">No active assignments</p>
+    <p className="text-sm text-gray">Assigned and in-progress jobs will appear here.</p>
+  </div>
+);
 
-  if (status === JOB_STATUS.ASSIGNED)
-    return <AssignedActions onStart={onStart} onDecline={onDecline} />;
-  if (status === JOB_STATUS.ON_THE_WAY)
-    return <OnTheWayActions onArrived={onArrived} />;
-  if (status === JOB_STATUS.ARRIVED)
-    return <ArrivedActions onComplete={onComplete} />;
-
-  return null;
-};
-
-// ─── Sub Components ───────────────────────────────────────────────────────────
 const StatusToggle = ({ isOnline, onToggle }) => (
   <div className="status-toggle">
     <span className={`status-label ${isOnline ? "text-green" : "text-gray"}`}>
@@ -312,45 +120,393 @@ const StatusToggle = ({ isOnline, onToggle }) => (
   </div>
 );
 
-const JobStats = ({ job }) => (
-  <div className="job-stats-grid">
-    {[
-      { label: "Waste Type", value: job.wasteTypeName ?? "Unknown" },
-      { label: "Est. Weight", value: `${job.estimatedWeight ?? "N/A"} kg` },
-      { label: "Status", value: job.status ?? "Unknown" },
-    ].map(({ label, value }) => (
-      <div className="stat-box" key={label}>
-        <div className="label">{label}</div>
-        <div className="val">{value}</div>
+const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIssue }) => {
+  if (job?.status === JOB_STATUS.ASSIGNED) {
+  return <AssignedActions onStart={onStart} onDecline={onDecline} />;
+  }
+  if (job?.status === JOB_STATUS.ON_THE_WAY) {
+    return (
+      <>
+        <OnTheWayActions onArrived={onArrived} />
+        <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
+          <div className="card-header-simple">
+            <h3>Issue Handling</h3>
+            <p className="text-gray">
+              Report a problem so the enterprise can review and reassign if needed.
+            </p>
+          </div>
+          <button className="btn-danger-soft" onClick={onReportIssue}>
+            Report Issue
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  if (job?.status === JOB_STATUS.ARRIVED) {
+    return (
+      <>
+        <ArrivedActions job={job} onComplete={onComplete} />
+        <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
+          <div className="card-header-simple">
+            <h3>Issue Handling</h3>
+            <p className="text-gray">
+              If this pickup cannot be completed, send the issue back for reassignment.
+            </p>
+          </div>
+          <button className="btn-danger-soft" onClick={onReportIssue}>
+            Report Issue
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  if (
+    job?.status === JOB_STATUS.REPORTED_ISSUE ||
+    job?.status === JOB_STATUS.FAILED
+  ) {
+    return (
+      <div className="settings-card action-card fade-in">
+        <div className="card-header-simple">
+          <h3>Awaiting Enterprise Action</h3>
+          <p className="text-gray">
+            This job has been flagged with an issue. Please wait for update or reassignment.
+          </p>
+        </div>
       </div>
-    ))}
+    );
+  }
+
+  return null;
+};
+
+const JobListItem = ({ job, selected, onSelect }) => {
+  const statusMeta = getStatusMeta(job?.status);
+
+  return (
+    <div
+      className={`active-dispatch-item ${selected ? "selected" : ""}`}
+      onClick={() => onSelect(job)}
+    >
+      <div className="active-dispatch-item-header">
+        <div className="active-dispatch-avatar">
+          {job?.status === JOB_STATUS.ON_THE_WAY || job?.status === JOB_STATUS.ARRIVED ? "A" : "J"}
+        </div>
+
+        <div className="active-dispatch-item-main">
+          <div className="active-dispatch-item-title">Job #{job.assignmentId}</div>
+          <div className="active-dispatch-item-subtitle">
+            {job.wasteTypeName || "Waste"}
+          </div>
+        </div>
+
+        <span className={`collector-badge ${statusMeta.className}`}>
+          {statusMeta.label}
+        </span>
+      </div>
+
+      <div className="active-dispatch-item-meta">
+        <div>{job.enterpriseName || "Enterprise not available"}</div>
+        <div>{formatDateTime(job.assignedAt)}</div>
+        <div>{formatLocation(job)}</div>
+      </div>
+    </div>
+  );
+};
+
+const JobListPanel = ({ jobs, selectedJob, onSelect }) => (
+  <div className="active-dispatch-list-panel">
+    <h2 className="active-dispatch-panel-title">
+      Job Queue <span className="count">{jobs.length}</span>
+    </h2>
+
+    {!jobs.length ? (
+      <div className="active-dispatch-inline-empty">
+        <p>No jobs available.</p>
+      </div>
+    ) : (
+      <div className="active-dispatch-list">
+        {jobs.map((job) => (
+          <JobListItem
+            key={job.assignmentId}
+            job={job}
+            selected={selectedJob?.assignmentId === job.assignmentId}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    )}
   </div>
 );
 
-const ErrorBanner = ({ message, onClose }) => (
-  <div className="error-banner">
-    {message}
-    <button onClick={onClose} className="alert-close">
-      ✕
-    </button>
+const LocationMapSection = ({ job }) => {
+  const mapCenter = getJobMapCenter(job);
+  const hasCoordinates =
+    Number(job?.latitude) !== 0 &&
+    Number(job?.longitude) !== 0 &&
+    !Number.isNaN(Number(job?.latitude)) &&
+    !Number.isNaN(Number(job?.longitude));
+
+  return (
+    <div className="settings-card active-dispatch-section">
+      <div className="card-header-simple">
+        <h3>Location Map</h3>
+        <p className="text-gray">Pickup location for the selected job.</p>
+      </div>
+
+      <div className="active-dispatch-map-panel">
+        <MapContainer
+          key={`${mapCenter[0]}-${mapCenter[1]}`}
+          center={mapCenter}
+          zoom={15}
+          style={{ height: "100%", borderRadius: 8 }}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          {hasCoordinates && (
+            <Marker position={mapCenter}>
+              <Popup>
+                <strong>Job #{job.assignmentId}</strong>
+                <br />
+                {job.wasteTypeName || "Waste"}
+                <br />
+                {formatLocation(job)}
+              </Popup>
+            </Marker>
+          )}
+        </MapContainer>
+      </div>
+    </div>
+  );
+};
+
+const DetailHeader = ({ job }) => {
+  const statusMeta = getStatusMeta(job?.status);
+
+  return (
+    <div className="active-dispatch-detail-hero">
+      <div>
+        <div className="active-dispatch-eyebrow">Collector Assignment</div>
+        <div className="active-dispatch-title-row">
+          <h2>Job #{job.assignmentId}</h2>
+          <span className={`collector-badge ${statusMeta.className}`}>
+            {statusMeta.label}
+          </span>
+        </div>
+        <p className="text-gray">
+          Request #{job.requestId} • Report #{job.reportId}
+        </p>
+      </div>
+
+      <div className="hc-right">
+        <span className="badge-waste">{job.wasteTypeName || "Waste"}</span>
+      </div>
+    </div>
+  );
+};
+
+const DetailInfoGrid = ({ job }) => (
+  <div className="details-grid active-dispatch-details-grid">
+    <div className="detail-section">
+      <label>Assigned By</label>
+      <p className="detail-value">{job.enterpriseName || "N/A"}</p>
+    </div>
+    <div className="detail-section">
+      <label>Enterprise Phone</label>
+      <p className="detail-value">{job.enterprisePhone || "N/A"}</p>
+    </div>
+    <div className="detail-section">
+      <label>Pickup Contact</label>
+      <p className="detail-value">{job.citizenName || "N/A"}</p>
+    </div>
+    <div className="detail-section">
+      <label>Citizen Phone</label>
+      <p className="detail-value">{job.citizenPhone || "N/A"}</p>
+    </div>
+    <div className="detail-section">
+      <label>Assigned At</label>
+      <p className="detail-value">{formatDateTime(job.assignedAt)}</p>
+    </div>
+    <div className="detail-section">
+      <label>Report Created</label>
+      <p className="detail-value">{formatDateTime(job.reportCreatedAt)}</p>
+    </div>
+    <div className="detail-section">
+      <label>Started At</label>
+      <p className="detail-value">{formatDateTime(job.startedAt)}</p>
+    </div>
+    <div className="detail-section">
+      <label>Arrived At</label>
+      <p className="detail-value">{formatDateTime(job.arrivedAt)}</p>
+    </div>
+    <div className="detail-section full-width">
+      <label>Location</label>
+      <p className="detail-value">{formatLocation(job)}</p>
+    </div>
+    <div className="detail-section full-width">
+      <label>Waste Type</label>
+      <p className="detail-value">{job.wasteTypeName || "No data"}</p>
+    </div>
+    <div className="detail-section full-width">
+      <label>Report Description</label>
+      <p className="detail-value">{job.description || "No description"}</p>
+    </div>
   </div>
 );
 
-const EmptyState = () => (
-  <div className="empty-state">
-    <div className="empty-icon">📭</div>
-    <p className="empty-title">No active job assigned</p>
-    <p className="text-sm text-gray">
-      You will be notified when a new job is assigned.
-    </p>
+const WasteTypesSection = ({ job }) => {
+  const wasteTypes = getWasteTypeList(job);
+
+  return (
+    <div className="settings-card active-dispatch-section">
+      <div className="card-header-simple">
+        <h3>Waste Details</h3>
+        <p className="text-gray">Waste categories attached to this report.</p>
+      </div>
+
+      {!wasteTypes.length ? (
+        <p className="text-gray">No waste type details available.</p>
+      ) : (
+        <div className="active-dispatch-chip-grid">
+          {wasteTypes.map((item) => (
+            <div className="active-dispatch-chip" key={`${job.assignmentId}-${item.wasteTypeId}`}>
+              {item.wasteTypeName || item.name || "Unknown"}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const NotesSection = ({ job }) => {
+  const hasCompletionNote = Boolean(job?.completionNote);
+  const hasIssueType = Boolean(job?.issueReport);
+  const hasIssueReason = Boolean(job?.issueReason);
+
+  return (
+    <div className="settings-card active-dispatch-section">
+      <div className="card-header-simple">
+        <h3>Notes</h3>
+        <p className="text-gray">Primary request note and additional notes when available.</p>
+      </div>
+
+      <div className="active-dispatch-note-stack">
+        <div className="note-box">
+          <div className="note-title">Request Note</div>
+          <div className="note-content">{job.note || "No request note"}</div>
+        </div>
+
+        {hasIssueType && (
+          <div className="note-box">
+            <div className="note-title">Issue Type</div>
+            <div className="note-content">{job.issueReport}</div>
+          </div>
+        )}
+
+        {hasIssueReason && (
+          <div className="note-box">
+            <div className="note-title">Issue Reason</div>
+            <div className="note-content">{job.issueReason}</div>
+          </div>
+        )}
+
+        {hasCompletionNote && (
+          <div className="note-box">
+            <div className="note-title">Completion Note</div>
+            <div className="note-content">{job.completionNote}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const EvidenceSection = ({ job }) => (
+  <div className="settings-card active-dispatch-section">
+    <div className="card-header-simple">
+      <h3>Evidence</h3>
+      <p className="text-gray">Collection proof and actual collected result.</p>
+    </div>
+
+    <div className="details-grid active-dispatch-details-grid">
+      <div className="detail-section">
+        <label>Before Photo</label>
+        <p className="detail-value">{job.beforeImageUrl ? "Available" : "Missing"}</p>
+      </div>
+      <div className="detail-section">
+        <label>After Photo</label>
+        <p className="detail-value">{job.afterImageUrl ? "Available" : "Missing"}</p>
+      </div>
+      <div className="detail-section">
+        <label>Issue Image</label>
+        <p className="detail-value">{job.issueImageUrl ? "Available" : "Missing"}</p>
+      </div>
+      <div className="detail-section">
+        <label>Actual Weight</label>
+        <p className="detail-value">{job.totalCollectedWeight ?? 0} kg</p>
+      </div>
+      <div className="detail-section full-width">
+        <label>Collected Breakdown</label>
+        <p className="detail-value">{job.collectedWasteSummary || "Not available"}</p>
+      </div>
+    </div>
   </div>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+const DetailsPanel = ({
+  job,
+  onStart,
+  onArrived,
+  onComplete,
+  onDecline,
+  onReportIssue,
+}) => {
+  if (!job) {
+    return (
+      <div className="settings-card empty-state-card active-dispatch-empty">
+        <div className="empty-icon">-</div>
+        <p className="empty-title">Select a job</p>
+        <p className="text-sm text-gray">Choose a job from the left panel to view details.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="active-dispatch-details-panel">
+      <LocationMapSection job={job} />
+      <div className="details-panel">
+        <h2>Details</h2>
+        <DetailInfoGrid job={job} />
+      </div>
+
+      <WasteTypesSection job={job} />
+      <NotesSection job={job} />
+      {shouldShowEvidence(job?.status) && <EvidenceSection job={job} />}
+
+      <div className="active-dispatch-actions">
+        <ActionBar
+          job={job}
+          onStart={onStart}
+          onArrived={onArrived}
+          onComplete={onComplete}
+          onDecline={onDecline}
+          onReportIssue={onReportIssue}
+        />
+      </div>
+    </div>
+  );
+};
+
 const ActiveJob = () => {
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(
+  authService.getCurrentUser()?.isAvailable ?? true
+  );
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
+
   const {
-    job,
+    jobs,
+    currentJob,
     loading,
     error,
     setError,
@@ -361,91 +517,132 @@ const ActiveJob = () => {
     reportIssue,
   } = useActiveJob();
 
-  // ✅ useCallback để tránh tạo function mới mỗi render → tránh re-render ActionBar
+  useEffect(() => {
+    if (!jobs.length) {
+      setSelectedAssignmentId(null);
+      return;
+    }
+
+    if (!selectedAssignmentId || !jobs.some((job) => job.assignmentId === selectedAssignmentId)) {
+      setSelectedAssignmentId(currentJob?.assignmentId ?? jobs[0]?.assignmentId ?? null);
+    }
+  }, [jobs, currentJob, selectedAssignmentId]);
+
+  const selectedJob = useMemo(() => {
+    return jobs.find((job) => job.assignmentId === selectedAssignmentId) || currentJob || null;
+  }, [jobs, selectedAssignmentId, currentJob]);
+
   const withErrorHandler = useCallback(
-    (fn) =>
-      async (...args) => {
-        try {
-          await fn(...args);
-        } catch (err) {
-          console.error("Action error:", err?.response?.data);
-          setError(err.response?.data?.message || "An error occurred.");
-        }
-      },
+    (fn) => async (...args) => {
+      try {
+        await fn(...args);
+      } catch (err) {
+        console.error("Action error:", err?.response?.data);
+        setError(err?.response?.data?.message || "An error occurred.");
+      }
+    },
     [setError]
   );
 
-  if (loading)
+  const handleReportIssue = useCallback(
+  (job) =>
+    withErrorHandler(async () => {
+      const supportedTypes = COLLECTION_ISSUE_TYPES.map(
+        (item) => `${item.value} = ${item.label}`
+      ).join("\n");
+
+      const issueType = window.prompt(
+        `Enter issue type:\n${supportedTypes}`,
+        "Other"
+      );
+
+      if (!issueType) return;
+
+      const isValidType = COLLECTION_ISSUE_TYPES.some(
+        (item) => item.value.toLowerCase() === issueType.trim().toLowerCase()
+      );
+
+      if (!isValidType) {
+        throw new Error("Invalid issue type.");
+      }
+
+      const description = window.prompt("Enter issue description:");
+      if (!description) return;
+
+      await reportIssue(job.assignmentId, issueType.trim(), description.trim(), null);
+    }),
+  [reportIssue, withErrorHandler]
+  );
+
+  const handleToggleAvailability = useCallback(async () => {
+  const nextValue = !isOnline;
+  setIsOnline(nextValue);
+
+  try {
+    const updatedUser = await userService.updateMyAvailability(nextValue);
+    authService.updateCurrentUser({
+      isAvailable: updatedUser.isAvailable,
+      availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
+    });
+  } catch (err) {
+    setIsOnline((prev) => !prev);
+    setError(err?.response?.data?.message || "Unable to update availability.");
+  }
+}, [isOnline, setError]);
+
+
+  if (loading) {
     return (
-      <div className="loading-container">
-        <h3>Loading...</h3>
+      <div className="col-page-container fade-in active-dispatch-page">
+        <div className="col-page-header">
+          <div>
+            <h2>Active Job</h2>
+            <p className="text-gray">Current active job and queued assignments</p>
+          </div>
+        </div>
+        <LoadingState />
       </div>
     );
+  }
 
   return (
-    <div className="col-active-job fade-in">
+    <div className="col-page-container fade-in active-dispatch-page">
       {error && <ErrorBanner message={error} onClose={() => setError("")} />}
 
-      <div className="col-page-header">
+      <div className="col-page-header active-dispatch-header">
         <div>
           <h2>Active Job</h2>
-          <p className="text-gray">Current collection assignment</p>
+          <p className="text-gray">Collector job queue and assignment details</p>
         </div>
         <StatusToggle
           isOnline={isOnline}
-          onToggle={() => setIsOnline((prev) => !prev)}
+          onToggle={handleToggleAvailability}
         />
       </div>
 
-      {!job ? (
+      {!jobs.length ? (
         <EmptyState />
       ) : (
-        <div className="job-card">
-          <div className="job-header">
-            <h3>Job #{job.assignmentId}</h3>
-            <span className="badge-assigned">{job.status ?? "Unknown"}</span>
-          </div>
+        <div className="active-dispatch-layout">
+          <JobListPanel
+            jobs={jobs}
+            selectedJob={selectedJob}
+            onSelect={(job) => setSelectedAssignmentId(job.assignmentId)}
+          />
 
-          <div className="customer-info">
-            <div className="info-row">
-              <span className="icon-marker">📍</span>
-              <div>
-                <strong>{job.citizenName ?? "Unknown"}</strong>
-                <div className="text-gray text-sm">
-                  {job.description ?? job.address ?? "No address"}
-                </div>
-              </div>
-            </div>
-            {job.citizenPhone && (
-              <div className="info-row mt-2">
-                <span className="icon-phone">📞</span>
-                <div className="text-green font-bold">{job.citizenPhone}</div>
-              </div>
-            )}
-          </div>
-
-          <JobStats job={job} />
-
-          <div className="note-box">
-            <div className="note-title">📄 Customer Note</div>
-            <div className="note-content">{job.note ?? "No notes"}</div>
-          </div>
-
-          <ActionBar
-            job={job}
-            onStart={withErrorHandler(() => startTrip(job.assignmentId))}
+          <DetailsPanel
+            job={selectedJob}
+            onStart={withErrorHandler(() => startTrip(selectedJob.assignmentId))}
             onArrived={withErrorHandler((photo) =>
-              markArrived(job.assignmentId, photo)
+              markArrived(selectedJob.assignmentId, photo)
             )}
-            onComplete={withErrorHandler((photo, weight) =>
-              completeJob(job.assignmentId, photo, weight)
+            onComplete={withErrorHandler((photo, weightsArray) =>
+              completeJob(selectedJob.assignmentId, photo, weightsArray)
             )}
             onDecline={withErrorHandler((reason) =>
-              declineJob(job.assignmentId, reason)
+              declineJob(selectedJob.assignmentId, reason)
             )}
-            onReportIssue={withErrorHandler((desc, photo) =>
-              reportIssue(job.assignmentId, desc, photo)
-            )}
+            onReportIssue={handleReportIssue(selectedJob)}
           />
         </div>
       )}

@@ -9,6 +9,9 @@ namespace BusinessLogicLayer.Services.Implementation
     {
         private readonly IUnitOfWork _uow;
 
+        private const int MaxOpenAssignmentsPerCollector = 5;
+
+
         public AssignmentService(IUnitOfWork uow)
         {
             _uow = uow;
@@ -41,6 +44,18 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new ArgumentException("Selected user is not a Collector");
             }
+            if (!collector.IsAvailable)
+            {
+                throw new InvalidOperationException("Collector is currently offline and cannot receive new assignments");
+            }
+
+            var openAssignments = await _uow.CollectorAssignments.CountOpenAssignmentsByCollectorAsync(dto.CollectorId);
+            if (openAssignments >= MaxOpenAssignmentsPerCollector)
+            {
+                throw new InvalidOperationException(
+                    $"Collector has reached maximum capacity ({MaxOpenAssignmentsPerCollector} open assignments)."
+                );
+            }
 
             // Check if already assigned
             var existingAssignments = await _uow.CollectorAssignments.GetByRequestIdAsync(requestId);
@@ -64,6 +79,15 @@ namespace BusinessLogicLayer.Services.Implementation
             // Update collection request status
             request.Status = "Assigned";
             _uow.CollectionRequests.Update(request);
+
+            var notification = new Notification
+            {
+                UserId = dto.CollectorId,
+                Content = $"You have been assigned to collect waste for request #{requestId}.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notification);
 
             await _uow.SaveChangesAsync();
 
@@ -124,6 +148,10 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new InvalidOperationException("New collector is the same as current collector");
             }
+            if (!newCollector.IsAvailable)
+            {
+                throw new InvalidOperationException("Collector is currently offline and cannot receive new assignments");
+            }
 
             // Update assignment
             assignment.AssignedCollector = dto.NewCollectorId;
@@ -131,6 +159,16 @@ namespace BusinessLogicLayer.Services.Implementation
             assignment.AssignedAt = DateTime.UtcNow;
 
             _uow.CollectorAssignments.Update(assignment);
+
+            var notification = new Notification
+            {
+                UserId = dto.NewCollectorId,
+                Content = $"You have been assigned to collect waste for request #{assignment.RequestId}.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notification);
+
             await _uow.SaveChangesAsync();
 
             return new CollectorAssignmentResponseDto
@@ -234,7 +272,11 @@ namespace BusinessLogicLayer.Services.Implementation
 
                 // Waste report info
                 ReportId = a.Request?.ReportId ?? 0,
-                WasteTypeName = a.Request?.Report?.WasteType?.Name,
+
+                WasteTypeName = a.Request?.Report?.WasteTypes != null
+                    ? string.Join(", ", a.Request.Report.WasteTypes.Select(wt => wt.Name))
+                    : string.Empty,
+
                 ReportImageUrl = a.Request?.Report?.ImageUrl,
                 Latitude = a.Request?.Report?.Latitude,
                 Longitude = a.Request?.Report?.Longitude,
@@ -286,31 +328,56 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 AssignmentId = a.AssignmentId,
                 RequestId = a.RequestId,
-                Status = a.Status,
+                Status = a.Status ?? string.Empty,
                 AssignedAt = a.AssignedAt,
                 StartedAt = a.StartedAt,
                 ArrivedAt = a.ArrivedAt,
-                CompletedAt = a.Collectionconfirmation?.ConfirmedAt,  // From confirmation
-                BeforeImageUrl = a.BeforeImageUrl,
+                CompletedAt = a.Collectionconfirmation?.ConfirmedAt,
 
-                // Enterprise info
+                BeforeImageUrl = a.BeforeImageUrl,
+                AfterImageUrl = a.Collectionconfirmation?.AfterImageUrl,
+                CompletionNote = a.Collectionconfirmation?.Note,
+
                 EnterpriseId = a.Request?.EnterpriseId ?? 0,
                 EnterpriseName = a.Request?.Enterprise?.FullName,
                 EnterprisePhone = a.Request?.Enterprise?.Phone,
 
-                // Waste report info
                 ReportId = a.Request?.ReportId ?? 0,
-                WasteTypeName = a.Request?.Report?.WasteType?.Name,
-                ImageUrl = a.Request?.Report?.ImageUrl,
-                Latitude = a.Request?.Report?.Latitude,
-                Longitude = a.Request?.Report?.Longitude,
+                ReportImageUrl = a.Request?.Report?.ImageUrl,
+
+                WasteTypeIds = a.Request?.Report?.WasteTypes?.Select(wt => wt.WasteTypeId).ToList()
+                    ?? new List<int>(),
+                WasteTypeName = a.Request?.Report?.WasteTypes != null
+                    ? string.Join(", ", a.Request.Report.WasteTypes.Select(wt => wt.Name))
+                    : string.Empty,
+                WasteItems = a.Request?.Report?.WasteTypes?.Select(wt => new EstimatedWasteItemDto
+                {
+                    WasteTypeId = wt.WasteTypeId,
+                    WasteTypeName = wt.Name
+                }).ToList() ?? new List<EstimatedWasteItemDto>(),
+
+                Latitude = a.Request?.Report != null ? (double)a.Request.Report.Latitude : 0,
+                Longitude = a.Request?.Report != null ? (double)a.Request.Report.Longitude : 0,
                 Description = a.Request?.Report?.Description,
+
                 ReportStatus = a.Request?.Report?.Status,
                 ReportCreatedAt = a.Request?.Report?.CreatedAt,
 
-                // Citizen info
                 CitizenName = a.Request?.Report?.SubmittedByNavigation?.FullName,
-                CitizenPhone = a.Request?.Report?.SubmittedByNavigation?.Phone
+                CitizenPhone = a.Request?.Report?.SubmittedByNavigation?.Phone,
+
+                Note = a.Request?.Note,
+                IssueReport = a.Request?.IssueReport,
+                IssueReason = a.Request?.IssueReason,
+                IssueImageUrl = a.Request?.IssueImageUrl,
+
+                TotalCollectedWeight = (decimal)(a.Collectionconfirmation?.CollectionDetails?.Sum(d => d.ActualWeight) ?? 0),
+
+                CollectedWasteSummary = a.Collectionconfirmation?.CollectionDetails != null
+                    && a.Collectionconfirmation.CollectionDetails.Any()
+                    ? string.Join(", ", a.Collectionconfirmation.CollectionDetails.Select(d =>
+                        $"{d.WasteType?.Name ?? $"Type {d.WasteTypeId}"}: {d.ActualWeight:0.##} kg"))
+                    : null
             }).ToList();
         }
 
@@ -322,7 +389,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 return null;
             }
 
-            // Validate assignment belongs to this collector
             if (assignment.AssignedCollector != collectorId)
             {
                 throw new UnauthorizedAccessException("You can only view your own assignments");
@@ -332,32 +398,59 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 AssignmentId = assignment.AssignmentId,
                 RequestId = assignment.RequestId,
-                Status = assignment.Status,
+                Status = assignment.Status ?? string.Empty,
                 AssignedAt = assignment.AssignedAt,
                 StartedAt = assignment.StartedAt,
                 ArrivedAt = assignment.ArrivedAt,
-                CompletedAt = assignment.Collectionconfirmation?.ConfirmedAt,  // From confirmation
-                BeforeImageUrl = assignment.BeforeImageUrl,
+                CompletedAt = assignment.Collectionconfirmation?.ConfirmedAt,
 
-                // Enterprise info
+                BeforeImageUrl = assignment.BeforeImageUrl,
+                AfterImageUrl = assignment.Collectionconfirmation?.AfterImageUrl,
+                CompletionNote = assignment.Collectionconfirmation?.Note,
+
                 EnterpriseId = assignment.Request?.EnterpriseId ?? 0,
                 EnterpriseName = assignment.Request?.Enterprise?.FullName,
                 EnterprisePhone = assignment.Request?.Enterprise?.Phone,
 
-                // Waste report info
                 ReportId = assignment.Request?.ReportId ?? 0,
-                WasteTypeName = assignment.Request?.Report?.WasteType?.Name,
-                ImageUrl = assignment.Request?.Report?.ImageUrl,
-                Latitude = assignment.Request?.Report?.Latitude,
-                Longitude = assignment.Request?.Report?.Longitude,
+                ReportImageUrl = assignment.Request?.Report?.ImageUrl,
+
+                WasteTypeIds = assignment.Request?.Report?.WasteTypes?.Select(wt => wt.WasteTypeId).ToList()
+                    ?? new List<int>(),
+                WasteTypeName = assignment.Request?.Report?.WasteTypes != null
+                    ? string.Join(", ", assignment.Request.Report.WasteTypes.Select(wt => wt.Name))
+                    : string.Empty,
+                WasteItems = assignment.Request?.Report?.WasteTypes?.Select(wt => new EstimatedWasteItemDto
+                {
+                    WasteTypeId = wt.WasteTypeId,
+                    WasteTypeName = wt.Name
+                }).ToList() ?? new List<EstimatedWasteItemDto>(),
+
+                Latitude = assignment.Request?.Report != null ? (double)assignment.Request.Report.Latitude : 0,
+                Longitude = assignment.Request?.Report != null ? (double)assignment.Request.Report.Longitude : 0,
                 Description = assignment.Request?.Report?.Description,
+
                 ReportStatus = assignment.Request?.Report?.Status,
                 ReportCreatedAt = assignment.Request?.Report?.CreatedAt,
 
-                // Citizen info
                 CitizenName = assignment.Request?.Report?.SubmittedByNavigation?.FullName,
-                CitizenPhone = assignment.Request?.Report?.SubmittedByNavigation?.Phone
+                CitizenPhone = assignment.Request?.Report?.SubmittedByNavigation?.Phone,
+
+                Note = assignment.Request?.Note,
+                IssueReport = assignment.Request?.IssueReport,
+                IssueReason = assignment.Request?.IssueReason,
+                IssueImageUrl = assignment.Request?.IssueImageUrl,
+
+                TotalCollectedWeight = (decimal)(assignment.Collectionconfirmation?.CollectionDetails?.Sum(d => d.ActualWeight) ?? 0),
+
+                CollectedWasteSummary = assignment.Collectionconfirmation?.CollectionDetails != null
+                    && assignment.Collectionconfirmation.CollectionDetails.Any()
+                    ? string.Join(", ", assignment.Collectionconfirmation.CollectionDetails.Select(d =>
+                        $"{d.WasteType?.Name ?? $"Type {d.WasteTypeId}"}: {d.ActualWeight:0.##} kg"))
+                    : null
             };
         }
+
+
     }
 }

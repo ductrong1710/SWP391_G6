@@ -7,9 +7,7 @@ namespace BusinessLogicLayer.Services.Implementation
 {
     public class WasteReportService : IWasteReportService
     {
-        private const int MaxReportsPerMinute = 2;
-        private const int DuplicateRadiusMeters = 30; 
-        private const int DuplicateTimeWindowMinutes = 30; 
+        private const int DuplicateRadiusMeters = 30;
         private readonly IUnitOfWork _uow;
 
         public WasteReportService(IUnitOfWork uow)
@@ -34,54 +32,82 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException("Longitude must be between -180 and 180");
             }
 
-            var wasteType = await _uow.WasteTypes.GetByIdAsync(dto.WasteTypeId);
-            if (wasteType == null)
+            if (dto.WasteTypeIds == null || !dto.WasteTypeIds.Any())
             {
-                throw new ArgumentException("WasteTypeId is invalid");
+                throw new ArgumentException("At least one WasteTypeId is required");
             }
 
-            var sinceUtc = DateTime.UtcNow.AddMinutes(-1);
-            var recentCount = await _uow.WasteReports.CountByUserSinceAsync(userId, sinceUtc);
-            if (recentCount >= MaxReportsPerMinute)
+            var wasteTypes = new List<Wastetype>();
+            foreach (var id in dto.WasteTypeIds)
             {
-                throw new InvalidOperationException("Rate limit exceeded: max 2 waste reports per minute");
+                var wt = await _uow.WasteTypes.GetByIdAsync(id);
+                if (wt == null || wt.IsActive == false)
+                {
+                    throw new ArgumentException($"WasteTypeId {id} is invalid");
+                }
+                wasteTypes.Add(wt);
             }
 
             var nowUtc = DateTime.UtcNow;
-            var duplicateCheckSince = nowUtc.AddMinutes(-DuplicateTimeWindowMinutes);
-            
             var latDelta = 0.001m;
             var lonDelta = 0.001m;
 
-            var nearbyReports = await _uow.WasteReports.FindNearbyReportsAsync(
-                dto.WasteTypeId,
+            var nearbyReports = await _uow.WasteReports.FindPotentialDuplicatesAsync(
+                dto.WasteTypeIds,
                 dto.Latitude,
                 dto.Longitude,
                 latDelta,
-                lonDelta,
-                duplicateCheckSince
+                lonDelta
             );
 
-            var isDuplicate = nearbyReports.Any(r => 
-                CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude) 
+            var isDuplicate = nearbyReports.Any(r =>
+                CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude)
                 <= DuplicateRadiusMeters
             );
 
-            var status = isDuplicate ? "Duplicate" : "Pending";
+            if (isDuplicate)
+            {
+                throw new InvalidOperationException("A similar waste report already exists in this location.");
+            }
 
             var entity = new Wastereport
             {
                 SubmittedBy = userId,
-                WasteTypeId = dto.WasteTypeId,
                 ImageUrl = dto.Image,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
                 Description = dto.Description,
-                Status = status,
-                CreatedAt = nowUtc
+                Status = "Pending",
+                CreatedAt = nowUtc,
+                WasteTypes = wasteTypes 
             };
 
             await _uow.WasteReports.AddAsync(entity);
+            var notif = new Notification
+            {
+                UserId = userId,
+                Content = "Your waste report has been submitted successfully and is pending approval.",
+                IsRead = false,
+                CreatedAt = nowUtc
+            };
+            await _uow.Notifications.AddAsync(notif);
+
+            var enterprises = await _uow.Users.GetUsersByRoleAsync("Enterprise");
+            if (enterprises != null && enterprises.Any())
+            {
+                foreach (var enterprise in enterprises)
+                {
+                    var enterpriseNotif = new Notification
+                    {
+                        UserId = enterprise.UserId,
+                        Content = $"A new waste report (Pending) has been submitted and is waiting for assignment.",
+                        IsRead = false,
+                        CreatedAt = nowUtc
+                    };
+                    await _uow.Notifications.AddAsync(enterpriseNotif);
+                }
+            }
+
             await _uow.SaveChangesAsync();
 
             return new WasteReportCreatedResponseDto
@@ -105,18 +131,15 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Only Pending reports can be accepted");
             }
 
-            // Check nếu đã có collection request cho report này
             var existingRequest = await _uow.CollectionRequests.GetByReportIdAsync(reportId);
             if (existingRequest != null)
             {
                 throw new InvalidOperationException("Collection request already exists for this report");
             }
 
-            // Update report status
             report.Status = "Accepted";
             _uow.WasteReports.Update(report);
 
-            // Tự động tạo collection request
             var collectionRequest = new Collectionrequest
             {
                 ReportId = reportId,
@@ -126,6 +149,15 @@ namespace BusinessLogicLayer.Services.Implementation
             };
 
             await _uow.CollectionRequests.AddAsync(collectionRequest);
+
+            var notif = new Notification
+            {
+                UserId = report.SubmittedBy,
+                Content = $"Your waste report #{reportId} has been accepted and is waiting for collection.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notif);
             await _uow.SaveChangesAsync();
 
             return new WasteReportStatusResponseDto
@@ -150,6 +182,16 @@ namespace BusinessLogicLayer.Services.Implementation
 
             report.Status = "Rejected";
             _uow.WasteReports.Update(report);
+
+            var notif = new Notification
+            {
+                UserId = report.SubmittedBy,
+                Content = $"Your waste report #{reportId} has been rejected.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.Notifications.AddAsync(notif);
+
             await _uow.SaveChangesAsync();
 
             return new WasteReportStatusResponseDto
@@ -219,10 +261,42 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException("Longitude must be between -180 and 180");
             }
 
-            var wasteType = await _uow.WasteTypes.GetByIdAsync(dto.WasteTypeId);
-            if (wasteType == null)
+            if (dto.WasteTypeIds == null || !dto.WasteTypeIds.Any())
             {
-                throw new ArgumentException("WasteTypeId is invalid");
+                throw new ArgumentException("At least one WasteTypeId is required");
+            }
+
+            var newWasteTypes = new List<Wastetype>();
+            foreach (var id in dto.WasteTypeIds)
+            {
+                var wt = await _uow.WasteTypes.GetByIdAsync(id);
+                if (wt == null)
+                {
+                    throw new ArgumentException($"WasteTypeId {id} is invalid");
+                }
+                newWasteTypes.Add(wt);
+            }
+
+            var latDelta = 0.001m;
+            var lonDelta = 0.001m;
+
+            var nearbyReports = await _uow.WasteReports.FindPotentialDuplicatesAsync(
+                dto.WasteTypeIds,
+                dto.Latitude,
+                dto.Longitude,
+                latDelta,
+                lonDelta,
+                reportId
+            );
+
+            var isDuplicate = nearbyReports.Any(r =>
+                CalculateDistanceMeters((double)r.Latitude, (double)r.Longitude, (double)dto.Latitude, (double)dto.Longitude)
+                <= DuplicateRadiusMeters
+            );
+
+            if (isDuplicate)
+            {
+                throw new InvalidOperationException("A similar waste report already exists in this location.");
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Image))
@@ -232,7 +306,12 @@ namespace BusinessLogicLayer.Services.Implementation
             report.Latitude = dto.Latitude;
             report.Longitude = dto.Longitude;
             report.Description = dto.Description;
-            report.WasteTypeId = dto.WasteTypeId;
+
+            report.WasteTypes.Clear();
+            foreach (var wt in newWasteTypes)
+            {
+                report.WasteTypes.Add(wt);
+            }
 
             _uow.WasteReports.Update(report);
             await _uow.SaveChangesAsync();
@@ -276,8 +355,10 @@ namespace BusinessLogicLayer.Services.Implementation
                 ReportId = report.ReportId,
                 SubmittedBy = report.SubmittedBy,
                 SubmittedByName = report.SubmittedByNavigation?.FullName ?? string.Empty,
-                WasteTypeId = report.WasteTypeId,
-                WasteTypeName = report.WasteType?.Name ?? string.Empty,
+
+                WasteTypeIds = report.WasteTypes?.Select(wt => wt.WasteTypeId).ToList() ?? new List<int>(),
+                WasteTypeNames = report.WasteTypes?.Select(wt => wt.Name).ToList() ?? new List<string>(),
+
                 ImageUrl = report.ImageUrl,
                 Latitude = report.Latitude,
                 Longitude = report.Longitude,
@@ -287,7 +368,6 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
-        
         private static double CalculateDistanceMeters(double lat1, double lon1, double lat2, double lon2)
         {
             const double EarthRadiusKm = 6371;
@@ -302,7 +382,7 @@ namespace BusinessLogicLayer.Services.Implementation
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             var distanceKm = EarthRadiusKm * c;
 
-            return distanceKm * 1000; 
+            return distanceKm * 1000;
         }
 
         private static double DegreesToRadians(double degrees)
@@ -311,4 +391,3 @@ namespace BusinessLogicLayer.Services.Implementation
         }
     }
 }
-

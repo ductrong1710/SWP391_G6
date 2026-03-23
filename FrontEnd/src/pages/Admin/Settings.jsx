@@ -1,8 +1,8 @@
-// src/pages/Admin/Settings.jsx
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import SettingsTabs from "../../components/SettingsTabs";
 
 const Settings = () => {
-  const [subTab, setSubTab] = useState('general');
+  const [subTab, setSubTab] = useState("general");
 
   return (
     <div className="admin-settings-page fade-in">
@@ -11,30 +11,9 @@ const Settings = () => {
         <p className="text-gray">Manage your admin profile and system preferences</p>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="settings-tabs">
-        <button 
-          className={`tab-btn ${subTab === 'general' ? 'active' : ''}`}
-          onClick={() => setSubTab('general')}
-        >
-          📷 General
-        </button>
-        <button 
-          className={`tab-btn ${subTab === 'security' ? 'active' : ''}`}
-          onClick={() => setSubTab('security')}
-        >
-          🛡️ Security
-        </button>
-        <button 
-          className={`tab-btn ${subTab === 'preferences' ? 'active' : ''}`}
-          onClick={() => setSubTab('preferences')}
-        >
-          🔔 Preferences
-        </button>
-      </div>
+      <SettingsTabs activeTab={subTab} onChange={setSubTab} />
 
-      {/* --- TAB 1: GENERAL --- */}
-      {subTab === 'general' && (
+      {subTab === "general" && (
         <div className="admin-card">
           <div className="card-header-simple">
             <h3>Profile Information</h3>
@@ -68,22 +47,21 @@ const Settings = () => {
               <input type="text" className="form-input disabled" value="Super Administrator" disabled />
             </div>
           </div>
-          
+
           <div className="form-actions">
             <button className="btn-save">Save Changes</button>
           </div>
         </div>
       )}
 
-      {/* --- TAB 2: SECURITY --- */}
-      {subTab === 'security' && (
+      {subTab === "security" && (
         <div className="fade-in">
           <div className="admin-card mb-4">
             <div className="card-header-simple">
               <h3>Change Password</h3>
               <p className="text-gray">Ensure your account is using a strong password</p>
             </div>
-            
+
             <div className="form-group mb-4">
               <label>Current Password</label>
               <input type="password" className="form-input" placeholder="Enter current password" />
@@ -96,6 +74,7 @@ const Settings = () => {
               <label>Confirm New Password</label>
               <input type="password" className="form-input" placeholder="Confirm new password" />
             </div>
+
             <div className="form-actions">
               <button className="btn-save">Update Password</button>
             </div>
@@ -106,11 +85,11 @@ const Settings = () => {
               <h3>Two-Factor Authentication</h3>
               <p className="text-gray">Add an extra layer of security to your admin account</p>
             </div>
-            
+
             <div className="config-item no-border">
               <div>
-                 <div className="conf-label">Enable 2FA</div>
-                 <div className="conf-desc">Require a verification code when signing in</div>
+                <div className="conf-label">Enable 2FA</div>
+                <div className="conf-desc">Require a verification code when signing in</div>
               </div>
               <label className="switch-toggle">
                 <input type="checkbox" />
@@ -121,19 +100,18 @@ const Settings = () => {
         </div>
       )}
 
-      {/* --- TAB 3: PREFERENCES --- */}
-      {subTab === 'preferences' && (
+      {subTab === "preferences" && (
         <div className="fade-in">
           <div className="admin-card mb-4">
             <div className="card-header-simple">
               <h3>Notification Settings</h3>
               <p className="text-gray">Manage system alerts and notifications</p>
             </div>
-            
+
             <div className="config-item">
               <div>
-                 <div className="conf-label">🔔 Email Alerts</div>
-                 <div className="conf-desc">Receive critical system alerts via email</div>
+                <div className="conf-label">🔔 Email Alerts</div>
+                <div className="conf-desc">Receive critical system alerts via email</div>
               </div>
               <label className="switch-toggle">
                 <input type="checkbox" defaultChecked />
@@ -143,8 +121,8 @@ const Settings = () => {
 
             <div className="config-item no-border">
               <div>
-                 <div className="conf-label">📱 SMS Alerts</div>
-                 <div className="conf-desc">Receive urgent security alerts via text message</div>
+                <div className="conf-label">📱 SMS Alerts</div>
+                <div className="conf-desc">Receive urgent security alerts via text message</div>
               </div>
               <label className="switch-toggle">
                 <input type="checkbox" defaultChecked />
@@ -158,7 +136,7 @@ const Settings = () => {
               <h3>System Language</h3>
               <p className="text-gray">Select the language for the admin dashboard</p>
             </div>
-            
+
             <div className="form-group mb-4">
               <label>Display Language</label>
               <select className="form-input">
@@ -167,6 +145,7 @@ const Settings = () => {
                 <option>French</option>
               </select>
             </div>
+
             <div className="form-actions">
               <button className="btn-save">Save Preferences</button>
             </div>

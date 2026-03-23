@@ -8,7 +8,13 @@ namespace BusinessLogicLayer.DTOs.Collection
     /// </summary>
     public class CompleteCollectionDto
     {
+        public class WasteWeightItemDto
+        {
+            public int WasteTypeId { get; set; }
+            public double Weight { get; set; } 
+        }
         public IFormFile? AfterImage { get; set; }   // Photo after collection (cleaned site)
         public string? Note { get; set; }            // Additional notes
+        public List<WasteWeightItemDto> ActualWeights { get; set; } = new List<WasteWeightItemDto>();
     }
 }

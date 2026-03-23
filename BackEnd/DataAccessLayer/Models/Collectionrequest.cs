@@ -1,4 +1,7 @@
-﻿namespace DataAccessLayer.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace DataAccessLayer.Models;
 
 public partial class Collectionrequest
 {
@@ -11,6 +14,14 @@ public partial class Collectionrequest
     public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+
+    public string? Note { get; set; }
+
+    public string? IssueReport { get; set; }
+
+    public string? IssueReason { get; set; }
+
+    public string? IssueImageUrl { get; set; }
 
     public virtual ICollection<Collectorassignment> Collectorassignments { get; set; } = new List<Collectorassignment>();
 
