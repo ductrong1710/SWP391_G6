@@ -372,6 +372,12 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.TotalPoints)
                 .HasDefaultValue(0)
                 .HasColumnName("total_points");
+            entity.Property(e => e.IsAvailable)
+                 .HasColumnName("is_available");
+            entity.Property(e => e.AvailabilityUpdatedAt)
+                .HasColumnName("availability_updated_at")
+                .HasColumnType("timestamp with time zone");
+
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
