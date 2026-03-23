@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import rewardService from "../../services/rewardService";
-
+import "./Rewards.css";
 const Rewards = () => {
   const [activeTab, setActiveTab] = useState("catalog");
   const [activeFilter, setActiveFilter] = useState("All");
