@@ -24,7 +24,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
-                .Include(x => x.Collectionconfirmation)  
+                .Include(x => x.Collectionconfirmation)
                 .Include(x => x.Request)
                 .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         }
@@ -34,7 +34,7 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
-                .Include(x => x.Collectionconfirmation)  
+                .Include(x => x.Collectionconfirmation)
                 .Where(x => x.RequestId == requestId)
                 .OrderByDescending(x => x.AssignedAt)
                 .ToListAsync();
@@ -47,8 +47,7 @@ namespace DataAccessLayer.Repositories.Implementation
                 .Include(x => x.AssignedByNavigation)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
-                .Where(x => x.RequestId == requestId
-                    && x.Status == "Assigned")
+                .Where(x => x.RequestId == requestId && x.Status == "Assigned")
                 .OrderByDescending(x => x.AssignedAt)
                 .FirstOrDefaultAsync();
         }
@@ -58,17 +57,38 @@ namespace DataAccessLayer.Repositories.Implementation
             _context.Collectorassignments.Update(entity);
         }
 
-        // View methods
+        public async Task<int> CountOpenAssignmentsByCollectorAsync(int collectorId)
+        {
+            var openStatuses = new[] { "Assigned", "OnTheWay", "Arrived", "ReportedIssue" };
+
+            return await _context.Collectorassignments
+                .CountAsync(x =>
+                    x.AssignedCollector == collectorId &&
+                    openStatuses.Contains(x.Status));
+        }
+
+        public async Task<bool> HasActiveTripByCollectorAsync(int collectorId)
+        {
+            var activeTripStatuses = new[] { "OnTheWay", "Arrived" };
+
+            return await _context.Collectorassignments
+                .AnyAsync(x =>
+                    x.AssignedCollector == collectorId &&
+                    activeTripStatuses.Contains(x.Status));
+        }
+
         public async Task<IEnumerable<Collectorassignment>> GetByCollectorIdAsync(int collectorId)
         {
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
-                .Include(x => x.Collectionconfirmation)  
+                .Include(x => x.Collectionconfirmation)
+                    .ThenInclude(c => c.CollectionDetails)
+                        .ThenInclude(d => d.WasteType)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
-                    .ThenInclude(r => r.WasteTypes) 
+                    .ThenInclude(r => r.WasteTypes)
                 .Include(x => x.Request.Report.SubmittedByNavigation)
                 .Where(x => x.AssignedCollector == collectorId)
                 .OrderByDescending(x => x.AssignedAt)
@@ -80,11 +100,13 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
-                .Include(x => x.Collectionconfirmation)  
+                .Include(x => x.Collectionconfirmation)
+                    .ThenInclude(c => c.CollectionDetails)
+                        .ThenInclude(d => d.WasteType)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
-                    .ThenInclude(r => r.WasteTypes) 
+                    .ThenInclude(r => r.WasteTypes)
                 .Include(x => x.Request.Report.SubmittedByNavigation)
                 .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         }
@@ -94,11 +116,11 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectorassignments
                 .Include(x => x.AssignedCollectorNavigation)
                 .Include(x => x.AssignedByNavigation)
-                .Include(x => x.Collectionconfirmation)  
+                .Include(x => x.Collectionconfirmation)
                 .Include(x => x.Request)
                     .ThenInclude(r => r.Enterprise)
                 .Include(x => x.Request.Report)
-                    .ThenInclude(r => r.WasteTypes) 
+                    .ThenInclude(r => r.WasteTypes)
                 .Include(x => x.Request.Report.SubmittedByNavigation)
                 .Where(x => x.Request.EnterpriseId == enterpriseId)
                 .OrderByDescending(x => x.AssignedAt)

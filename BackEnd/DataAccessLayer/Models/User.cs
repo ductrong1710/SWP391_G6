@@ -23,6 +23,11 @@ public partial class User
 
     public int TotalPoints { get; set; }
 
+    public bool IsAvailable { get; set; }
+
+    public DateTime? AvailabilityUpdatedAt { get; set; }
+
+
     public virtual ICollection<Collectionrequest> Collectionrequests { get; set; } = new List<Collectionrequest>();
 
     public virtual ICollection<Collectorassignment> CollectorassignmentAssignedByNavigations { get; set; } = new List<Collectorassignment>();

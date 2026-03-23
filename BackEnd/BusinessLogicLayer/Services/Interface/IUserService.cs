@@ -10,5 +10,7 @@ namespace BusinessLogicLayer.Services.Interface
         Task<UserResponseDto> UpdateUserAsync(int id, UpdateUserRequestDto request);
         Task DeleteUserAsync(int id);
         Task ChangePasswordAsync(int userId, ChangePasswordDto dto);
+        Task<UserResponseDto> UpdateCollectorAvailabilityAsync(int userId, bool isAvailable);
+
     }
 }

@@ -14,6 +14,8 @@ namespace DataAccessLayer.Repositories.Implementation
         private readonly AppDbContext _context;
 
         public IUserRepository Users { get; }
+        public IGenericRepository<DataAccessLayer.Models.Reward> Rewards { get; }
+
         public IWasteTypeRepository WasteTypes { get; }
         public IWasteReportRepository WasteReports { get; }
         public ICollectionRequestRepository CollectionRequests { get; }
@@ -34,6 +36,7 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             _context = context;
             Users = userRepository;
+            Rewards = new GenericRepository<DataAccessLayer.Models.Reward>(_context);
             WasteTypes = wasteTypeRepository;
             WasteReports = wasteReportRepository;
             CollectionRequests = collectionRequestRepository;
