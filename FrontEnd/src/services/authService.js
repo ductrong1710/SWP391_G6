@@ -1,10 +1,35 @@
 import api from "./api";
 
-const authService = {
-  // ===== AUTHENTICATION =====
+const ROLE_NAMES = {
+  1: "Citizen",
+  2: "Enterprise",
+  3: "Collector",
+  4: "Admin",
+};
 
+const normalizeUser = (user) => {
+  if (!user) {
+    return null;
+  }
+
+  const roleId = Number(user.roleId ?? user.RoleId ?? 0);
+
+  return {
+    userId: user.userId ?? user.UserId ?? user.id ?? null,
+    fullName: user.fullName ?? user.FullName ?? "",
+    email: user.email ?? user.Email ?? "",
+    roleId,
+    roleName: user.roleName ?? user.RoleName ?? ROLE_NAMES[roleId] ?? "",
+    isAvailable: Boolean(user.isAvailable ?? user.IsAvailable ?? false),
+    availabilityUpdatedAt:
+      user.availabilityUpdatedAt ?? user.AvailabilityUpdatedAt ?? null,
+  };
+};
+
+
+const authService = {
   register: async (userData) => {
-    const response = await api.post("/Auth/register", {
+    const response = await api.post("/auth/register", {
       email: userData.email,
       fullName: userData.fullName,
       password: userData.password,
@@ -14,17 +39,23 @@ const authService = {
   },
 
   verifyOtp: async (email, otp) => {
-    const response = await api.post("/Auth/verify-otp", { email, otp });
+    const response = await api.post("/auth/verify-otp", { email, otp });
     return response.data;
   },
 
   login: async (email, password) => {
-    const response = await api.post("/Auth/login", { email, password });
+    const response = await api.post("/auth/login", { email, password });
+    const normalizedUser = normalizeUser(response.data.user);
+
     if (response.data.token) {
       localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("user", JSON.stringify(normalizedUser));
     }
-    return response.data;
+
+    return {
+      ...response.data,
+      user: normalizedUser,
+    };
   },
 
   logout: () => {
@@ -33,23 +64,24 @@ const authService = {
     window.location.href = "/login";
   },
 
-  // ===== CURRENT USER =====
-
   getCurrentUser: () => {
     const userStr = localStorage.getItem("user");
     return userStr ? JSON.parse(userStr) : null;
   },
 
+  updateCurrentUser: (partialUser) => {
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) return;
+
+    const updatedUser = { ...currentUser, ...partialUser };
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  },
+
   isAuthenticated: () => !!localStorage.getItem("token"),
-
   hasRole: (roleId) => authService.getCurrentUser()?.roleId === roleId,
-
-  hasAnyRole: (roleIds) =>
-    roleIds.includes(authService.getCurrentUser()?.roleId),
-
+  hasAnyRole: (roleIds) => roleIds.includes(authService.getCurrentUser()?.roleId),
   getRoleId: () => authService.getCurrentUser()?.roleId,
-
-  getRoleName: () => authService.getCurrentUser()?.roleName || "citizen",
+  getRoleName: () => authService.getCurrentUser()?.roleName || "Citizen",
 };
 
 export { authService };

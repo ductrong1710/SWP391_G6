@@ -1,9 +1,10 @@
 // src/pages/citizen/CitizenApp.jsx
-import React, { useState } from "react";
+import React from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import "./CitizenApp.css"; // Import CSS file (styles only)
 
 // Import Header component
-import Header from "../../components/Header";
+import CitizenHeader from "../../components/citizen/CitizenHeader";
 
 // Import sub-pages
 import CitizenDashboard from "./Dashboard";
@@ -12,19 +13,34 @@ import Settings from "./Settings";
 import Rewards from "./Rewards";
 import History from "./History";
 
+const TAB_COMPONENTS = {
+  home: CitizenDashboard,
+  report: CreateReport,
+  settings: Settings,
+  rewards: Rewards,
+  history: History,
+};
+
 const CitizenApp = () => {
-  const [activeTab, setActiveTab] = useState("home");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = location.pathname.split("/")[2] || "home";
 
   return (
     <div className="citizen-app-container">
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      <CitizenHeader
+        activeTab={activeTab}
+        setActiveTab={(tab) => navigate(`/citizen/${tab}`)}
+      />
 
       <div className="dashboard-container">
-        {activeTab === "home" && <CitizenDashboard />}
-        {activeTab === "report" && <CreateReport />}
-        {activeTab === "settings" && <Settings />}
-        {activeTab === "rewards" && <Rewards />}
-        {activeTab === "history" && <History />}
+        <Routes>
+          <Route path="/" element={<Navigate to="home" replace />} />
+          {Object.entries(TAB_COMPONENTS).map(([path, Component]) => (
+            <Route key={path} path={path} element={<Component />} />
+          ))}
+          <Route path="*" element={<Navigate to="home" replace />} />
+        </Routes>
       </div>
     </div>
   );

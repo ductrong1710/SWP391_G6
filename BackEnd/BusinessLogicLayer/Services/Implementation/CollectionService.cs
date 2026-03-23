@@ -83,6 +83,22 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new UnauthorizedAccessException("You can only start your own assignments");
             }
 
+            var hasAnotherActiveTrip = await _uow.CollectorAssignments.HasActiveTripByCollectorAsync(collectorId);
+            if (hasAnotherActiveTrip)
+            {
+                var thisAssignmentAlreadyActive =
+                    string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(assignment.Status, "Arrived", StringComparison.OrdinalIgnoreCase);
+
+                if (!thisAssignmentAlreadyActive)
+                {
+                    throw new InvalidOperationException(
+                        "You already have another active collection trip. Complete or resolve it before starting a new one."
+                    );
+                }
+            }
+
+
             // Validate status is "Assigned"
             if (!string.Equals(assignment.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
             {
@@ -171,41 +187,35 @@ namespace BusinessLogicLayer.Services.Implementation
 
         public async Task<ReportIssueResponseDto> ReportIssueAsync(int assignmentId, int collectorId, ReportIssueDto dto)
         {
-            // Get assignment with details
             var assignment = await _uow.CollectorAssignments.GetByIdWithDetailsAsync(assignmentId);
             if (assignment == null)
             {
                 throw new InvalidOperationException("Assignment not found");
             }
 
-            // Validate collector is the assigned collector
             if (assignment.AssignedCollector != collectorId)
             {
                 throw new UnauthorizedAccessException("You can only report issues for your own assignments");
             }
 
-            // Validate status is "OnTheWay" or "Arrived" (collector must have started the collection)
             if (!string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(assignment.Status, "Arrived", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Can only report issue when status is 'OnTheWay' or 'Arrived'. Please start collection first.");
+                throw new InvalidOperationException("Can only report issue when status is 'OnTheWay' or 'Arrived'.");
             }
 
-            // Validate issue type
             if (string.IsNullOrWhiteSpace(dto.IssueType))
             {
                 throw new ArgumentException("Issue type is required");
             }
 
-            // Validate description
             if (string.IsNullOrWhiteSpace(dto.Description))
             {
                 throw new ArgumentException("Description is required to report issue");
             }
 
-            // Validate issue type is valid
-            var validIssueTypes = new[] 
-            { 
+            var validIssueTypes = new[]
+            {
                 CollectionIssueTypes.WasteNotFound,
                 CollectionIssueTypes.WrongAddress,
                 CollectionIssueTypes.WasteTypeMismatch,
@@ -218,30 +228,26 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException($"Invalid issue type. Valid types: {string.Join(", ", validIssueTypes)}");
             }
 
-            // Save proof image if provided
             string? proofImageUrl = null;
             if (dto.ProofImage != null && dto.ProofImage.Length > 0)
             {
                 proofImageUrl = await SaveIssueProofImageAsync(dto.ProofImage);
             }
 
-            // Update assignment status to "Issue"
-            assignment.Status = "Issue";
+            assignment.Status = "ReportedIssue";
             _uow.CollectorAssignments.Update(assignment);
 
-            // Update collection request status to "Issue"
             var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
             if (request != null)
             {
                 request.Status = "Issue";
+                request.IssueReport = dto.IssueType;
+                request.IssueReason = dto.Description;
+                request.IssueImageUrl = proofImageUrl;
                 _uow.CollectionRequests.Update(request);
             }
 
             await _uow.SaveChangesAsync();
-
-            // Note: Issue details (type, description, image) should be stored in a separate table
-            // For now, we're just changing the status. Enterprise will need to contact collector
-            // or create a CollectionIssue table in future
 
             return new ReportIssueResponseDto
             {
@@ -255,41 +261,57 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
+
         public async Task<CompleteCollectionResponseDto> CompleteCollectionAsync(int assignmentId, int collectorId, CompleteCollectionDto dto)
         {
-            // Get assignment with details
             var assignment = await _uow.CollectorAssignments.GetByIdWithDetailsAsync(assignmentId);
             if (assignment == null)
             {
                 throw new InvalidOperationException("Assignment not found");
             }
 
-            // Validate collector is the assigned collector
             if (assignment.AssignedCollector != collectorId)
             {
                 throw new UnauthorizedAccessException("You can only complete your own assignments");
             }
 
-            // Validate status is "Arrived" (must call Arrived first to upload before photo)
             if (!string.Equals(assignment.Status, "Arrived", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Can only complete collection when status is 'Arrived'. Please mark arrival first.");
             }
 
-            // Validate before image exists (should be uploaded during Arrived step)
             if (string.IsNullOrWhiteSpace(assignment.BeforeImageUrl))
             {
                 throw new InvalidOperationException("Before image not found. Please mark arrival and upload before photo first.");
             }
 
-            // Validate after image is provided
             if (dto.AfterImage == null || dto.AfterImage.Length == 0)
             {
                 throw new ArgumentException("After image is required to complete collection");
             }
 
-            // TIME VALIDATION: Ensure collection takes reasonable time
-            // Use ArrivedAt as baseline (actual collection start time)
+            if (dto.ActualWeights == null || !dto.ActualWeights.Any())
+            {
+                throw new ArgumentException("ActualWeights is required. Please provide at least one waste type with weight.");
+            }
+
+            var validWeightItems = dto.ActualWeights
+                .Where(x => x != null && x.WasteTypeId > 0 && x.Weight > 0)
+                .ToList();
+
+            Console.WriteLine($"[CompleteCollection] AssignmentId={assignmentId}, CollectorId={collectorId}");
+            Console.WriteLine($"[CompleteCollection] dto.ActualWeights.Count = {dto.ActualWeights.Count}");
+
+            foreach (var item in dto.ActualWeights)
+            {
+                Console.WriteLine($"[CompleteCollection] WasteTypeId={item.WasteTypeId}, Weight={item.Weight}");
+            }
+
+            if (!validWeightItems.Any())
+            {
+                throw new ArgumentException("At least one valid ActualWeight is required with Weight > 0.");
+            }
+
             DateTime baselineTime;
             if (assignment.ArrivedAt.HasValue)
             {
@@ -308,138 +330,113 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("Cannot validate time: no baseline timestamp available");
             }
 
-            //var timeElapsed = DateTime.UtcNow - baselineTime;
-                
-            //    // Minimum time validation (2 minutes from arrival)
-            //    // Rationale: After arriving, collector needs time to:
-            //    // - Take before photo and assess situation (30 sec)
-            //    // - Collect waste properly (1-2 min minimum)
-            //    // - Clean up area (30 sec)
-            //var minimumDuration = TimeSpan.FromMinutes(2);
-            
-            //if (timeElapsed < minimumDuration)
-            //{
-            //    var remainingMinutes = Math.Ceiling((minimumDuration - timeElapsed).TotalMinutes);
-            //    throw new InvalidOperationException(
-            //        $"Collection must take at least {minimumDuration.TotalMinutes} minutes. " +
-            //        $"Please wait {remainingMinutes} more minute(s) before completing. " +
-            //        $"This ensures quality and prevents fake completions."
-            //    );
-            //}
-
-            // Maximum time warning (4 hours)
-            // If taking too long, might indicate an issue
-            //var maximumDuration = TimeSpan.FromHours(4);
-            
-            //if (timeElapsed > maximumDuration)
-            //{
-            //    // Log warning but still allow completion
-            //    // Enterprise should review these cases
-            //    Console.WriteLine($"WARNING: Assignment {assignmentId} took {timeElapsed.TotalHours:F2} hours to complete. " +
-            //                    $"This is unusually long and should be reviewed.");
-            //}
-
-            // Save after image (before image already saved during Arrived step)
             var afterImageUrl = await SaveProofImageAsync(dto.AfterImage, "after");
 
-            // Check if confirmation already exists
             var existingConfirmation = await _uow.CollectionConfirmations.GetByAssignmentIdAsync(assignmentId);
             if (existingConfirmation != null)
             {
                 throw new InvalidOperationException("Collection confirmation already exists for this assignment");
             }
 
-            // Create collection confirmation
             var confirmation = new DataAccessLayer.Models.Collectionconfirmation
             {
                 AssignmentId = assignmentId,
-                BeforeImageUrl = assignment.BeforeImageUrl!,  // From Arrived step
+                BeforeImageUrl = assignment.BeforeImageUrl!,
                 AfterImageUrl = afterImageUrl,
                 Note = dto.Note,
                 ConfirmedAt = DateTime.UtcNow
             };
 
             await _uow.CollectionConfirmations.AddAsync(confirmation);
-
             await _uow.SaveChangesAsync();
 
             int pointsEarned = 0;
 
-            if (dto.ActualWeights != null && dto.ActualWeights.Any())
+            foreach (var weightItem in validWeightItems)
             {
-                foreach (var weightItem in dto.ActualWeights)
+                var wasteType = await _uow.WasteTypes.GetByIdAsync(weightItem.WasteTypeId);
+                if (wasteType == null)
                 {
-                    if (weightItem.Weight > 0)
-                    {
-                        var wasteType = await _uow.WasteTypes.GetByIdAsync(weightItem.WasteTypeId);
-                        if (wasteType != null)
-                        {
-                            pointsEarned += (int)Math.Round(wasteType.RewardPoints * weightItem.Weight);
-
-                            var detail = new DataAccessLayer.Models.CollectionDetail
-                            {
-                                ConfirmationId = confirmation.ConfirmationId,
-                                WasteTypeId = wasteType.WasteTypeId,
-                                ActualWeight = weightItem.Weight
-                            };
-                            await _uow.CollectionDetails.AddAsync(detail);
-                        }
-                    }
+                    throw new InvalidOperationException($"Waste type not found: {weightItem.WasteTypeId}");
                 }
+
+                var earned = (int)Math.Round(wasteType.RewardPoints * weightItem.Weight);
+                pointsEarned += earned;
+
+                Console.WriteLine(
+                    $"[CompleteCollection] WasteType={wasteType.Name}, RewardPoints={wasteType.RewardPoints}, Weight={weightItem.Weight}, Earned={earned}"
+                );
+
+                var detail = new DataAccessLayer.Models.CollectionDetail
+                {
+                    ConfirmationId = confirmation.ConfirmationId,
+                    WasteTypeId = wasteType.WasteTypeId,
+                    ActualWeight = weightItem.Weight
+                };
+
+                await _uow.CollectionDetails.AddAsync(detail);
             }
 
-            // Update assignment status to "Completed"
-            // Note: CompletedAt is tracked in confirmation.ConfirmedAt
             assignment.Status = "Completed";
             _uow.CollectorAssignments.Update(assignment);
 
-            // Update collection request status to "Completed"
             var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
-            if (request != null)
+            if (request == null)
             {
-                request.Status = "Completed";
-                _uow.CollectionRequests.Update(request);
-
-                // Update waste report status to "Collected"
-                var report = await _uow.WasteReports.GetByIdAsync(request.ReportId);
-                if (report != null)
-                {
-                    report.Status = "Collected";
-                    _uow.WasteReports.Update(report);
-                    if (pointsEarned > 0)
-                    {
-                        var citizen = await _uow.Users.GetByIdAsync(report.SubmittedBy);
-                        if (citizen != null)
-                        {
-                            // Cộng điểm
-                            citizen.TotalPoints = citizen.TotalPoints + pointsEarned;
-                            _uow.Users.Update(citizen);
-
-                            // Ghi lịch sử giao dịch điểm
-                            var rewardTx = new DataAccessLayer.Models.Rewardtransaction
-                            {
-                                UserId = citizen.UserId,
-                                ReportId = report.ReportId,
-                                Points = pointsEarned,
-                                Type = "Earned",
-                                Description = $"Earned points for waste collection (Request #{request.RequestId})",
-                                CreatedAt = DateTime.UtcNow
-                            };
-                            await _uow.RewardTransactions.AddAsync(rewardTx);
-                            var notification = new Notification
-                            {
-                                UserId = citizen.UserId,
-                                Content = $"Your reported waste has been successfully collected! You have earned {pointsEarned} reward points.",
-                                IsRead = false,
-                                CreatedAt = DateTime.UtcNow
-                            };
-                            await _uow.Notifications.AddAsync(notification);
-                        }
-                    }
-                }
+                throw new InvalidOperationException("Collection request not found");
             }
 
+            request.Status = "Completed";
+            _uow.CollectionRequests.Update(request);
+
+            var report = await _uow.WasteReports.GetByIdAsync(request.ReportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("Waste report not found");
+            }
+
+            report.Status = "Collected";
+            _uow.WasteReports.Update(report);
+
+            if (pointsEarned <= 0)
+            {
+                throw new InvalidOperationException("Calculated reward points is 0. Please verify waste type reward points and actual weights.");
+            }
+
+            var citizen = await _uow.Users.GetByIdAsync(report.SubmittedBy);
+            if (citizen == null)
+            {
+                throw new InvalidOperationException($"Citizen not found. SubmittedBy = {report.SubmittedBy}");
+            }
+
+            citizen.TotalPoints += pointsEarned;
+            _uow.Users.Update(citizen);
+
+            var rewardTx = new DataAccessLayer.Models.Rewardtransaction
+            {
+                UserId = citizen.UserId,
+                ReportId = report.ReportId,
+                Points = pointsEarned,
+                Type = "Earned",
+                Description = $"Earned points for waste collection (Request #{request.RequestId})",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _uow.RewardTransactions.AddAsync(rewardTx);
+
+            var notification = new Notification
+            {
+                UserId = citizen.UserId,
+                Content = $"Your reported waste has been successfully collected! You have earned {pointsEarned} reward points.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _uow.Notifications.AddAsync(notification);
+
             await _uow.SaveChangesAsync();
+
+            Console.WriteLine($"[CompleteCollection] SUCCESS - CitizenId={citizen.UserId}, PointsEarned={pointsEarned}, NewTotalPoints={citizen.TotalPoints}");
 
             return new CompleteCollectionResponseDto
             {

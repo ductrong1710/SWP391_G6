@@ -9,5 +9,8 @@
         public string RoleName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public DateTime? CreatedAt { get; set; }
+        public bool IsAvailable { get; set; }
+        public DateTime? AvailabilityUpdatedAt { get; set; }
+
     }
 }

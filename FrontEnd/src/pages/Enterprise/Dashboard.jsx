@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
+import wasteReportService from "../../services/wasteReportService";
 import "./Dashboard.css";
-
-const API_BASE_URL = "http://localhost:5021/api";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -26,14 +24,7 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-
-      // Fetch all waste reports
-      const reportsResponse = await axios.get(`${API_BASE_URL}/waste-reports`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const allReports = reportsResponse.data;
+      const allReports = await wasteReportService.getAllReports();
       const acceptedReports = allReports.filter((r) => r.status === "Accepted");
 
       // Calculate statistics

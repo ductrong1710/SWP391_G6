@@ -1,3 +1,4 @@
+using DataAccessLayer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,8 @@ namespace DataAccessLayer.Repositories.Interface
     public interface IUnitOfWork : IDisposable
     {
         IUserRepository Users { get; }
+        IGenericRepository<Reward> Rewards { get; }
+
         IWasteTypeRepository WasteTypes { get; }
         IWasteReportRepository WasteReports { get; }
         ICollectionRequestRepository CollectionRequests { get; }

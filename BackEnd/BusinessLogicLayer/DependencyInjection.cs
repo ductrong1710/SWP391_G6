@@ -29,6 +29,7 @@ namespace BusinessLogicLayer
             services.AddScoped<IAssignmentService, AssignmentService>();
             services.AddScoped<ICollectionService, CollectionService>();
             services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IRewardService, RewardService>();
 
             return services;
         }

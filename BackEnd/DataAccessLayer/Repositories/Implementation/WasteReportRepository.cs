@@ -19,12 +19,6 @@ namespace DataAccessLayer.Repositories.Implementation
             await _context.Wastereports.AddAsync(entity);
         }
 
-        public async Task<int> CountByUserSinceAsync(int userId, DateTime sinceUtc)
-        {
-            return await _context.Wastereports
-                .CountAsync(x => x.SubmittedBy == userId && x.CreatedAt >= sinceUtc);
-        }
-
         public async Task<Wastereport?> GetByIdAsync(int reportId)
         {
             return await _context.Wastereports
@@ -57,22 +51,23 @@ namespace DataAccessLayer.Repositories.Implementation
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Wastereport>> FindNearbyReportsAsync(
-         List<int> wasteTypeIds,
+        public async Task<IEnumerable<Wastereport>> FindPotentialDuplicatesAsync(
+            List<int> wasteTypeIds,
             decimal latitude,
             decimal longitude,
             decimal latDelta,
             decimal lonDelta,
-            DateTime sinceUtc)
+            int? excludeReportId = null)
         {
             return await _context.Wastereports
                 .Where(x => x.WasteTypes.Any(wt => wasteTypeIds.Contains(wt.WasteTypeId))
-                    && x.CreatedAt >= sinceUtc
                     && x.Latitude >= latitude - latDelta
                     && x.Latitude <= latitude + latDelta
                     && x.Longitude >= longitude - lonDelta
                     && x.Longitude <= longitude + lonDelta
-                    && x.Status != "Cancelled")
+                    && x.Status != "Cancelled"
+                    && x.Status != "Rejected"
+                    && (!excludeReportId.HasValue || x.ReportId != excludeReportId.Value))
                 .OrderBy(x => x.CreatedAt)
                 .ToListAsync();
         }

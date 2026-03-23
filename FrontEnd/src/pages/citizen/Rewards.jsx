@@ -1,237 +1,387 @@
-// src/pages/citizen/Rewards.jsx
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import rewardService from "../../services/rewardService";
 
 const Rewards = () => {
+  const [activeTab, setActiveTab] = useState("catalog");
   const [activeFilter, setActiveFilter] = useState("All");
+  const [userPoints, setUserPoints] = useState(0);
+  const [transactions, setTransactions] = useState([]);
+  const [catalog, setCatalog] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [redeemingId, setRedeemingId] = useState(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // --- 1. THÊM STATE QUẢN LÝ ĐIỂM (Khởi tạo 2450 như ví dụ) ---
-  const [userPoints, setUserPoints] = useState(2450);
 
-  // State quản lý Popup
-  const [selectedReward, setSelectedReward] = useState(null);
+  const loadRewardsData = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const rewards = [
-    {
-      id: 1,
-      title: "Starbucks $10 Gift Card",
-      points: 500,
-      category: "Food & Drink",
-      img: "https://images.unsplash.com/photo-1559496417-e7f25cb247f3?auto=format&fit=crop&w=400&q=80",
-      popular: true,
-    },
-    {
-      id: 2,
-      title: "Cinema Ticket",
-      points: 800,
-      category: "Entertainment",
-      img: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=400&q=80",
-      popular: false,
-    },
-    {
-      id: 3,
-      title: "Supermarket $20 Voucher",
-      points: 1000,
-      category: "Shopping",
-      img: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80",
-      popular: true,
-    },
-    {
-      id: 4,
-      title: "Plant a Tree Donation",
-      points: 300,
-      category: "Charity",
-      img: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=400&q=80",
-      popular: false,
-    },
-    {
-      id: 5,
-      title: "Amazon $15 Gift Card",
-      points: 750,
-      category: "Shopping",
-      img: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?auto=format&fit=crop&w=400&q=80",
-      popular: true,
-    },
-    {
-      id: 6,
-      title: "Local Cafe Voucher",
-      points: 400,
-      category: "Food & Drink",
-      img: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=400&q=80",
-      popular: false,
-    },
-    {
-      id: 7,
-      title: "Spotify 1 Month Premium",
-      points: 600,
-      category: "Entertainment",
-      img: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&w=400&q=80",
-      popular: false,
-    },
-    {
-      id: 8,
-      title: "Ocean Cleanup Donation",
-      points: 500,
-      category: "Charity",
-      img: "https://images.unsplash.com/photo-1484291470158-b8f8d608850d?auto=format&fit=crop&w=400&q=80",
-      popular: true,
-    },
-  ];
+      const [balance, history, rewards] = await Promise.all([
+        rewardService.getMyBalance(),
+        rewardService.getMyTransactionHistory(),
+        rewardService.getRewardCatalog(),
+      ]);
 
-  const filters = [
-    "All",
-    "Food & Drink",
-    "Shopping",
-    "Entertainment",
-    "Charity",
-  ];
-  const filteredRewards =
+      setUserPoints(balance.totalPoints);
+      setTransactions(history);
+      setCatalog(rewards.filter((item) => item.status));
+    } catch (err) {
+      setError("Unable to load rewards data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRewardsData();
+  }, []);
+
+  const filters = ["All", "Earned", "Redeemed"];
+
+  const filteredTransactions =
     activeFilter === "All"
-      ? rewards
-      : rewards.filter((r) => r.category === activeFilter);
+      ? transactions
+      : transactions.filter(
+          (item) => item.type?.toLowerCase() === activeFilter.toLowerCase()
+        );
 
-  // --- 2. CÁC HÀM XỬ LÝ SỰ KIỆN ---
-  const handleSelectReward = (reward) => {
-    setSelectedReward(reward);
-  };
+  const filteredCatalog = catalog.filter((item) => {
+  const keyword = searchTerm.trim().toLowerCase();
+  if (!keyword) return true;
 
-  const handleCloseModal = () => {
-    setSelectedReward(null);
-  };
+  return (
+    item.name.toLowerCase().includes(keyword) ||
+    (item.description || "").toLowerCase().includes(keyword)
+  );
+});
 
-  // --- HÀM XỬ LÝ ĐỔI QUÀ VÀ TRỪ ĐIỂM ---
-  const handleConfirmRedeem = () => {
-    if (userPoints >= selectedReward.points) {
-      const newPoints = userPoints - selectedReward.points;
-      setUserPoints(newPoints); // Cập nhật điểm mới
-      alert(
-        `🎉 Redeemed successfully: ${selectedReward.title}\nYou used ${selectedReward.points} points.\nRemaining balance: ${newPoints}`
+const searchedTransactions = filteredTransactions.filter((item) => {
+  const keyword = searchTerm.trim().toLowerCase();
+  if (!keyword) return true;
+
+  return (
+    (item.description || "").toLowerCase().includes(keyword) ||
+    (item.type || "").toLowerCase().includes(keyword)
+  );
+});
+
+  const earnedPoints = useMemo(
+    () =>
+      transactions
+        .filter((item) => item.type?.toLowerCase() === "earned")
+        .reduce((sum, item) => sum + Math.abs(item.points), 0),
+    [transactions]
+  );
+
+  const redeemedPoints = useMemo(
+    () =>
+      transactions
+        .filter((item) => item.type?.toLowerCase() === "redeemed")
+        .reduce((sum, item) => sum + Math.abs(item.points), 0),
+    [transactions]
+  );
+
+  const handleRedeem = async (reward) => {
+    if (userPoints < reward.points) {
+      setError(`You need ${reward.points - userPoints} more points to redeem this voucher.`);
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Redeem "${reward.name}" for ${reward.points} points?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setRedeemingId(reward.rewardId);
+      setError("");
+      setMessage("");
+
+      const result = await rewardService.redeemReward(reward.rewardId);
+
+      setMessage(
+        `Redeemed "${result.rewardName}" successfully. Remaining points: ${result.remainingPoints}.`
       );
-      handleCloseModal();
-    } else {
-      alert("❌ You do not have enough points to redeem this reward!");
+
+      await loadRewardsData();
+      setActiveTab("history");
+      setTimeout(() => setMessage(""), 4000);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Redeem failed.");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setRedeemingId(null);
     }
   };
 
   return (
     <div className="rewards-container fade-in">
-      {/* Header */}
       <div className="rewards-header">
         <div>
-          <h2>Green Rewards Store</h2>
+          <h2>Rewards Center</h2>
           <p className="subtitle">
-            Exchange your green points for amazing rewards
+            Redeem your points for voucher rewards and track your history
           </p>
         </div>
-        {/* Hiển thị điểm từ State */}
         <div className="my-points-badge">🍃 {userPoints} points</div>
       </div>
 
-      {/* Filters */}
-      <div className="rewards-filters">
-        {filters.map((filter) => (
-          <button
-            key={filter}
-            className={`filter-btn ${activeFilter === filter ? "active" : ""}`}
-            onClick={() => setActiveFilter(filter)}
-          >
-            {filter === "All"
-              ? "🎁 All"
-              : filter === "Food & Drink"
-              ? "☕ Food & Drink"
-              : filter === "Shopping"
-              ? "🛍️ Shopping"
-              : filter === "Entertainment"
-              ? "🎬 Entertainment"
-              : "💚 Charity"}
-          </button>
-        ))}
-      </div>
+      {message && (
+        <div
+          style={{
+            padding: "12px 16px",
+            backgroundColor: "#dcfce7",
+            color: "#166534",
+            borderRadius: "10px",
+            marginBottom: "16px",
+            border: "1px solid #bbf7d0",
+          }}
+        >
+          {message}
+        </div>
+      )}
 
-      {/* Grid Danh sách quà */}
-      <div className="rewards-grid">
-        {filteredRewards.map((item) => (
-          <div className="reward-card" key={item.id}>
-            {item.popular && <span className="badge-popular">Popular</span>}
+      {error && (
+        <div
+          style={{
+            padding: "12px 16px",
+            backgroundColor: "#fee2e2",
+            color: "#991b1b",
+            borderRadius: "10px",
+            marginBottom: "16px",
+            border: "1px solid #fecaca",
+          }}
+        >
+          {error}
+        </div>
+      )}
 
-            <div
-              className="card-img"
-              style={{ backgroundImage: `url(${item.img})`, cursor: "pointer" }}
-              onClick={() => handleSelectReward(item)}
-            ></div>
-
-            <div className="card-body">
-              <h3 className="reward-title">{item.title}</h3>
-              <div className="reward-footer">
-                <span className="reward-points">🍃 {item.points}</span>
-                <button
-                  className="btn-redeem"
-                  onClick={() => handleSelectReward(item)}
-                >
-                  Redeem
-                </button>
-              </div>
-            </div>
+      <div className="stats-row" style={{ marginBottom: 24 }}>
+        <div className="stat-card">
+          <div>
+            <div className="stat-label">Current Balance</div>
+            <div className="stat-value">{userPoints}</div>
+            <div className="stat-change">Available to redeem</div>
           </div>
-        ))}
+          <div className="icon-box">🎁</div>
+        </div>
+        <div className="stat-card">
+          <div>
+            <div className="stat-label">Total Earned</div>
+            <div className="stat-value">{earnedPoints}</div>
+            <div className="stat-change text-green">Collected from reports</div>
+          </div>
+          <div className="icon-box">🏆</div>
+        </div>
+        <div className="stat-card">
+          <div>
+            <div className="stat-label">Total Redeemed</div>
+            <div className="stat-value">{redeemedPoints}</div>
+            <div className="stat-change">Spent on vouchers</div>
+          </div>
+          <div className="icon-box">🎟️</div>
+        </div>
       </div>
 
-      {/* --- 3. MODAL HIỆU ỨNG ZOOM --- */}
-      {selectedReward && (
-        <div className="reward-modal-overlay" onClick={handleCloseModal}>
-          <div
-            className="reward-modal-content zoom-in-effect"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-image-wrapper">
-              <img src={selectedReward.img} alt={selectedReward.title} />
-              <div className="modal-points-badge">
-                🍃 {selectedReward.points} pts
-              </div>
+      <div className="rewards-filters" style={{ marginBottom: 16 }}>
+        <button
+          className={`filter-btn ${activeTab === "catalog" ? "active" : ""}`}
+          onClick={() => setActiveTab("catalog")}
+        >
+          Voucher Catalog
+        </button>
+        <button
+          className={`filter-btn ${activeTab === "history" ? "active" : ""}`}
+          onClick={() => setActiveTab("history")}
+        >
+          Reward History
+        </button>
+        <div style={{ marginBottom: 16 }}>
+        <input
+          type="text"
+          placeholder={
+            activeTab === "catalog"
+              ? "Search voucher by name or description..."
+              : "Search reward history..."
+          }
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            border: "1px solid #d1d5db",
+            outline: "none",
+            fontSize: "14px",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
+      </div>
+
+      {activeTab === "catalog" && (
+        <div className="rewards-grid">
+          {loading ? (
+            <div className="admin-card" style={{ padding: 16 }}>
+              Loading vouchers...
             </div>
-
-            <div className="modal-details">
-              <h3>Do you want to redeem this reward?</h3>
-              <p className="gift-name">{selectedReward.title}</p>
-
-              {/* Hiển thị thông báo số dư hoặc thiếu điểm */}
-              <div className="gift-note">
-                {userPoints >= selectedReward.points ? (
-                  <span style={{ color: "#059669", fontWeight: "bold" }}>
-                    Remaining balance after redemption:{" "}
-                    {userPoints - selectedReward.points} points
-                  </span>
-                ) : (
-                  <span style={{ color: "#dc2626", fontWeight: "bold" }}>
-                    You need {selectedReward.points - userPoints} more points to
-                    redeem this reward.
-                  </span>
-                )}
-              </div>
-
-              <div className="modal-actions">
-                <button className="btn-disagree" onClick={handleCloseModal}>
-                  Disagree
-                </button>
-
-                <button
-                  className="btn-agree"
-                  onClick={handleConfirmRedeem}
-                  // Vô hiệu hóa nút nếu không đủ điểm
-                  disabled={userPoints < selectedReward.points}
+          ) : filteredCatalog.length === 0 ? (
+            <div className="admin-card" style={{ padding: 16 }}>
+              No vouchers available.
+            </div>
+          ) : (
+            filteredCatalog.map((reward) => {
+              const canRedeem = userPoints >= reward.points;
+              return (
+                <div
+                  className="reward-card"
+                  key={reward.rewardId}
                   style={{
-                    opacity: userPoints < selectedReward.points ? 0.5 : 1,
-                    cursor:
-                      userPoints < selectedReward.points
-                        ? "not-allowed"
-                        : "pointer",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 16,
+                    padding: 20,
+                    background: "#fff",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
                   }}
                 >
-                  Confirm Redemption
-                </button>
-              </div>
-            </div>
-          </div>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      color: "#6b7280",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Voucher Reward
+                  </div>
+
+                  <h3
+                    className="reward-title"
+                    style={{ margin: "0 0 10px 0", fontSize: 20 }}
+                  >
+                    {reward.name}
+                  </h3>
+
+                  <p
+                    style={{
+                      color: "#4b5563",
+                      minHeight: 48,
+                      marginBottom: 16,
+                    }}
+                  >
+                    {reward.description || "No description"}
+                  </p>
+
+                  <div
+                    className="reward-footer"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                  >
+                    <span
+                      className="reward-points"
+                      style={{ fontWeight: 700, color: "#059669" }}
+                    >
+                      🍃 {reward.points}
+                    </span>
+
+                    <button
+                      className="btn-redeem"
+                      onClick={() => handleRedeem(reward)}
+                      disabled={!canRedeem || redeemingId === reward.rewardId}
+                      style={{
+                        opacity: !canRedeem || redeemingId === reward.rewardId ? 0.6 : 1,
+                        cursor:
+                          !canRedeem || redeemingId === reward.rewardId
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      {redeemingId === reward.rewardId
+                        ? "Redeeming..."
+                        : canRedeem
+                        ? "Redeem"
+                        : "Not enough points"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
+      )}
+
+      {activeTab === "history" && (
+        <>
+          <div className="rewards-filters" style={{ marginBottom: 16 }}>
+            {filters.map((filter) => (
+              <button
+                key={filter}
+                className={`filter-btn ${activeFilter === filter ? "active" : ""}`}
+                onClick={() => setActiveFilter(filter)}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+
+          <div className="admin-card" style={{ marginTop: 16 }}>
+            {loading ? (
+              <div className="text-gray-sm" style={{ padding: 12 }}>
+                Loading reward history...
+              </div>
+            ) : searchedTransactions.length === 0 ? (
+              <div className="text-gray-sm" style={{ padding: 12 }}>
+                No reward transactions found.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {searchedTransactions.map((item) => {
+                  const isEarned = item.type?.toLowerCase() === "earned";
+                  return (
+                    <div
+                      key={item.transactionId}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "14px 16px",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {item.description || item.type}
+                        </div>
+                        <div style={{ color: "#6b7280", fontSize: 14 }}>
+                          {item.createdAt
+                            ? new Date(item.createdAt).toLocaleString()
+                            : "Unknown time"}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          color: isEarned ? "#059669" : "#dc2626",
+                        }}
+                      >
+                        {isEarned ? "+" : ""}
+                        {item.points}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

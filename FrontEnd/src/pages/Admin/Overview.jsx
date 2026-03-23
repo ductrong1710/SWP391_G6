@@ -1,162 +1,142 @@
-import React, { useState, useEffect } from 'react';
-import wasteReportService from '../../services/wasteReportService';
+import React, { useEffect, useMemo, useState } from "react";
+import userService from "../../services/userService";
+import wasteReportService from "../../services/wasteReportService";
 
 const AdminOverview = () => {
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    accepted: 0,
-    rejected: 0
-  });
+  const [users, setUsers] = useState([]);
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const token = localStorage.getItem('token');
 
   useEffect(() => {
-    fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let mounted = true;
+
+    const loadOverview = async () => {
+      const [userData, reportData] = await Promise.all([
+        userService.getAllUsers().catch(() => []),
+        wasteReportService.getAllReports().catch(() => []),
+      ]);
+
+      if (!mounted) {
+        return;
+      }
+
+      setUsers(userData);
+      setReports(reportData);
+    };
+
+    loadOverview();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      const allReportsRaw = await wasteReportService.getAllReports(token);
-      const allReports = Array.isArray(allReportsRaw) ? allReportsRaw : [];
+  const metrics = useMemo(() => {
+    const countByRole = (role) => users.filter((user) => user.roleName === role).length;
+    return [
+      { label: "Total Users", value: users.length, color: "#10b981" },
+      { label: "Citizens", value: countByRole("Citizen"), color: "#06b6d4" },
+      { label: "Enterprises", value: countByRole("Enterprise"), color: "#7c3aed" },
+      { label: "Collectors", value: countByRole("Collector"), color: "#f59e0b" },
+      { label: "Pending Reports", value: reports.filter((report) => report.status === "Pending").length, color: "#ef4444" },
+      { label: "Collected Reports", value: reports.filter((report) => report.status === "Collected").length, color: "#059669" },
+    ];
+  }, [reports, users]);
 
-      const computed = {
-        total: allReports.length,
-        pending: allReports.filter(r => r?.status === 'Pending').length,
-        accepted: allReports.filter(r => r?.status === 'Accepted').length,
-        rejected: allReports.filter(r => r?.status === 'Rejected').length
-      };
+  const recentReports = useMemo(
+    () => reports.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5),
+    [reports]
+  );
 
-      setStats(computed);
-      setReports(allReports);
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-      setReports([]);
-      setStats({ total: 0, pending: 0, accepted: 0, rejected: 0 });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // UI values to match screenshot layout (some are placeholders if not provided by API)
-  const uiMetrics = [
-    { label: 'Total Citizens', value: '12,485', delta: '+245 this week', icon: '👥', color: '#10b981' },
-    { label: 'Enterprises', value: '48', delta: '+3 this month', icon: '🏢', color: '#06b6d4' },
-    { label: 'Collectors', value: '156', delta: '+12 this week', icon: '🚚', color: '#7c3aed' },
-    { label: 'Open Disputes', value: stats.pending ?? 0, delta: '-3 this week', icon: '⚠️', color: '#f59e0b' },
-    { label: 'Total Collected', value: '1,245 tons', delta: '+15% vs last month', icon: '⚖️', color: '#059669' },
-    { label: 'Platform Growth', value: '24.5%', delta: '+5.2% vs last quarter', icon: '📈', color: '#06b6d4' }
-  ];
-
-  const recentActivity = [
-    { title: 'New enterprise registered', subtitle: 'EcoRecycle Pro', time: '2 hours ago' },
-    { title: 'Dispute resolved', subtitle: 'Case #D-2026-0042', time: '4 hours ago' },
-    { title: 'Collector verified', subtitle: 'David Martinez', time: '6 hours ago' },
-    { title: 'System update completed', subtitle: 'v2.4.1 deployed', time: '1 day ago' }
-  ];
-
-  const pendingActions = [
-    { title: 'Review enterprise application', count: 2, color: '#ef4444' },
-    { title: 'Resolve user disputes', count: 5, color: '#f59e0b' },
-    { title: 'Verify new collectors', count: 8, color: '#10b981' },
-    { title: 'System maintenance', count: 1, color: '#06b6d4' }
-  ];
+  const pendingActions = useMemo(
+    () => [
+      { title: "Pending waste reports", count: reports.filter((report) => report.status === "Pending").length, color: "#ef4444" },
+      { title: "Accepted but unassigned", count: reports.filter((report) => report.status === "Accepted").length, color: "#f59e0b" },
+      { title: "Inactive users", count: users.filter((user) => user.status !== "Active").length, color: "#06b6d4" },
+    ],
+    [reports, users]
+  );
 
   return (
     <div style={{ padding: 24 }}>
       <div style={{ marginBottom: 18 }}>
         <h1 style={{ margin: 0 }}>Admin Dashboard</h1>
-        <div style={{ color: '#6b7280', marginTop: 6 }}>System overview and key metrics</div>
+        <div style={{ color: "#6b7280", marginTop: 6 }}>Real-time overview from current API data</div>
       </div>
 
-      {/* Metric cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 18,
-        marginBottom: 26
-      }}>
-        {uiMetrics.map((c, i) => (
-          <div key={i} style={{
-            background: '#fff',
-            borderRadius: 10,
-            padding: 20,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-            border: '1px solid rgba(15,23,42,0.04)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            minHeight: 100
-          }}>
-            <div>
-              <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>{c.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>{c.value}</div>
-              <div style={{ marginTop: 6, color: c.color, fontSize: 12 }}>{c.delta}</div>
-            </div>
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: 8,
-              background: '#f1f5f9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 20,
-              color: '#0f172a'
-            }}>
-              {c.icon}
-            </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18, marginBottom: 26 }}>
+        {metrics.map((metric) => (
+          <div
+            key={metric.label}
+            style={{
+              background: "#fff",
+              borderRadius: 10,
+              padding: 20,
+              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              border: "1px solid rgba(15,23,42,0.04)",
+            }}
+          >
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>{metric.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{metric.value}</div>
+            <div style={{ marginTop: 6, color: metric.color, fontSize: 12 }}>Loaded from backend</div>
           </div>
         ))}
       </div>
 
-      {/* Lower panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 18 }}>
-        <div style={{
-          background: '#fff',
-          borderRadius: 10,
-          padding: 18,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-          border: '1px solid rgba(15,23,42,0.04)'
-        }}>
-          <h3 style={{ marginTop: 0 }}>Recent Activity</h3>
-          <div style={{ marginTop: 8 }}>
-            {(recentActivity.length === 0) ? (
-              <div style={{ color: '#94a3b8', padding: 20, textAlign: 'center' }}>No recent activity</div>
-            ) : (
-              recentActivity.map((a, idx) => (
-                <div key={idx} style={{ padding: '12px 0', borderBottom: idx < recentActivity.length - 1 ? '1px solid #eef2f7' : 'none' }}>
-                  <div style={{ fontWeight: 600 }}>{a.title}</div>
-                  <div style={{ color: '#6b7280', marginTop: 6 }}>{a.subtitle}</div>
-                  <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>{a.time}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 18 }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 10,
+            padding: 18,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            border: "1px solid rgba(15,23,42,0.04)",
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>Recent Reports</h3>
+          {recentReports.length === 0 ? (
+            <div style={{ color: "#94a3b8", padding: 20, textAlign: "center" }}>No recent reports</div>
+          ) : (
+            recentReports.map((report) => (
+              <div key={report.reportId} style={{ padding: "12px 0", borderBottom: "1px solid #eef2f7" }}>
+                <div style={{ fontWeight: 600 }}>Report #{report.reportId}</div>
+                <div style={{ color: "#6b7280", marginTop: 6 }}>
+                  {report.wasteTypeNames?.join(", ") || "Waste"} - {report.status}
                 </div>
-              ))
-            )}
-          </div>
+                <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 6 }}>
+                  {report.createdAt ? new Date(report.createdAt).toLocaleString() : "Unknown time"}
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
-        <div style={{
-          background: '#fff',
-          borderRadius: 10,
-          padding: 18,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-          border: '1px solid rgba(15,23,42,0.04)'
-        }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 10,
+            padding: 18,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            border: "1px solid rgba(15,23,42,0.04)",
+          }}
+        >
           <h3 style={{ marginTop: 0 }}>Pending Actions</h3>
-          <div style={{ marginTop: 8 }}>
-            {pendingActions.map((p, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: i < pendingActions.length - 1 ? '1px solid #eef2f7' : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 6, background: p.color }}></div>
-                  <div style={{ color: '#0f172a' }}>{p.title}</div>
-                </div>
-                <div style={{ color: '#64748b' }}>{p.count}</div>
+          {pendingActions.map((item) => (
+            <div
+              key={item.title}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 0",
+                borderBottom: "1px solid #eef2f7",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 6, background: item.color }} />
+                <div style={{ color: "#0f172a" }}>{item.title}</div>
               </div>
-            ))}
-          </div>
+              <div style={{ color: "#64748b" }}>{item.count}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -137,6 +137,23 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("'Accepted'::character varying")
                 .HasColumnName("status");
 
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasColumnName("note");
+
+            entity.Property(e => e.IssueReport)
+                .HasMaxLength(50)
+                .HasColumnName("issue_report");
+
+            entity.Property(e => e.IssueReason)
+                .HasMaxLength(1000)
+                .HasColumnName("issue_reason");
+
+            entity.Property(e => e.IssueImageUrl)
+                .HasMaxLength(500)
+                .HasColumnName("issue_image_url");
+
+
             entity.HasOne(d => d.Enterprise).WithMany(p => p.Collectionrequests)
                 .HasForeignKey(d => d.EnterpriseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -355,6 +372,12 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.TotalPoints)
                 .HasDefaultValue(0)
                 .HasColumnName("total_points");
+            entity.Property(e => e.IsAvailable)
+                 .HasColumnName("is_available");
+            entity.Property(e => e.AvailabilityUpdatedAt)
+                .HasColumnName("availability_updated_at")
+                .HasColumnType("timestamp with time zone");
+
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
