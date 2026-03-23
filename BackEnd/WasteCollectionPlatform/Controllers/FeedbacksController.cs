@@ -1,0 +1,109 @@
+using BusinessLogicLayer.DTOs.Feedback;
+using BusinessLogicLayer.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace WasteCollectionPlatform.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
+    public class FeedbacksController : ControllerBase
+    {
+        private readonly IFeedbackService _feedbackService;
+
+        public FeedbacksController(IFeedbackService feedbackService)
+        {
+            _feedbackService = feedbackService;
+        }
+
+        /// <summary>
+        /// Citizen: Submit feedback for a report
+        /// </summary>
+        [HttpPost]
+        [Authorize]
+        [ProducesResponseType(typeof(FeedbackResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> CreateFeedback([FromBody] CreateFeedbackDto dto)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+
+            try
+            {
+                var result = await _feedbackService.CreateFeedbackAsync(userId, dto);
+                return CreatedAtAction(nameof(CreateFeedback), new { id = result.FeedbackId }, result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get feedbacks for a specific report
+        /// </summary>
+        [HttpGet("report/{reportId:int}")]
+        [Authorize]
+        [ProducesResponseType(typeof(IEnumerable<FeedbackResponseDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetFeedbacksByReport(int reportId)
+        {
+            var feedbacks = await _feedbackService.GetFeedbacksByReportIdAsync(reportId);
+            return Ok(feedbacks);
+        }
+
+        /// <summary>
+        /// Admin: Get all feedbacks
+        /// </summary>
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(IEnumerable<FeedbackResponseDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAllFeedbacks()
+        {
+            var feedbacks = await _feedbackService.GetAllFeedbacksAsync();
+            return Ok(feedbacks);
+        }
+
+        /// <summary>
+        /// Admin: Resolve feedback (set status to Resolved)
+        /// </summary>
+        [HttpPut("{id:int}/resolve")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(FeedbackResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ResolveFeedback(int id)
+        {
+            try
+            {
+                var result = await _feedbackService.UpdateFeedbackStatusAsync(id, "Resolved");
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Admin: Reject feedback
+        /// </summary>
+        [HttpPut("{id:int}/reject")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(FeedbackResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RejectFeedback(int id)
+        {
+            try
+            {
+                var result = await _feedbackService.UpdateFeedbackStatusAsync(id, "Rejected");
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+    }
+}

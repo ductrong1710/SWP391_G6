@@ -1,325 +1,227 @@
 import React, { useState, useEffect } from 'react';
-import complaintService from '../../services/complaintService';
+import feedbackService from '../../services/feedbackService';
 
 const Disputes = () => {
-  const [ticketsData, setTicketsData] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-
-  // Editable local states for the active ticket
-  const [complaintText, setComplaintText] = useState('');
-  const [citizenVal, setCitizenVal] = useState('');
-  const [collectorVal, setCollectorVal] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('All');
 
   useEffect(() => {
-    fetchComplaints();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadFeedbacks();
   }, []);
 
-  // When selectedId or ticketsData changes, load editable states
-  useEffect(() => {
-    const t = ticketsData.find((x) => x.id === selectedId);
-    if (t) {
-      setComplaintText(t.details || '');
-      setCitizenVal(t.claim?.citizenVal ?? '');
-      setCollectorVal(t.claim?.collectorVal ?? '');
-      setChatMessages(t.chat || []);
-      setNewMessage('');
-    } else {
-      setComplaintText('');
-      setCitizenVal('');
-      setCollectorVal('');
-      setChatMessages([]);
-      setNewMessage('');
-    }
-  }, [selectedId, ticketsData]);
-
-  const fetchComplaints = async () => {
+  const loadFeedbacks = async () => {
     try {
-      const complaints = await complaintService.getComplaints();
-      setTicketsData(complaints || []);
-      if (complaints && complaints.length > 0) {
-        setSelectedId((prev) => prev || complaints[0].id);
+      setLoading(true);
+      const data = await feedbackService.getAllFeedbacks();
+      setFeedbacks(data);
+      if (data.length > 0 && !selectedId) {
+        setSelectedId(data[0].feedbackId);
       }
     } catch (error) {
-      console.error('Fetch complaints error:', error);
+      console.error('Failed to load feedbacks:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleApprove = async (id) => {
+  const handleResolve = async (id) => {
     try {
-      await complaintService.approveComplaint(id);
-      await fetchComplaints();
-      alert('Complaint approved');
+      await feedbackService.resolveFeedback(id);
+      await loadFeedbacks();
     } catch (error) {
       console.error(error);
-      alert('Approve failed');
+      alert('Failed to resolve');
     }
   };
 
   const handleReject = async (id) => {
     try {
-      await complaintService.rejectComplaint(id);
-      await fetchComplaints();
-      alert('Complaint rejected');
+      await feedbackService.rejectFeedback(id);
+      await loadFeedbacks();
     } catch (error) {
       console.error(error);
-      alert('Reject failed');
+      alert('Failed to reject');
     }
   };
 
-  const handleSaveClaim = async () => {
-    if (!selectedId) return;
-    try {
-      await complaintService.updateComplaint(selectedId, {
-        details: complaintText,
-        claim: {
-          citizenVal: citizenVal || null,
-          collectorVal: collectorVal || null,
-        },
-      });
-    } catch (err) {
-      // ignore network error; still update local
-      console.warn('Save claim remote error (continuing with local update):', err);
-    } finally {
-      setTicketsData((prev) =>
-        prev.map((t) =>
-          t.id === selectedId
-            ? {
-                ...t,
-                details: complaintText,
-                claim: { ...(t.claim || {}), citizenVal: citizenVal || null, collectorVal: collectorVal || null },
-              }
-            : t
-        )
-      );
-      alert('Claim saved');
-    }
+  const filteredFeedbacks = filter === 'All'
+    ? feedbacks
+    : feedbacks.filter(f => f.status === filter);
+
+  const activeFeedback = feedbacks.find(f => f.feedbackId === selectedId);
+
+  const statusColor = {
+    Pending: '#f59e0b',
+    Resolved: '#10b981',
+    Rejected: '#ef4444',
   };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedId) return;
-    const msg = {
-      sender: 'Admin',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: newMessage.trim(),
-      avatar: 'A',
-      color: 'admin',
-    };
-
-    try {
-      // try persist to API (endpoint may vary)
-      await complaintService.sendComplaintMessage(selectedId, { text: msg.text });
-    } catch (err) {
-      // ignore if endpoint not available
-      console.warn('Send message remote error (falling back to local):', err);
-    } finally {
-      setChatMessages((prev) => {
-        const next = [...prev, msg];
-        // also update ticketsData so UI persists while on page
-        setTicketsData((td) => td.map((t) => (t.id === selectedId ? { ...t, chat: next } : t)));
-        return next;
-      });
-      setNewMessage('');
-    }
-  };
-
-  const activeTicket =
-    ticketsData.find((t) => t.id === selectedId) || {
-      id: '',
-      reason: '',
-      details: '',
-      createdAt: '',
-      status: 'Pending',
-      claim: { desc: '', citizenVal: null, collectorVal: null },
-      chat: [],
-      hasEvidence: false,
-    };
 
   return (
     <div className="admin-disputes-page fade-in">
       <div className="admin-page-header">
-        <h2>Dispute Resolution</h2>
-        <p className="text-gray">Review and resolve user disputes</p>
+        <h2>Feedback Management</h2>
+        <p className="text-gray">Review and resolve citizen feedback on reports</p>
+      </div>
+
+      {/* Filter */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+        {['All', 'Pending', 'Resolved', 'Rejected'].map(s => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 20,
+              border: '1px solid #e2e8f0',
+              background: filter === s ? '#3b82f6' : '#fff',
+              color: filter === s ? '#fff' : '#475569',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: 13,
+            }}
+          >
+            {s}
+          </button>
+        ))}
       </div>
 
       <div className="disputes-layout">
         {/* Sidebar */}
         <div className="tickets-sidebar admin-card no-padding">
           <div className="sidebar-header">
-            <h3>Open Tickets</h3>
+            <h3>Feedbacks ({filteredFeedbacks.length})</h3>
           </div>
           <div className="ticket-list">
-            {ticketsData.map((t) => (
-              <div
-                key={t.id}
-                className={`ticket-item ${selectedId === t.id ? 'active' : ''}`}
-                onClick={() => setSelectedId(t.id)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="t-header">
-                  <span className="t-title">📝 {t.reason || 'No title'}</span>
-                  <span className="status-tag">{t.status || 'Pending'}</span>
+            {loading ? (
+              <div style={{ padding: 20, color: '#94a3b8' }}>Loading...</div>
+            ) : filteredFeedbacks.length === 0 ? (
+              <div style={{ padding: 20, color: '#94a3b8' }}>No feedbacks</div>
+            ) : (
+              filteredFeedbacks.map(fb => (
+                <div
+                  key={fb.feedbackId}
+                  className={`ticket-item ${selectedId === fb.feedbackId ? 'active' : ''}`}
+                  onClick={() => setSelectedId(fb.feedbackId)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="t-header">
+                    <span className="t-title">💬 Report #{fb.reportId}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontWeight: 600,
+                        background: `${statusColor[fb.status] || '#94a3b8'}20`,
+                        color: statusColor[fb.status] || '#64748b',
+                      }}
+                    >
+                      {fb.status}
+                    </span>
+                  </div>
+                  <div className="t-id">By: {fb.userName}</div>
+                  <div className="t-date">
+                    🕒 {fb.createdAt ? new Date(fb.createdAt).toLocaleString() : ''}
+                  </div>
                 </div>
-                <div className="t-id">ID: {t.id}</div>
-                <div className="t-date">🕒 {t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</div>
-              </div>
-            ))}
-            {ticketsData.length === 0 && <div className="p-4 text-gray">No tickets</div>}
+              ))
+            )}
           </div>
         </div>
 
         {/* Detail pane */}
         <div className="ticket-detail admin-card">
-          <div className="detail-header">
-            <div>
-              <h3>{activeTicket.reason || 'No title selected'}</h3>
-              <div className="text-gray">{activeTicket.id}</div>
-            </div>
-            <span className="status-tag large">{activeTicket.status || 'Pending'}</span>
-          </div>
-
-          <div className="divider"></div>
-
-          {/* Complaint Details - editable */}
-          <div className="section-block">
-            <h4 className="section-title">📄 Complaint Details</h4>
-            <textarea
-              value={complaintText}
-              onChange={(e) => setComplaintText(e.target.value)}
-              placeholder="Enter complaint details..."
-              style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 8, border: '1px solid #e6eef2' }}
-            />
-          </div>
-
-          {/* VS */}
-          {activeTicket?.collectionId && (
-            <div className="vs-section">
-              <div className="party-card">
-                <div className="p-avatar blue">C</div>
+          {activeFeedback ? (
+            <>
+              <div className="detail-header">
                 <div>
-                  <div className="p-name">Citizen</div>
-                  <div className="p-role">Complaint Owner</div>
+                  <h3>Feedback #{activeFeedback.feedbackId}</h3>
+                  <div className="text-gray">Report #{activeFeedback.reportId} — by {activeFeedback.userName}</div>
+                </div>
+                <span
+                  style={{
+                    fontSize: 13,
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    fontWeight: 600,
+                    background: `${statusColor[activeFeedback.status] || '#94a3b8'}20`,
+                    color: statusColor[activeFeedback.status] || '#64748b',
+                  }}
+                >
+                  {activeFeedback.status}
+                </span>
+              </div>
+
+              <div className="divider"></div>
+
+              {/* Content */}
+              <div className="section-block">
+                <h4 className="section-title">📄 Feedback Content</h4>
+                <div
+                  style={{
+                    padding: 16,
+                    backgroundColor: '#f9fafb',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    color: '#1f2937',
+                  }}
+                >
+                  {activeFeedback.content}
                 </div>
               </div>
 
-              <div className="vs-badge">VS</div>
-
-              <div className="party-card right">
-                <div>
-                  <div className="p-name text-right">Enterprise</div>
-                  <div className="p-role text-right">Service Provider</div>
-                </div>
-                <div className="p-avatar green">E</div>
-              </div>
-            </div>
-          )}
-
-          {/* Claim Details - editable */}
-          <div className="section-block">
-            <h4 className="section-title">💸 Claim Details</h4>
-            <textarea
-              value={activeTicket.claim?.desc ?? ''}
-              onChange={(e) =>
-                setTicketsData((prev) => prev.map((t) => (t.id === selectedId ? { ...t, claim: { ...(t.claim || {}), desc: e.target.value } } : t)))
-              }
-              placeholder="Claim summary..."
-              style={{ width: '100%', minHeight: 56, padding: 10, borderRadius: 8, border: '1px solid #e6eef2' }}
-            />
-            <div className="comparison-grid" style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div className="c-label">Citizen Reported</div>
-                <input
-                  value={citizenVal ?? ''}
-                  onChange={(e) => setCitizenVal(e.target.value)}
-                  placeholder="e.g. 5.2 kg"
-                  style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #eee' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div className="c-label">Collector Recorded</div>
-                <input
-                  value={collectorVal ?? ''}
-                  onChange={(e) => setCollectorVal(e.target.value)}
-                  placeholder="e.g. 3.1 kg"
-                  style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #eee' }}
-                />
-              </div>
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <button className="btn-outline" onClick={handleSaveClaim}>
-                Save Claim
-              </button>
-            </div>
-          </div>
-
-          {/* Evidence */}
-          {activeTicket.hasEvidence && (
-            <div className="section-block">
-              <h4 className="section-title">🖼️ Evidence Comparison</h4>
-              <div className="evidence-grid">
-                <div className="evidence-item">
-                  <span className="ev-label">Citizen's Photo</span>
-                  <div className="img-placeholder">Citizen evidence</div>
-                </div>
-                <div className="evidence-item">
-                  <span className="ev-label">Collector's Photo</span>
-                  <div className="img-placeholder">Collector evidence</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Communication History */}
-          <div className="section-block">
-            <h4 className="section-title">💬 Communication History</h4>
-            <div className="chat-list" style={{ maxHeight: 220, overflowY: 'auto', padding: 8, borderRadius: 8, background: '#fbfdfc' }}>
-              {(chatMessages && chatMessages.length > 0) ? (
-                chatMessages.map((msg, i) => (
-                  <div key={i} className="chat-item" style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
-                    <div className={`chat-avatar ${msg.color || ''}`} style={{ width: 36, height: 36, borderRadius: 18, background: '#e6f4ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {msg.avatar || msg.sender?.[0] || 'U'}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{msg.sender || 'User'} <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: 8 }}>{msg.time}</span></div>
-                      <div style={{ marginTop: 4 }}>{msg.text}</div>
+              {/* Details */}
+              <div className="section-block">
+                <h4 className="section-title">ℹ️ Details</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>User ID</div>
+                    <div style={{ fontWeight: 600 }}>{activeFeedback.userId}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>Report ID</div>
+                    <div style={{ fontWeight: 600 }}>{activeFeedback.reportId || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>Submitted</div>
+                    <div style={{ fontWeight: 600 }}>
+                      {activeFeedback.createdAt ? new Date(activeFeedback.createdAt).toLocaleString() : 'N/A'}
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-gray italic">No messages yet.</p>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>Current Status</div>
+                    <div style={{ fontWeight: 600 }}>{activeFeedback.status}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="divider"></div>
+
+              {/* Actions */}
+              {activeFeedback.status === 'Pending' && (
+                <div className="detail-actions">
+                  <button className="btn-outline" onClick={() => handleResolve(activeFeedback.feedbackId)}>
+                    ✅ Resolve
+                  </button>
+                  <button className="btn-outline red" onClick={() => handleReject(activeFeedback.feedbackId)}>
+                    ❌ Reject
+                  </button>
+                </div>
               )}
+              {activeFeedback.status !== 'Pending' && (
+                <div style={{ padding: '12px 16px', background: '#f1f5f9', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
+                  This feedback has been {activeFeedback.status.toLowerCase()}.
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+              Select a feedback to view details
             </div>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Write a message..."
-                style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e6eef2' }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSendMessage();
-                }}
-              />
-              <button className="btn-primary" onClick={handleSendMessage}>
-                Send
-              </button>
-            </div>
-          </div>
-
-          <div className="divider"></div>
-
-          {/* Actions */}
-          <div className="detail-actions">
-            <button className="btn-outline" onClick={() => handleApprove(activeTicket.id)}>
-              ✅ Approve
-            </button>
-
-            <button className="btn-outline red" onClick={() => handleReject(activeTicket.id)}>
-              ❌ Reject
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>
