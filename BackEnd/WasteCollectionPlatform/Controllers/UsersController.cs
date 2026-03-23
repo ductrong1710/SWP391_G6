@@ -200,5 +200,34 @@ namespace WasteCollectionPlatform.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
+        [HttpPut("me/availability")]
+        [Authorize(Roles = "Collector")]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateMyAvailability([FromBody] UpdateCollectorAvailabilityDto request)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var result = await _userService.UpdateCollectorAvailabilityAsync(userId, request.IsAvailable);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+        }
+
     }
 }

@@ -83,6 +83,22 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new UnauthorizedAccessException("You can only start your own assignments");
             }
 
+            var hasAnotherActiveTrip = await _uow.CollectorAssignments.HasActiveTripByCollectorAsync(collectorId);
+            if (hasAnotherActiveTrip)
+            {
+                var thisAssignmentAlreadyActive =
+                    string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(assignment.Status, "Arrived", StringComparison.OrdinalIgnoreCase);
+
+                if (!thisAssignmentAlreadyActive)
+                {
+                    throw new InvalidOperationException(
+                        "You already have another active collection trip. Complete or resolve it before starting a new one."
+                    );
+                }
+            }
+
+
             // Validate status is "Assigned"
             if (!string.Equals(assignment.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
             {
@@ -171,41 +187,35 @@ namespace BusinessLogicLayer.Services.Implementation
 
         public async Task<ReportIssueResponseDto> ReportIssueAsync(int assignmentId, int collectorId, ReportIssueDto dto)
         {
-            // Get assignment with details
             var assignment = await _uow.CollectorAssignments.GetByIdWithDetailsAsync(assignmentId);
             if (assignment == null)
             {
                 throw new InvalidOperationException("Assignment not found");
             }
 
-            // Validate collector is the assigned collector
             if (assignment.AssignedCollector != collectorId)
             {
                 throw new UnauthorizedAccessException("You can only report issues for your own assignments");
             }
 
-            // Validate status is "OnTheWay" or "Arrived" (collector must have started the collection)
             if (!string.Equals(assignment.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(assignment.Status, "Arrived", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Can only report issue when status is 'OnTheWay' or 'Arrived'. Please start collection first.");
+                throw new InvalidOperationException("Can only report issue when status is 'OnTheWay' or 'Arrived'.");
             }
 
-            // Validate issue type
             if (string.IsNullOrWhiteSpace(dto.IssueType))
             {
                 throw new ArgumentException("Issue type is required");
             }
 
-            // Validate description
             if (string.IsNullOrWhiteSpace(dto.Description))
             {
                 throw new ArgumentException("Description is required to report issue");
             }
 
-            // Validate issue type is valid
-            var validIssueTypes = new[] 
-            { 
+            var validIssueTypes = new[]
+            {
                 CollectionIssueTypes.WasteNotFound,
                 CollectionIssueTypes.WrongAddress,
                 CollectionIssueTypes.WasteTypeMismatch,
@@ -218,30 +228,26 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new ArgumentException($"Invalid issue type. Valid types: {string.Join(", ", validIssueTypes)}");
             }
 
-            // Save proof image if provided
             string? proofImageUrl = null;
             if (dto.ProofImage != null && dto.ProofImage.Length > 0)
             {
                 proofImageUrl = await SaveIssueProofImageAsync(dto.ProofImage);
             }
 
-            // Update assignment status to "Issue"
-            assignment.Status = "Issue";
+            assignment.Status = "ReportedIssue";
             _uow.CollectorAssignments.Update(assignment);
 
-            // Update collection request status to "Issue"
             var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
             if (request != null)
             {
                 request.Status = "Issue";
+                request.IssueReport = dto.IssueType;
+                request.IssueReason = dto.Description;
+                request.IssueImageUrl = proofImageUrl;
                 _uow.CollectionRequests.Update(request);
             }
 
             await _uow.SaveChangesAsync();
-
-            // Note: Issue details (type, description, image) should be stored in a separate table
-            // For now, we're just changing the status. Enterprise will need to contact collector
-            // or create a CollectionIssue table in future
 
             return new ReportIssueResponseDto
             {
@@ -254,6 +260,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 ReportedAt = DateTime.UtcNow
             };
         }
+
 
         public async Task<CompleteCollectionResponseDto> CompleteCollectionAsync(int assignmentId, int collectorId, CompleteCollectionDto dto)
         {
