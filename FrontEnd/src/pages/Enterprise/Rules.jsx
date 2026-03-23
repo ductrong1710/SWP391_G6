@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import wasteReportService from "../../services/wasteReportService";
 import "./Rules.css";
-
-const API_BASE_URL = "http://localhost:5021/api";
 
 const Rules = () => {
   const [dailyLimit, setDailyLimit] = useState(15);
@@ -28,11 +26,8 @@ const Rules = () => {
 
   const fetchWasteTypes = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/waste-types`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAllWasteTypes(response.data);
+      const wasteTypes = await wasteReportService.getWasteTypes();
+      setAllWasteTypes(wasteTypes);
 
       setAcceptedWasteTypes([1, 2, 3]);
     } catch (err) {

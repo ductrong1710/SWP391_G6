@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import complaintService from '../../services/complaintService';
 
 const Disputes = () => {
   const [ticketsData, setTicketsData] = useState([]);
@@ -37,13 +37,10 @@ const Disputes = () => {
 
   const fetchComplaints = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5021/api/complaints', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setTicketsData(res.data || []);
-      if (res.data && res.data.length > 0) {
-        setSelectedId((prev) => prev || res.data[0].id);
+      const complaints = await complaintService.getComplaints();
+      setTicketsData(complaints || []);
+      if (complaints && complaints.length > 0) {
+        setSelectedId((prev) => prev || complaints[0].id);
       }
     } catch (error) {
       console.error('Fetch complaints error:', error);
@@ -52,12 +49,7 @@ const Disputes = () => {
 
   const handleApprove = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `http://localhost:5021/api/complaints/${id}/approve`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await complaintService.approveComplaint(id);
       await fetchComplaints();
       alert('Complaint approved');
     } catch (error) {
@@ -68,12 +60,7 @@ const Disputes = () => {
 
   const handleReject = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `http://localhost:5021/api/complaints/${id}/reject`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await complaintService.rejectComplaint(id);
       await fetchComplaints();
       alert('Complaint rejected');
     } catch (error) {
@@ -85,19 +72,13 @@ const Disputes = () => {
   const handleSaveClaim = async () => {
     if (!selectedId) return;
     try {
-      const token = localStorage.getItem('token');
-      // attempt to persist to backend; if API differs, this still updates local view
-      await axios.put(
-        `http://localhost:5021/api/complaints/${selectedId}`,
-        {
-          details: complaintText,
-          claim: {
-            citizenVal: citizenVal || null,
-            collectorVal: collectorVal || null,
-          },
+      await complaintService.updateComplaint(selectedId, {
+        details: complaintText,
+        claim: {
+          citizenVal: citizenVal || null,
+          collectorVal: collectorVal || null,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      });
     } catch (err) {
       // ignore network error; still update local
       console.warn('Save claim remote error (continuing with local update):', err);
@@ -128,13 +109,8 @@ const Disputes = () => {
     };
 
     try {
-      const token = localStorage.getItem('token');
       // try persist to API (endpoint may vary)
-      await axios.post(
-        `http://localhost:5021/api/complaints/${selectedId}/messages`,
-        { text: msg.text },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await complaintService.sendComplaintMessage(selectedId, { text: msg.text });
     } catch (err) {
       // ignore if endpoint not available
       console.warn('Send message remote error (falling back to local):', err);

@@ -31,10 +31,40 @@
 .admin-nav-item:hover { background: #f1f5f9; }
 .admin-nav-item.active { background: #d1fae5; color: #059669; }
 
-.admin-profile { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.admin-avatar { width: 32px; height: 32px; background: #e2e8f0; border-radius: 50%; }
-.admin-username { font-size: 13px; font-weight: 600; }
-.admin-chevron { font-size: 10px; color: #94a3b8; }
+.admin-header-actions { display: flex; align-items: center; gap: 12px; }
+.header-bell-btn { color: #f59e0b; padding: 6px; }
+.admin-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 10px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.18);
+}
+.admin-avatar {
+  width: 40px;
+  height: 40px;
+  background: white;
+  color: #059669;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.admin-username {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-chevron { font-size: 11px; color: rgba(255,255,255,0.9); }
 /* --- ADMIN DROPDOWN MENU --- */
 
 /* Khung menu */
