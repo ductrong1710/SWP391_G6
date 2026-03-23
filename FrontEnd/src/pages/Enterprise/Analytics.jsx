@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import {
   LineChart,
   Line,
@@ -15,9 +14,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import wasteReportService from "../../services/wasteReportService";
 import "./Analytics.css";
-
-const API_BASE_URL = "http://localhost:5021/api";
 
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState("This Year");
@@ -40,14 +38,7 @@ const Analytics = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-
-      // Fetch waste reports
-      const reportsResponse = await axios.get(`${API_BASE_URL}/waste-reports`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const reports = reportsResponse.data;
+      const reports = await wasteReportService.getAllReports();
       const acceptedReports = reports.filter((r) => r.status === "Accepted");
 
       // Calculate stats

@@ -1,32 +1,42 @@
 import api from "./api";
 
+const normalizeUser = (user) => ({
+  userId: user.userId ?? user.UserId ?? user.id ?? null,
+  fullName: user.fullName ?? user.FullName ?? "",
+  email: user.email ?? user.Email ?? "",
+  phone: user.phone ?? user.Phone ?? "",
+  roleName: user.roleName ?? user.RoleName ?? "",
+  status: user.status ?? user.Status ?? "",
+  createdAt: user.createdAt ?? user.CreatedAt ?? null,
+  isAvailable: Boolean(user.isAvailable ?? user.IsAvailable ?? false),
+  availabilityUpdatedAt:
+    user.availabilityUpdatedAt ?? user.AvailabilityUpdatedAt ?? null,
+});
+
+
 const userService = {
-  // Admin: Get all users
   getAllUsers: async () => {
-    const response = await api.get("/Users");
-    return response.data;
+    const response = await api.get("/users");
+    return Array.isArray(response.data) ? response.data.map(normalizeUser) : [];
   },
 
-  // Authenticated: Get user by ID
   getUserById: async (userId) => {
-    const response = await api.get(`/Users/${userId}`);
-    return response.data;
+    const response = await api.get(`/users/${userId}`);
+    return normalizeUser(response.data);
   },
 
-  // Admin/Enterprise: Get all collectors
   getCollectors: async () => {
     try {
-      const response = await api.get("/Users/collectors");
-      console.log("✅ GET /Users/collectors:", response.status, response.data);
-      return Array.isArray(response.data) ? response.data : [];
-    } catch (error) {
-      console.error(
-        "❌ GET /Users/collectors failed:",
-        error?.response?.status,
-        error?.response?.data
-      );
+      const response = await api.get("/users/collectors");
+      return Array.isArray(response.data) ? response.data.map(normalizeUser) : [];
+    } catch {
       return [];
     }
+  },
+  
+  updateMyAvailability: async (isAvailable) => {
+  const response = await api.put("/users/me/availability", { isAvailable });
+  return normalizeUser(response.data);
   },
 };
 
