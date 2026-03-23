@@ -133,22 +133,6 @@
 }
 
 
-/* ==========================================================================
-   6. SETTINGS PAGE (Settings.jsx)
-   Bao gồm: Tabs, Forms
-   ========================================================================== */
-
-.settings-container { max-width: 1000px; margin: 0 auto; }
-.settings-header { margin-bottom: 20px; }
-.settings-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #e5e7eb; }
-.tab-btn { padding: 10px 16px; background: transparent; border: none; font-weight: 500; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; }
-.tab-btn.active { color: #10b981; border-bottom: 2px solid #10b981; font-weight: 600; }
-
-.tab-pane { background: white; padding: 32px; border-radius: 12px; border: 1px solid #e5e7eb; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.form-input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; outline: none; }
-.full-width { grid-column: 1 / -1; }
-.btn-save { background-color: #10b981; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; }
 
 /* ================= Modal & Pop-ups ================= */
 .custom-modal-overlay {
