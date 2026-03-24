@@ -142,8 +142,8 @@ export default function Users() {
   };
 
   const handleCreate = async () => {
-    if (!createForm.fullName.trim() || !createForm.email.trim() || !createForm.password.trim()) {
-      toast.error("Full name, email, and password are required");
+    if (!createForm.fullName.trim() || !createForm.email.trim() || !createForm.password.trim() || !createForm.phone.trim()) {
+      toast.error("Full name, email, password, and phone are required");
       return;
     }
     setCreating(true);
@@ -507,12 +507,12 @@ export default function Users() {
               </button>
             </div>
 
-            <label style={labelStyle}>Phone</label>
+            <label style={labelStyle}>Phone *</label>
             <input
               style={inputStyle}
               value={createForm.phone}
               onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
-              placeholder="Enter phone number (optional)"
+              placeholder="Enter phone number"
             />
 
             <div style={{ display: "flex", gap: 10, marginTop: 24, justifyContent: "flex-end" }}>
