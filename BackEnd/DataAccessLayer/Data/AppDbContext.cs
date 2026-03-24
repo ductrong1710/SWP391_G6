@@ -226,6 +226,9 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Open'::character varying")
                 .HasColumnName("status");
+            entity.Property(e => e.ImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("image_url");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.Report).WithMany(p => p.Feedbacks)

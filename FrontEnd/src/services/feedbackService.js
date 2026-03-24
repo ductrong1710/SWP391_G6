@@ -1,9 +1,17 @@
 import api from "./api";
 
 const feedbackService = {
-  // Citizen: create feedback for a report
-  createFeedback: async (reportId, content) => {
-    const response = await api.post("/feedbacks", { reportId, content });
+  // Citizen: create feedback for a report (with optional image)
+  createFeedback: async (reportId, content, image) => {
+    const formData = new FormData();
+    formData.append("reportId", reportId);
+    formData.append("content", content);
+    if (image) {
+      formData.append("image", image);
+    }
+    const response = await api.post("/feedbacks", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return response.data;
   },
 

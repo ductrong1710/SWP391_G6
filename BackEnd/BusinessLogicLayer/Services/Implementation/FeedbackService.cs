@@ -29,6 +29,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 UserId = userId,
                 ReportId = dto.ReportId,
                 Content = dto.Content,
+                ImageUrl = dto.ImageUrl,
                 Status = "Pending",
                 CreatedAt = DateTime.UtcNow
             };
@@ -87,6 +88,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 UserName = user?.FullName ?? "Unknown",
                 Content = feedback.Content,
                 Status = feedback.Status,
+                FeedbackImageUrl = feedback.ImageUrl,
                 CreatedAt = feedback.CreatedAt,
             };
 
@@ -109,8 +111,9 @@ namespace BusinessLogicLayer.Services.Implementation
                     detail.EnterpriseId = collectionRequest.EnterpriseId;
                     detail.EnterpriseName = enterprise?.FullName;
 
-                    // Get collector assignment
-                    var assignment = await _uow.CollectorAssignments.GetActiveByRequestIdAsync(collectionRequest.RequestId);
+                    // Get collector assignment (latest, any status - not just "Assigned")
+                    var allAssignments = await _uow.CollectorAssignments.GetByRequestIdAsync(collectionRequest.RequestId);
+                    var assignment = allAssignments.FirstOrDefault();
                     if (assignment != null)
                     {
                         var collector = await _uow.Users.GetByIdAsync(assignment.AssignedCollector);
@@ -166,7 +169,9 @@ namespace BusinessLogicLayer.Services.Implementation
                     var collectionRequest = await _uow.CollectionRequests.GetByReportIdAsync(report.ReportId);
                     if (collectionRequest != null)
                     {
-                        var assignment = await _uow.CollectorAssignments.GetActiveByRequestIdAsync(collectionRequest.RequestId);
+                    // Get collector assignment (latest, any status)
+                    var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(collectionRequest.RequestId);
+                    var assignment = assignments.FirstOrDefault();
                         if (assignment != null)
                         {
                             assignment.Status = "Cancelled";
@@ -185,7 +190,9 @@ namespace BusinessLogicLayer.Services.Implementation
                     var collectionRequest = await _uow.CollectionRequests.GetByReportIdAsync(report.ReportId);
                     if (collectionRequest != null)
                     {
-                        var assignment = await _uow.CollectorAssignments.GetActiveByRequestIdAsync(collectionRequest.RequestId);
+                    // Get collector assignment (latest, any status)
+                    var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(collectionRequest.RequestId);
+                    var assignment = assignments.FirstOrDefault();
                         if (assignment != null)
                         {
                             var collector = await _uow.Users.GetByIdAsync(assignment.AssignedCollector);
@@ -230,6 +237,7 @@ namespace BusinessLogicLayer.Services.Implementation
             ReportId = f.ReportId,
             Content = f.Content,
             Status = f.Status,
+            ImageUrl = f.ImageUrl,
             CreatedAt = f.CreatedAt
         };
     }

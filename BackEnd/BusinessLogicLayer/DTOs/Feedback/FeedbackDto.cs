@@ -4,6 +4,10 @@ namespace BusinessLogicLayer.DTOs.Feedback
     {
         public int ReportId { get; set; }
         public string Content { get; set; } = null!;
+        /// <summary>
+        /// Image URL (set by controller after saving the uploaded file)
+        /// </summary>
+        public string? ImageUrl { get; set; }
     }
 
     public class FeedbackResponseDto
@@ -14,6 +18,7 @@ namespace BusinessLogicLayer.DTOs.Feedback
         public int? ReportId { get; set; }
         public string Content { get; set; } = string.Empty;
         public string? Status { get; set; }
+        public string? ImageUrl { get; set; }
         public DateTime? CreatedAt { get; set; }
     }
 
@@ -29,6 +34,7 @@ namespace BusinessLogicLayer.DTOs.Feedback
         public string UserName { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string? Status { get; set; }
+        public string? FeedbackImageUrl { get; set; }
         public DateTime? CreatedAt { get; set; }
 
         // Report info

@@ -18,6 +18,7 @@ const HistoryReportModal = ({
 }) => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackImage, setFeedbackImage] = useState(null);
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
@@ -43,8 +44,9 @@ const HistoryReportModal = ({
     setFeedbackSuccess("");
     setFeedbackError("");
     try {
-      await feedbackService.createFeedback(report.reportId, feedbackText.trim());
+      await feedbackService.createFeedback(report.reportId, feedbackText.trim(), feedbackImage);
       setFeedbackText("");
+      setFeedbackImage(null);
       setFeedbackSuccess("Feedback submitted successfully!");
       await loadFeedbacks();
       setTimeout(() => setFeedbackSuccess(""), 3000);
@@ -321,6 +323,20 @@ const HistoryReportModal = ({
                   <div style={{ fontSize: 13, color: "#374151", marginTop: 4 }}>
                     {fb.content}
                   </div>
+                  {fb.imageUrl && (
+                    <img
+                      src={buildFileUrl(fb.imageUrl)}
+                      alt="Evidence"
+                      style={{
+                        width: "100%",
+                        maxHeight: 150,
+                        objectFit: "cover",
+                        borderRadius: 6,
+                        marginTop: 6,
+                        border: "1px solid #e5e7eb",
+                      }}
+                    />
+                  )}
                   <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
                     {fb.createdAt ? new Date(fb.createdAt).toLocaleString() : ""}
                   </div>
@@ -345,38 +361,81 @@ const HistoryReportModal = ({
           )}
 
           {/* Send new feedback */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <textarea
               rows={2}
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               placeholder="Write your feedback about this report..."
               style={{
-                flex: 1,
+                width: "100%",
                 padding: 10,
                 borderRadius: 6,
                 border: "1px solid #d1d5db",
                 fontSize: 13,
                 resize: "vertical",
+                boxSizing: "border-box",
               }}
             />
-            <button
-              onClick={handleSendFeedback}
-              disabled={sendingFeedback || !feedbackText.trim()}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 6,
-                border: "none",
-                background: sendingFeedback ? "#94a3b8" : "#10b981",
-                color: "#fff",
-                fontWeight: 600,
-                cursor: sendingFeedback ? "not-allowed" : "pointer",
-                fontSize: 13,
-                alignSelf: "flex-end",
-              }}
-            >
-              {sendingFeedback ? "..." : "Send"}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <label
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  color: "#475569",
+                  background: "#fff",
+                }}
+              >
+                📷 Attach Photo
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  style={{ display: "none" }}
+                  onChange={(e) => setFeedbackImage(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              {feedbackImage && (
+                <span style={{ fontSize: 12, color: "#059669" }}>
+                  ✅ {feedbackImage.name}
+                  <button
+                    onClick={() => setFeedbackImage(null)}
+                    style={{
+                      border: "none",
+                      background: "none",
+                      color: "#ef4444",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      marginLeft: 4,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={handleSendFeedback}
+                disabled={sendingFeedback || !feedbackText.trim()}
+                style={{
+                  marginLeft: "auto",
+                  padding: "8px 16px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: sendingFeedback ? "#94a3b8" : "#10b981",
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: sendingFeedback ? "not-allowed" : "pointer",
+                  fontSize: 13,
+                }}
+              >
+                {sendingFeedback ? "..." : "Send"}
+              </button>
+            </div>
           </div>
         </div>
 

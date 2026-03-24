@@ -270,11 +270,25 @@ const Disputes = () => {
                 </div>
               )}
 
-              {/* Evidence Comparison */}
-              {(detail.confirmationBeforeImageUrl || detail.confirmationAfterImageUrl) && (
+              {/* Evidence Comparison - 3-way */}
+              {(detail.feedbackImageUrl || detail.confirmationBeforeImageUrl || detail.confirmationAfterImageUrl) && (
                 <div className="section-block">
                   <h4 className="section-title">🖼️ Evidence Comparison</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#dc2626', marginBottom: 4, fontWeight: 600 }}>
+                        📸 Citizen's Complaint Photo
+                      </div>
+                      {detail.feedbackImageUrl ? (
+                        <img
+                          src={buildFileUrl(detail.feedbackImageUrl)}
+                          alt="Citizen Evidence"
+                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '2px solid #fca5a5' }}
+                        />
+                      ) : (
+                        <div style={placeholderStyle}>No photo attached</div>
+                      )}
+                    </div>
                     <div>
                       <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>
                         📸 Before Collection
@@ -303,6 +317,9 @@ const Disputes = () => {
                         <div style={placeholderStyle}>No photo</div>
                       )}
                     </div>
+                  </div>
+                  <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef3c7', borderRadius: 6, fontSize: 12, color: '#92400e' }}>
+                    💡 Compare the citizen's current photo with the collector's "after" photo to verify the collection was genuine.
                   </div>
                 </div>
               )}
