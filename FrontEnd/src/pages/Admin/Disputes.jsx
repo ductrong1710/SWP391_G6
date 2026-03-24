@@ -244,7 +244,7 @@ const Disputes = () => {
                     <img
                       src={buildFileUrl(detail.reportImageUrl)}
                       alt="Report"
-                      style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8 }}
+                      style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, background: '#f1f5f9' }}
                     />
                   </div>
                 )}
