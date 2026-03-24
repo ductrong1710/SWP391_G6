@@ -323,7 +323,7 @@ export default function Users() {
             justifyContent: "center",
             zIndex: 1000,
           }}
-          onClick={() => setEditingUser(null)}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setEditingUser(null); }}
         >
           <div
             style={{
@@ -431,7 +431,7 @@ export default function Users() {
             justifyContent: "center",
             zIndex: 1000,
           }}
-          onClick={() => setShowCreate(false)}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}
         >
           <div
             style={{
