@@ -10,6 +10,7 @@ namespace BusinessLogicLayer.Services.Implementation
         private const int WarningThreshold = 4; // Auto-deactivate at 4 points
         private const int WarnPoints = 1;        // Cảnh cáo = +1
         private const int ReassignPoints = 2;    // Giao lại = +2
+        private const int ComplaintRewardPoints = 10; // Citizen reward for valid complaint
 
         private readonly IUnitOfWork _uow;
 
@@ -293,11 +294,29 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 UserId = citizenId,
                 Content = action == "reassign"
-                    ? $"Your complaint about report #{reportId} has been resolved. The report will be reassigned to a new collector."
-                    : $"Your complaint about report #{reportId} has been resolved. The collector has been warned.",
+                    ? $"Your complaint about report #{reportId} has been resolved. The report will be reassigned to a new collector. You earned +10 reward points!"
+                    : $"Your complaint about report #{reportId} has been resolved. The collector has been warned. You earned +10 reward points!",
                 IsRead = false,
                 CreatedAt = now
             });
+
+            // Reward citizen +10 points for valid complaint
+            var complainant = await _uow.Users.GetByIdAsync(citizenId);
+            if (complainant != null)
+            {
+                complainant.TotalPoints += ComplaintRewardPoints;
+                _uow.Users.Update(complainant);
+
+                await _uow.RewardTransactions.AddAsync(new Rewardtransaction
+                {
+                    UserId = citizenId,
+                    ReportId = reportId > 0 ? reportId : null,
+                    Points = ComplaintRewardPoints,
+                    Type = "Earned",
+                    Description = $"Reward for valid complaint on report #{reportId}",
+                    CreatedAt = now
+                });
+            }
 
             // Mark feedback as Resolved
             feedback.Status = "Resolved";
