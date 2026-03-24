@@ -67,17 +67,37 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Admin: Resolve feedback (set status to Resolved)
+        /// Admin: Get full feedback detail with report, assignment, confirmation context
+        /// </summary>
+        [HttpGet("{id:int}")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(FeedbackDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetFeedbackDetail(int id)
+        {
+            try
+            {
+                var detail = await _feedbackService.GetFeedbackDetailAsync(id);
+                return Ok(detail);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Admin: Resolve feedback with actions (revert report, cancel assignment, deactivate collector)
         /// </summary>
         [HttpPut("{id:int}/resolve")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(FeedbackResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ResolveFeedback(int id)
+        public async Task<IActionResult> ResolveFeedback(int id, [FromBody] ResolveFeedbackDto dto)
         {
             try
             {
-                var result = await _feedbackService.UpdateFeedbackStatusAsync(id, "Resolved");
+                var result = await _feedbackService.ResolveFeedbackAsync(id, dto);
                 return Ok(result);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
@@ -87,7 +107,7 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         /// <summary>
-        /// Admin: Reject feedback
+        /// Admin: Reject feedback (citizen's complaint is invalid)
         /// </summary>
         [HttpPut("{id:int}/reject")]
         [Authorize(Roles = "Admin")]
@@ -97,7 +117,7 @@ namespace WasteCollectionPlatform.Controllers
         {
             try
             {
-                var result = await _feedbackService.UpdateFeedbackStatusAsync(id, "Rejected");
+                var result = await _feedbackService.RejectFeedbackAsync(id);
                 return Ok(result);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))

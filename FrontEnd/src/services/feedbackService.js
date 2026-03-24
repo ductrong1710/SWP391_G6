@@ -19,9 +19,15 @@ const feedbackService = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
-  // Admin: resolve feedback
-  resolveFeedback: async (id) => {
-    const response = await api.put(`/feedbacks/${id}/resolve`);
+  // Admin: get feedback detail with full context
+  getFeedbackDetail: async (id) => {
+    const response = await api.get(`/feedbacks/${id}`);
+    return response.data;
+  },
+
+  // Admin: resolve feedback with actions
+  resolveFeedback: async (id, actions) => {
+    const response = await api.put(`/feedbacks/${id}/resolve`, actions);
     return response.data;
   },
 
