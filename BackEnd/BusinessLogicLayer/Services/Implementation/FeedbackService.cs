@@ -194,6 +194,43 @@ namespace BusinessLogicLayer.Services.Implementation
                                 // Reset collection request status so enterprise can reassign
                                 collectionRequest.Status = "Pending";
                                 _uow.CollectionRequests.Update(collectionRequest);
+
+                                // Reverse previously awarded citizen points for this report
+                                var allTx = await _uow.RewardTransactions.GetAllAsync();
+                                var earnedTx = allTx
+                                    .Where(t => t.ReportId == report.ReportId && t.Type == "Earned")
+                                    .ToList();
+
+                                if (earnedTx.Any())
+                                {
+                                    int totalEarned = earnedTx.Sum(t => t.Points);
+                                    var citizen = await _uow.Users.GetByIdAsync(report.SubmittedBy);
+                                    if (citizen != null && totalEarned > 0)
+                                    {
+                                        citizen.TotalPoints = Math.Max(0, citizen.TotalPoints - totalEarned);
+                                        _uow.Users.Update(citizen);
+
+                                        // Create reversal transaction for audit
+                                        await _uow.RewardTransactions.AddAsync(new Rewardtransaction
+                                        {
+                                            UserId = citizen.UserId,
+                                            ReportId = report.ReportId,
+                                            Points = -totalEarned,
+                                            Type = "Reversed",
+                                            Description = $"Points reversed due to complaint on report #{report.ReportId}",
+                                            CreatedAt = now
+                                        });
+
+                                        // Notify citizen about point reversal
+                                        await _uow.Notifications.AddAsync(new Notification
+                                        {
+                                            UserId = citizen.UserId,
+                                            Content = $"Your {totalEarned} reward points for report #{report.ReportId} have been reversed due to a valid complaint. The report will be reassigned.",
+                                            IsRead = false,
+                                            CreatedAt = now
+                                        });
+                                    }
+                                }
                             }
                         }
                     }
