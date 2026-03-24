@@ -190,6 +190,10 @@ namespace BusinessLogicLayer.Services.Implementation
                                 // Cancel assignment
                                 assignment.Status = "Cancelled";
                                 _uow.CollectorAssignments.Update(assignment);
+
+                                // Reset collection request status so enterprise can reassign
+                                collectionRequest.Status = "Pending";
+                                _uow.CollectionRequests.Update(collectionRequest);
                             }
                         }
                     }

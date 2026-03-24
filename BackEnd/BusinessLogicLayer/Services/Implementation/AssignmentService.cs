@@ -57,11 +57,18 @@ namespace BusinessLogicLayer.Services.Implementation
                 );
             }
 
-            // Check if already assigned
+            // Check if already assigned (active)
             var existingAssignments = await _uow.CollectorAssignments.GetByRequestIdAsync(requestId);
             if (existingAssignments.Any(x => x.AssignedCollector == dto.CollectorId && x.Status != "Cancelled"))
             {
                 throw new InvalidOperationException("This collector is already assigned to this request");
+            }
+
+            // Block re-assigning a collector who was previously cancelled on this request (e.g. warned by admin)
+            if (existingAssignments.Any(x => x.AssignedCollector == dto.CollectorId && x.Status == "Cancelled"))
+            {
+                throw new InvalidOperationException(
+                    "This collector was previously removed from this request due to a complaint. Please assign a different collector.");
             }
 
             // Create assignment
