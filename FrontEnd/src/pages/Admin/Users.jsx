@@ -65,14 +65,16 @@ export default function Users() {
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
-    return users.filter((u) => {
-      const name = (u.fullName || "").toLowerCase();
-      const email = (u.email || "").toLowerCase();
-      const matchesQ = !qq || name.includes(qq) || email.includes(qq);
-      const matchesRole = roleFilter === "All" || u.roleName === roleFilter;
-      const matchesStatus = statusFilter === "All" || u.status === statusFilter;
-      return matchesQ && matchesRole && matchesStatus;
-    });
+    return users
+      .filter((u) => {
+        const name = (u.fullName || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const matchesQ = !qq || name.includes(qq) || email.includes(qq);
+        const matchesRole = roleFilter === "All" || u.roleName === roleFilter;
+        const matchesStatus = statusFilter === "All" || u.status === statusFilter;
+        return matchesQ && matchesRole && matchesStatus;
+      })
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }, [users, q, roleFilter, statusFilter]);
 
   const formatDate = (value) => {
