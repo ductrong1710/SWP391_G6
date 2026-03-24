@@ -41,13 +41,8 @@ const useDispatchData = () => {
       setItems(mergedItems);
       setCollectors(collectorData);
       setSelectedItem((prev) => {
-        if (!mergedItems.length) {
-          return null;
-        }
-
-        if (!prev) {
-          return mergedItems[0];
-        }
+        if (!mergedItems.length) return null;
+        if (!prev) return mergedItems[0];
 
         return (
           mergedItems.find(
@@ -72,12 +67,32 @@ const useDispatchData = () => {
     () => filterDispatchItems(items, filterStatus),
     [filterStatus, items]
   );
+
   const statusCounts = useMemo(() => countDispatchStatuses(items), [items]);
 
   const handleReportAction = useCallback(
     async (reportId, action) => {
+      if (!reportId) {
+        setError("Invalid report id.");
+        return;
+      }
+
       try {
         setActionLoading(true);
+        setError("");
+        setSuccess("");
+
+        // Re-check latest status from server before action to avoid stale UI
+        const latest = await wasteReportService.getReportById(reportId);
+        const latestStatus = String(latest?.status || "").trim().toLowerCase();
+
+        if (latestStatus !== "pending") {
+          setError(
+            `Report #${reportId} is ${latest?.status || "Unknown"}, not Pending.`
+          );
+          await fetchData(true);
+          return;
+        }
 
         if (action === "accept") {
           await wasteReportService.acceptReport(reportId);
@@ -92,6 +107,7 @@ const useDispatchData = () => {
         setError(
           actionError.response?.data?.message || "Unable to update report status."
         );
+        await fetchData(true);
       } finally {
         setActionLoading(false);
       }
@@ -110,6 +126,9 @@ const useDispatchData = () => {
 
       try {
         setActionLoading(true);
+        setError("");
+        setSuccess("");
+
         await assignmentService.assignCollector({ requestId, collectorId });
         setSuccess(`Assigned collector to request #${requestId}.`);
         await fetchData(true);
