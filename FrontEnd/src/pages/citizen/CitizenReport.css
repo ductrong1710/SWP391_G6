@@ -1,0 +1,133 @@
+
+/* ==========================================================================
+   2. CREATE REPORT PAGE (CreateReport.jsx)
+   Bao gồm: Layout 2 cột, Upload, Map preview, Form inputs, Alerts
+   ========================================================================== */
+
+.report-container { max-width: 1000px; margin: 0 auto; }
+.report-header { margin-bottom: 24px; }
+.report-header h2 { font-size: 24px; font-weight: 700; color: #111; margin-bottom: 4px; }
+.subtitle { color: #6b7280; font-size: 14px; }
+
+/* Bố cục 2 cột */
+.report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.report-card {
+  background: white; padding: 24px; border-radius: 12px; border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;
+}
+
+.card-header-title {
+  font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: #111; font-size: 15px;
+}
+.icon-green { color: #10b981; }
+
+/* Khu vực Upload */
+.upload-area {
+  border: 2px dashed #d1d5db; border-radius: 8px; padding: 40px 20px; text-align: center;
+  cursor: pointer; transition: all 0.2s; background: #f9fafb; margin-bottom: 20px;
+  flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
+}
+.upload-area:hover { border-color: #10b981; background: #ecfdf5; }
+.upload-icon { font-size: 32px; margin-bottom: 10px; color: #9ca3af; }
+.file-info { font-size: 12px; color: #9ca3af; margin-top: 5px; }
+
+/* Form inputs */
+.form-group label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 13px; color: #374151; }
+.form-select {
+  width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; outline: none; background: white;
+}
+
+/* Khu vực Bản đồ */
+.map-preview {
+  margin-bottom: 15px; border-radius: 8px; overflow: hidden; height: 200px; background: #e5e7eb;
+}
+.map-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.btn-outline-full {
+  width: 100%; padding: 10px; border: 1px solid #d1d5db; background: white;
+  border-radius: 6px; font-weight: 500; cursor: pointer; color: #374151; transition: all 0.2s;
+}
+.btn-outline-full:hover { background: #f3f4f6; border-color: #9ca3af; }
+
+
+/* ===== COORDINATE BOX ===== */
+.coordinate-box {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.coordinate-item {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.coordinate-item:last-child {
+  margin-bottom: 0;
+}
+
+.coordinate-value {
+  margin-left: 6px;
+  color: #007bff;
+}
+
+/* ===== FORM FOOTER ===== */
+.form-footer {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ===== ALERT ===== */
+.alert {
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.alert-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #ef4444;
+}
+
+.alert-success {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #22c55e;
+}
+
+/* ===== SUBMIT BUTTON ===== */
+.btn-submit {
+  padding: 10px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+
+/* Nút Submit & Footer */
+.form-footer { margin-top: 24px; text-align: right; }
+.btn-submit {
+  background-color: #10b981; color: white; border: none; padding: 12px 32px;
+  border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px;
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+}
+.btn-submit:hover { background-color: #059669; }
+
+/* Thông báo (Alerts) */
+.success-alert {
+  padding: 15px; margin-bottom: 20px; background-color: #dcfce7; border: 1px solid #22c55e;
+  border-radius: 8px; color: #15803d; font-weight: bold; text-align: center; font-size: 16px;
+  animation: slideDown 0.5s ease-out;
+}
+.error-alert {
+  padding: 15px; margin-bottom: 20px; background-color: #fee2e2; border: 1px solid #ef4444;
+  border-radius: 8px; color: #b91c1c; font-weight: bold; text-align: center; animation: slideDown 0.5s ease-out;
+}

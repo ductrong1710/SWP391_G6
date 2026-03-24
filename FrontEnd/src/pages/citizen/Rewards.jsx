@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import rewardService from "../../services/rewardService";
+import "./Rewards.css"; // Import file CSS vừa tạo
 
 const Rewards = () => {
   const [activeTab, setActiveTab] = useState("catalog");
@@ -12,7 +13,8 @@ const Rewards = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-
+  
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, reward: null });
 
   const loadRewardsData = async () => {
     try {
@@ -49,24 +51,24 @@ const Rewards = () => {
         );
 
   const filteredCatalog = catalog.filter((item) => {
-  const keyword = searchTerm.trim().toLowerCase();
-  if (!keyword) return true;
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return true;
 
-  return (
-    item.name.toLowerCase().includes(keyword) ||
-    (item.description || "").toLowerCase().includes(keyword)
-  );
-});
+    return (
+      item.name.toLowerCase().includes(keyword) ||
+      (item.description || "").toLowerCase().includes(keyword)
+    );
+  });
 
-const searchedTransactions = filteredTransactions.filter((item) => {
-  const keyword = searchTerm.trim().toLowerCase();
-  if (!keyword) return true;
+  const searchedTransactions = filteredTransactions.filter((item) => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return true;
 
-  return (
-    (item.description || "").toLowerCase().includes(keyword) ||
-    (item.type || "").toLowerCase().includes(keyword)
-  );
-});
+    return (
+      (item.description || "").toLowerCase().includes(keyword) ||
+      (item.type || "").toLowerCase().includes(keyword)
+    );
+  });
 
   const earnedPoints = useMemo(
     () =>
@@ -84,17 +86,18 @@ const searchedTransactions = filteredTransactions.filter((item) => {
     [transactions]
   );
 
-  const handleRedeem = async (reward) => {
+  const handleRedeemClick = (reward) => {
     if (userPoints < reward.points) {
       setError(`You need ${reward.points - userPoints} more points to redeem this voucher.`);
       setTimeout(() => setError(""), 3000);
       return;
     }
+    setConfirmModal({ isOpen: true, reward });
+  };
 
-    const confirmed = window.confirm(
-      `Redeem "${reward.name}" for ${reward.points} points?`
-    );
-    if (!confirmed) return;
+  const processRedeem = async () => {
+    const reward = confirmModal.reward;
+    setConfirmModal({ isOpen: false, reward: null }); 
 
     try {
       setRedeemingId(reward.rewardId);
@@ -130,32 +133,41 @@ const searchedTransactions = filteredTransactions.filter((item) => {
         <div className="my-points-badge">🍃 {userPoints} points</div>
       </div>
 
+      {/* Pop-up Xác nhận */}
+      {confirmModal.isOpen && confirmModal.reward && (
+        <div className="custom-modal-overlay confirm">
+          <div className="modal-icon">🎁</div>
+          <h3 className="modal-title">Confirm Redemption</h3>
+          <p className="modal-desc">
+            Do you want to redeem <strong>"{confirmModal.reward.name}"</strong> for <strong className="highlight">{confirmModal.reward.points} points</strong>?
+          </p>
+          <div className="modal-actions">
+            <button
+              className="modal-btn modal-btn-cancel"
+              onClick={() => setConfirmModal({ isOpen: false, reward: null })}
+            >
+              Cancel
+            </button>
+            <button
+              className="modal-btn modal-btn-confirm"
+              onClick={processRedeem}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Thông báo Thành công */}
       {message && (
-        <div
-          style={{
-            padding: "12px 16px",
-            backgroundColor: "#dcfce7",
-            color: "#166534",
-            borderRadius: "10px",
-            marginBottom: "16px",
-            border: "1px solid #bbf7d0",
-          }}
-        >
+        <div className="custom-modal-overlay success">
           {message}
         </div>
       )}
 
+      {/* Thông báo Lỗi */}
       {error && (
-        <div
-          style={{
-            padding: "12px 16px",
-            backgroundColor: "#fee2e2",
-            color: "#991b1b",
-            borderRadius: "10px",
-            marginBottom: "16px",
-            border: "1px solid #fecaca",
-          }}
-        >
+        <div className="custom-modal-overlay error">
           {error}
         </div>
       )}
@@ -200,27 +212,19 @@ const searchedTransactions = filteredTransactions.filter((item) => {
         >
           Reward History
         </button>
-        <div style={{ marginBottom: 16 }}>
-        <input
-          type="text"
-          placeholder={
-            activeTab === "catalog"
-              ? "Search voucher by name or description..."
-              : "Search reward history..."
-          }
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            borderRadius: "10px",
-            border: "1px solid #d1d5db",
-            outline: "none",
-            fontSize: "14px",
-            boxSizing: "border-box",
-          }}
-        />
-      </div>
+        <div className="search-container">
+          <input
+            type="text"
+            className="search-input"
+            placeholder={
+              activeTab === "catalog"
+                ? "Search voucher by name or description..."
+                : "Search reward history..."
+            }
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       {activeTab === "catalog" && (
@@ -237,71 +241,18 @@ const searchedTransactions = filteredTransactions.filter((item) => {
             filteredCatalog.map((reward) => {
               const canRedeem = userPoints >= reward.points;
               return (
-                <div
-                  className="reward-card"
-                  key={reward.rewardId}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 16,
-                    padding: 20,
-                    background: "#fff",
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 14,
-                      color: "#6b7280",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Voucher Reward
-                  </div>
-
-                  <h3
-                    className="reward-title"
-                    style={{ margin: "0 0 10px 0", fontSize: 20 }}
-                  >
-                    {reward.name}
-                  </h3>
-
-                  <p
-                    style={{
-                      color: "#4b5563",
-                      minHeight: 48,
-                      marginBottom: 16,
-                    }}
-                  >
+                <div className="reward-card" key={reward.rewardId}>
+                  <div className="reward-category">Voucher Reward</div>
+                  <h3 className="reward-title">{reward.name}</h3>
+                  <p className="reward-desc">
                     {reward.description || "No description"}
                   </p>
-
-                  <div
-                    className="reward-footer"
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <span
-                      className="reward-points"
-                      style={{ fontWeight: 700, color: "#059669" }}
-                    >
-                      🍃 {reward.points}
-                    </span>
-
+                  <div className="reward-footer">
+                    <span className="reward-points">🍃 {reward.points}</span>
                     <button
                       className="btn-redeem"
-                      onClick={() => handleRedeem(reward)}
+                      onClick={() => handleRedeemClick(reward)}
                       disabled={!canRedeem || redeemingId === reward.rewardId}
-                      style={{
-                        opacity: !canRedeem || redeemingId === reward.rewardId ? 0.6 : 1,
-                        cursor:
-                          !canRedeem || redeemingId === reward.rewardId
-                            ? "not-allowed"
-                            : "pointer",
-                      }}
                     >
                       {redeemingId === reward.rewardId
                         ? "Redeeming..."
@@ -341,37 +292,22 @@ const searchedTransactions = filteredTransactions.filter((item) => {
                 No reward transactions found.
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 12 }}>
+              <div className="history-list">
                 {searchedTransactions.map((item) => {
                   const isEarned = item.type?.toLowerCase() === "earned";
                   return (
-                    <div
-                      key={item.transactionId}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "14px 16px",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 12,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
+                    <div className="history-item" key={item.transactionId}>
+                      <div className="history-info">
+                        <div className="history-title">
                           {item.description || item.type}
                         </div>
-                        <div style={{ color: "#6b7280", fontSize: 14 }}>
+                        <div className="history-time">
                           {item.createdAt
                             ? new Date(item.createdAt).toLocaleString()
                             : "Unknown time"}
                         </div>
                       </div>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          color: isEarned ? "#059669" : "#dc2626",
-                        }}
-                      >
+                      <div className={`history-points ${isEarned ? "earned" : "redeemed"}`}>
                         {isEarned ? "+" : ""}
                         {item.points}
                       </div>
