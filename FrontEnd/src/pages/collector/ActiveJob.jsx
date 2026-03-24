@@ -8,13 +8,13 @@ import ArrivedActions from "../../components/collector/ArrivedActions";
 import AssignedActions from "../../components/collector/AssignedActions";
 import OnTheWayActions from "../../components/collector/OnTheWayActions";
 import useActiveJob from "../../hooks/useActiveJob";
-import {  
+import {
   COLLECTION_ISSUE_TYPES,
   getStatusMeta,
-  JOB_STATUS, } from "../../utils/collectorJob";
+  JOB_STATUS,
+} from "../../utils/collectorJob";
 import userService from "../../services/userService";
 import authService from "../../services/authService";
-
 
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -35,8 +35,10 @@ const formatDateTime = (value) => {
 };
 
 const formatLocation = (job) => {
-  const hasLat = typeof job?.latitude === "number" && !Number.isNaN(job.latitude);
-  const hasLng = typeof job?.longitude === "number" && !Number.isNaN(job.longitude);
+  const hasLat =
+    typeof job?.latitude === "number" && !Number.isNaN(job.latitude);
+  const hasLng =
+    typeof job?.longitude === "number" && !Number.isNaN(job.longitude);
 
   if (hasLat && hasLng && job.latitude !== 0 && job.longitude !== 0) {
     return `${job.latitude}, ${job.longitude}`;
@@ -104,35 +106,64 @@ const EmptyState = () => (
   <div className="settings-card empty-state-card active-dispatch-empty fade-in">
     <div className="empty-icon">-</div>
     <p className="empty-title">No active assignments</p>
-    <p className="text-sm text-gray">Assigned and in-progress jobs will appear here.</p>
+    <p className="text-sm text-gray">
+      Assigned and in-progress jobs will appear here.
+    </p>
   </div>
 );
 
 const StatusToggle = ({ isOnline, onToggle }) => (
-  <div className="status-toggle">
-    <span className={`status-label ${isOnline ? "text-green" : "text-gray"}`}>
-      {isOnline ? "Online" : "Offline"}
-    </span>
-    <label className="switch">
+  <div className="status-toggle status-toggle-compact">
+    <div className="status-toggle-info">
+      <span className="status-toggle-title">Collector Status</span>
+      <span className={`status-toggle-badge ${isOnline ? "online" : "offline"}`}>
+        <span className="status-dot" />
+        {isOnline ? "Online" : "Offline"}
+      </span>
+    </div>
+
+    <label className="status-switch" aria-label="Toggle collector availability">
       <input type="checkbox" checked={isOnline} onChange={onToggle} />
-      <span className="slider round" />
+      <span className="status-switch-slider" />
     </label>
   </div>
 );
 
-const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIssue }) => {
+const ActionBar = ({
+  job,
+  onStart,
+  onArrived,
+  onComplete,
+  onDecline,
+  onReportIssue,
+}) => {
   if (job?.status === JOB_STATUS.ASSIGNED) {
-  return <AssignedActions onStart={onStart} onDecline={onDecline} />;
+    return (
+      <div className="bottom-action-bar">
+        <button className="btn-start-trip" onClick={onStart}>
+          Start Trip
+        </button>
+
+        <button className="btn-decline-trip" onClick={onDecline}>
+          Decline Assignment
+        </button>
+      </div>
+    );
   }
+
   if (job?.status === JOB_STATUS.ON_THE_WAY) {
     return (
       <>
         <OnTheWayActions onArrived={onArrived} />
-        <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
+        <div
+          className="settings-card action-card fade-in"
+          style={{ marginTop: 16 }}
+        >
           <div className="card-header-simple">
             <h3>Issue Handling</h3>
             <p className="text-gray">
-              Report a problem so the enterprise can review and reassign if needed.
+              Report a problem so the enterprise can review and reassign if
+              needed.
             </p>
           </div>
           <button className="btn-danger-soft" onClick={onReportIssue}>
@@ -147,11 +178,15 @@ const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIss
     return (
       <>
         <ArrivedActions job={job} onComplete={onComplete} />
-        <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
+        <div
+          className="settings-card action-card fade-in"
+          style={{ marginTop: 16 }}
+        >
           <div className="card-header-simple">
             <h3>Issue Handling</h3>
             <p className="text-gray">
-              If this pickup cannot be completed, send the issue back for reassignment.
+              If this pickup cannot be completed, send the issue back for
+              reassignment.
             </p>
           </div>
           <button className="btn-danger-soft" onClick={onReportIssue}>
@@ -171,7 +206,8 @@ const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIss
         <div className="card-header-simple">
           <h3>Awaiting Enterprise Action</h3>
           <p className="text-gray">
-            This job has been flagged with an issue. Please wait for update or reassignment.
+            This job has been flagged with an issue. Please wait for update or
+            reassignment.
           </p>
         </div>
       </div>
@@ -191,11 +227,16 @@ const JobListItem = ({ job, selected, onSelect }) => {
     >
       <div className="active-dispatch-item-header">
         <div className="active-dispatch-avatar">
-          {job?.status === JOB_STATUS.ON_THE_WAY || job?.status === JOB_STATUS.ARRIVED ? "A" : "J"}
+          {job?.status === JOB_STATUS.ON_THE_WAY ||
+          job?.status === JOB_STATUS.ARRIVED
+            ? "A"
+            : "J"}
         </div>
 
         <div className="active-dispatch-item-main">
-          <div className="active-dispatch-item-title">Job #{job.assignmentId}</div>
+          <div className="active-dispatch-item-title">
+            Job #{job.assignmentId}
+          </div>
           <div className="active-dispatch-item-subtitle">
             {job.wasteTypeName || "Waste"}
           </div>
@@ -369,7 +410,10 @@ const WasteTypesSection = ({ job }) => {
       ) : (
         <div className="active-dispatch-chip-grid">
           {wasteTypes.map((item) => (
-            <div className="active-dispatch-chip" key={`${job.assignmentId}-${item.wasteTypeId}`}>
+            <div
+              className="active-dispatch-chip"
+              key={`${job.assignmentId}-${item.wasteTypeId}`}
+            >
               {item.wasteTypeName || item.name || "Unknown"}
             </div>
           ))}
@@ -388,7 +432,9 @@ const NotesSection = ({ job }) => {
     <div className="settings-card active-dispatch-section">
       <div className="card-header-simple">
         <h3>Notes</h3>
-        <p className="text-gray">Primary request note and additional notes when available.</p>
+        <p className="text-gray">
+          Primary request note and additional notes when available.
+        </p>
       </div>
 
       <div className="active-dispatch-note-stack">
@@ -432,15 +478,21 @@ const EvidenceSection = ({ job }) => (
     <div className="details-grid active-dispatch-details-grid">
       <div className="detail-section">
         <label>Before Photo</label>
-        <p className="detail-value">{job.beforeImageUrl ? "Available" : "Missing"}</p>
+        <p className="detail-value">
+          {job.beforeImageUrl ? "Available" : "Missing"}
+        </p>
       </div>
       <div className="detail-section">
         <label>After Photo</label>
-        <p className="detail-value">{job.afterImageUrl ? "Available" : "Missing"}</p>
+        <p className="detail-value">
+          {job.afterImageUrl ? "Available" : "Missing"}
+        </p>
       </div>
       <div className="detail-section">
         <label>Issue Image</label>
-        <p className="detail-value">{job.issueImageUrl ? "Available" : "Missing"}</p>
+        <p className="detail-value">
+          {job.issueImageUrl ? "Available" : "Missing"}
+        </p>
       </div>
       <div className="detail-section">
         <label>Actual Weight</label>
@@ -448,7 +500,9 @@ const EvidenceSection = ({ job }) => (
       </div>
       <div className="detail-section full-width">
         <label>Collected Breakdown</label>
-        <p className="detail-value">{job.collectedWasteSummary || "Not available"}</p>
+        <p className="detail-value">
+          {job.collectedWasteSummary || "Not available"}
+        </p>
       </div>
     </div>
   </div>
@@ -467,7 +521,9 @@ const DetailsPanel = ({
       <div className="settings-card empty-state-card active-dispatch-empty">
         <div className="empty-icon">-</div>
         <p className="empty-title">Select a job</p>
-        <p className="text-sm text-gray">Choose a job from the left panel to view details.</p>
+        <p className="text-sm text-gray">
+          Choose a job from the left panel to view details.
+        </p>
       </div>
     );
   }
@@ -500,7 +556,7 @@ const DetailsPanel = ({
 
 const ActiveJob = () => {
   const [isOnline, setIsOnline] = useState(
-  authService.getCurrentUser()?.isAvailable ?? true
+    authService.getCurrentUser()?.isAvailable ?? true
   );
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
 
@@ -523,13 +579,22 @@ const ActiveJob = () => {
       return;
     }
 
-    if (!selectedAssignmentId || !jobs.some((job) => job.assignmentId === selectedAssignmentId)) {
-      setSelectedAssignmentId(currentJob?.assignmentId ?? jobs[0]?.assignmentId ?? null);
+    if (
+      !selectedAssignmentId ||
+      !jobs.some((job) => job.assignmentId === selectedAssignmentId)
+    ) {
+      setSelectedAssignmentId(
+        currentJob?.assignmentId ?? jobs[0]?.assignmentId ?? null
+      );
     }
   }, [jobs, currentJob, selectedAssignmentId]);
 
   const selectedJob = useMemo(() => {
-    return jobs.find((job) => job.assignmentId === selectedAssignmentId) || currentJob || null;
+    return (
+      jobs.find((job) => job.assignmentId === selectedAssignmentId) ||
+      currentJob ||
+      null
+    );
   }, [jobs, selectedAssignmentId, currentJob]);
 
   const withErrorHandler = useCallback(
@@ -545,51 +610,55 @@ const ActiveJob = () => {
   );
 
   const handleReportIssue = useCallback(
-  (job) =>
-    withErrorHandler(async () => {
-      const supportedTypes = COLLECTION_ISSUE_TYPES.map(
-        (item) => `${item.value} = ${item.label}`
-      ).join("\n");
+    (job) =>
+      withErrorHandler(async () => {
+        const supportedTypes = COLLECTION_ISSUE_TYPES.map(
+          (item) => `${item.value} = ${item.label}`
+        ).join("\n");
 
-      const issueType = window.prompt(
-        `Enter issue type:\n${supportedTypes}`,
-        "Other"
-      );
+        const issueType = window.prompt(
+          `Enter issue type:\n${supportedTypes}`,
+          "Other"
+        );
 
-      if (!issueType) return;
+        if (!issueType) return;
 
-      const isValidType = COLLECTION_ISSUE_TYPES.some(
-        (item) => item.value.toLowerCase() === issueType.trim().toLowerCase()
-      );
+        const isValidType = COLLECTION_ISSUE_TYPES.some(
+          (item) => item.value.toLowerCase() === issueType.trim().toLowerCase()
+        );
 
-      if (!isValidType) {
-        throw new Error("Invalid issue type.");
-      }
+        if (!isValidType) {
+          throw new Error("Invalid issue type.");
+        }
 
-      const description = window.prompt("Enter issue description:");
-      if (!description) return;
+        const description = window.prompt("Enter issue description:");
+        if (!description) return;
 
-      await reportIssue(job.assignmentId, issueType.trim(), description.trim(), null);
-    }),
-  [reportIssue, withErrorHandler]
+        await reportIssue(
+          job.assignmentId,
+          issueType.trim(),
+          description.trim(),
+          null
+        );
+      }),
+    [reportIssue, withErrorHandler]
   );
 
   const handleToggleAvailability = useCallback(async () => {
-  const nextValue = !isOnline;
-  setIsOnline(nextValue);
+    const nextValue = !isOnline;
+    setIsOnline(nextValue);
 
-  try {
-    const updatedUser = await userService.updateMyAvailability(nextValue);
-    authService.updateCurrentUser({
-      isAvailable: updatedUser.isAvailable,
-      availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
-    });
-  } catch (err) {
-    setIsOnline((prev) => !prev);
-    setError(err?.response?.data?.message || "Unable to update availability.");
-  }
-}, [isOnline, setError]);
-
+    try {
+      const updatedUser = await userService.updateMyAvailability(nextValue);
+      authService.updateCurrentUser({
+        isAvailable: updatedUser.isAvailable,
+        availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
+      });
+    } catch (err) {
+      setIsOnline((prev) => !prev);
+      setError(err?.response?.data?.message || "Unable to update availability.");
+    }
+  }, [isOnline, setError]);
 
   if (loading) {
     return (
@@ -612,12 +681,11 @@ const ActiveJob = () => {
       <div className="col-page-header active-dispatch-header">
         <div>
           <h2>Active Job</h2>
-          <p className="text-gray">Collector job queue and assignment details</p>
+          <p className="text-gray">
+            Collector job queue and assignment details
+          </p>
         </div>
-        <StatusToggle
-          isOnline={isOnline}
-          onToggle={handleToggleAvailability}
-        />
+        <StatusToggle isOnline={isOnline} onToggle={handleToggleAvailability} />
       </div>
 
       {!jobs.length ? (
