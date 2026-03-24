@@ -321,31 +321,6 @@ const LocationMapSection = ({ job }) => {
   );
 };
 
-const DetailHeader = ({ job }) => {
-  const statusMeta = getStatusMeta(job?.status);
-
-  return (
-    <div className="active-dispatch-detail-hero">
-      <div>
-        <div className="active-dispatch-eyebrow">Collector Assignment</div>
-        <div className="active-dispatch-title-row">
-          <h2>Job #{job.assignmentId}</h2>
-          <span className={`collector-badge ${statusMeta.className}`}>
-            {statusMeta.label}
-          </span>
-        </div>
-        <p className="text-gray">
-          Request #{job.requestId} • Report #{job.reportId}
-        </p>
-      </div>
-
-      <div className="hc-right">
-        <span className="badge-waste">{job.wasteTypeName || "Waste"}</span>
-      </div>
-    </div>
-  );
-};
-
 const DetailInfoGrid = ({ job }) => (
   <div className="details-grid active-dispatch-details-grid">
     <div className="detail-section">
@@ -559,6 +534,9 @@ const ActiveJob = () => {
     authService.getCurrentUser()?.isAvailable ?? true
   );
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
+  const [declineModalOpen, setDeclineModalOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [submittingDecline, setSubmittingDecline] = useState(false);
 
   const {
     jobs,
@@ -602,8 +580,17 @@ const ActiveJob = () => {
       try {
         await fn(...args);
       } catch (err) {
-        console.error("Action error:", err?.response?.data);
-        setError(err?.response?.data?.message || "An error occurred.");
+        const message =
+          err?.response?.data?.message ||
+          err?.response?.data?.title ||
+          Object.values(err?.response?.data?.errors || {})
+            .flat()
+            .join(" ") ||
+          err?.message ||
+          "An error occurred.";
+
+        console.error("Action error:", err?.response?.data || err);
+        setError(message);
       }
     },
     [setError]
@@ -660,6 +647,45 @@ const ActiveJob = () => {
     }
   }, [isOnline, setError]);
 
+  const openDeclineModal = useCallback(() => {
+    setDeclineReason("");
+    setDeclineModalOpen(true);
+  }, []);
+
+  const closeDeclineModal = useCallback(() => {
+    if (submittingDecline) return;
+    setDeclineModalOpen(false);
+  }, [submittingDecline]);
+
+  const confirmDecline = useCallback(async () => {
+    const reason = declineReason.trim();
+
+    if (!reason) {
+      setError("Please enter a decline reason.");
+      return;
+    }
+
+    if (!selectedJob?.assignmentId) {
+      setError("No assignment selected.");
+      return;
+    }
+
+    try {
+      setSubmittingDecline(true);
+      await declineJob(selectedJob.assignmentId, reason);
+      setDeclineModalOpen(false);
+      setDeclineReason("");
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Unable to decline assignment.";
+      setError(message);
+    } finally {
+      setSubmittingDecline(false);
+    }
+  }, [declineReason, selectedJob, declineJob, setError]);
+
   if (loading) {
     return (
       <div className="col-page-container fade-in active-dispatch-page">
@@ -707,11 +733,45 @@ const ActiveJob = () => {
             onComplete={withErrorHandler((photo, weightsArray) =>
               completeJob(selectedJob.assignmentId, photo, weightsArray)
             )}
-            onDecline={withErrorHandler((reason) =>
-              declineJob(selectedJob.assignmentId, reason)
-            )}
+            onDecline={openDeclineModal}
             onReportIssue={handleReportIssue(selectedJob)}
           />
+        </div>
+      )}
+
+      {declineModalOpen && (
+        <div className="decline-modal-backdrop" onClick={closeDeclineModal}>
+          <div className="decline-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Decline Assignment</h3>
+            <p className="text-gray">
+              Please provide a reason so the enterprise can reassign properly.
+            </p>
+
+            <textarea
+              className="form-input decline-reason-input"
+              rows={4}
+              placeholder="Enter decline reason..."
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+            />
+
+            <div className="decline-modal-actions">
+              <button
+                className="btn-outline-map"
+                onClick={closeDeclineModal}
+                disabled={submittingDecline}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-danger-soft"
+                onClick={confirmDecline}
+                disabled={submittingDecline}
+              >
+                {submittingDecline ? "Submitting..." : "Confirm Decline"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
