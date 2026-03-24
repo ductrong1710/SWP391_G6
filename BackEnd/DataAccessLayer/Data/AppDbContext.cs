@@ -380,6 +380,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.AvailabilityUpdatedAt)
                 .HasColumnName("availability_updated_at")
                 .HasColumnType("timestamp with time zone");
+            entity.Property(e => e.WarningCount)
+                .HasDefaultValue(0)
+                .HasColumnName("warning_count");
 
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)

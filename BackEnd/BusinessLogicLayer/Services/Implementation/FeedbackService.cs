@@ -7,6 +7,10 @@ namespace BusinessLogicLayer.Services.Implementation
 {
     public class FeedbackService : IFeedbackService
     {
+        private const int WarningThreshold = 4; // Auto-deactivate at 4 points
+        private const int WarnPoints = 1;        // Cảnh cáo = +1
+        private const int ReassignPoints = 2;    // Giao lại = +2
+
         private readonly IUnitOfWork _uow;
 
         public FeedbackService(IUnitOfWork uow)
@@ -111,7 +115,7 @@ namespace BusinessLogicLayer.Services.Implementation
                     detail.EnterpriseId = collectionRequest.EnterpriseId;
                     detail.EnterpriseName = enterprise?.FullName;
 
-                    // Get collector assignment (latest, any status - not just "Assigned")
+                    // Get collector assignment (latest, any status)
                     var allAssignments = await _uow.CollectorAssignments.GetByRequestIdAsync(collectionRequest.RequestId);
                     var assignment = allAssignments.FirstOrDefault();
                     if (assignment != null)
@@ -121,6 +125,7 @@ namespace BusinessLogicLayer.Services.Implementation
                         detail.AssignmentStatus = assignment.Status;
                         detail.CollectorId = assignment.AssignedCollector;
                         detail.CollectorName = collector?.FullName;
+                        detail.CollectorWarningCount = collector?.WarningCount ?? 0;
                         detail.AssignedAt = assignment.AssignedAt;
                         detail.StartedAt = assignment.StartedAt;
                         detail.ArrivedAt = assignment.ArrivedAt;
@@ -149,19 +154,15 @@ namespace BusinessLogicLayer.Services.Implementation
             if (feedback == null)
                 throw new InvalidOperationException("Feedback not found");
 
-            // 1. Revert report status from Collected → Accepted
-            if (dto.RevertReport && feedback.ReportId.HasValue)
-            {
-                var report = await _uow.WasteReports.GetByIdAsync(feedback.ReportId.Value);
-                if (report != null && report.Status == "Collected")
-                {
-                    report.Status = "Accepted";
-                    _uow.WasteReports.Update(report);
-                }
-            }
+            var now = DateTime.UtcNow;
+            var citizenId = feedback.UserId;
+            int? collectorId = null;
+            int? enterpriseId = null;
+            int reportId = feedback.ReportId ?? 0;
+            string action = dto.Action?.ToLower() ?? "warn";
 
-            // 2. Cancel collector's assignment
-            if (dto.CancelAssignment && feedback.ReportId.HasValue)
+            // Find collector and enterprise
+            if (feedback.ReportId.HasValue)
             {
                 var report = await _uow.WasteReports.GetByIdAsync(feedback.ReportId.Value);
                 if (report != null)
@@ -169,44 +170,95 @@ namespace BusinessLogicLayer.Services.Implementation
                     var collectionRequest = await _uow.CollectionRequests.GetByReportIdAsync(report.ReportId);
                     if (collectionRequest != null)
                     {
-                    // Get collector assignment (latest, any status)
-                    var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(collectionRequest.RequestId);
-                    var assignment = assignments.FirstOrDefault();
-                        if (assignment != null)
-                        {
-                            assignment.Status = "Cancelled";
-                            _uow.CollectorAssignments.Update(assignment);
-                        }
-                    }
-                }
-            }
+                        enterpriseId = collectionRequest.EnterpriseId;
 
-            // 3. Deactivate the collector
-            if (dto.DeactivateCollector && feedback.ReportId.HasValue)
-            {
-                var report = await _uow.WasteReports.GetByIdAsync(feedback.ReportId.Value);
-                if (report != null)
-                {
-                    var collectionRequest = await _uow.CollectionRequests.GetByReportIdAsync(report.ReportId);
-                    if (collectionRequest != null)
-                    {
-                    // Get collector assignment (latest, any status)
-                    var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(collectionRequest.RequestId);
-                    var assignment = assignments.FirstOrDefault();
+                        var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(collectionRequest.RequestId);
+                        var assignment = assignments.FirstOrDefault();
                         if (assignment != null)
                         {
-                            var collector = await _uow.Users.GetByIdAsync(assignment.AssignedCollector);
-                            if (collector != null)
+                            collectorId = assignment.AssignedCollector;
+
+                            if (action == "reassign")
                             {
-                                collector.Status = "Inactive";
-                                _uow.Users.Update(collector);
+                                // Revert report status: Collected → Accepted
+                                if (report.Status == "Collected")
+                                {
+                                    report.Status = "Accepted";
+                                    _uow.WasteReports.Update(report);
+                                }
+
+                                // Cancel assignment
+                                assignment.Status = "Cancelled";
+                                _uow.CollectorAssignments.Update(assignment);
                             }
                         }
                     }
                 }
             }
 
-            // 4. Mark feedback as Resolved
+            // Add warning points to collector
+            if (collectorId.HasValue)
+            {
+                var collector = await _uow.Users.GetByIdAsync(collectorId.Value);
+                if (collector != null)
+                {
+                    int points = action == "reassign" ? ReassignPoints : WarnPoints;
+                    collector.WarningCount += points;
+
+                    // Auto-deactivate if >= threshold
+                    bool autoDeactivated = false;
+                    if (collector.WarningCount >= WarningThreshold)
+                    {
+                        collector.Status = "Inactive";
+                        autoDeactivated = true;
+                    }
+
+                    _uow.Users.Update(collector);
+
+                    // Notify collector
+                    string collectorMsg = action == "reassign"
+                        ? $"You received a warning (+{points} pts, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Your assignment has been cancelled due to a valid citizen complaint."
+                        : $"You received a warning (+{points} pt, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Reason: {dto.AdminNote}";
+
+                    if (autoDeactivated)
+                    {
+                        collectorMsg += " Your account has been DEACTIVATED due to reaching the warning threshold.";
+                    }
+
+                    await _uow.Notifications.AddAsync(new Notification
+                    {
+                        UserId = collectorId.Value,
+                        Content = collectorMsg,
+                        IsRead = false,
+                        CreatedAt = now
+                    });
+                }
+            }
+
+            // Notify enterprise (for reassign only)
+            if (action == "reassign" && enterpriseId.HasValue)
+            {
+                await _uow.Notifications.AddAsync(new Notification
+                {
+                    UserId = enterpriseId.Value,
+                    Content = $"Report #{reportId} needs to be reassigned to a new collector. The previous assignment was cancelled due to a valid citizen complaint.",
+                    IsRead = false,
+                    CreatedAt = now
+                });
+            }
+
+            // Notify citizen
+            await _uow.Notifications.AddAsync(new Notification
+            {
+                UserId = citizenId,
+                Content = action == "reassign"
+                    ? $"Your complaint about report #{reportId} has been resolved. The report will be reassigned to a new collector."
+                    : $"Your complaint about report #{reportId} has been resolved. The collector has been warned.",
+                IsRead = false,
+                CreatedAt = now
+            });
+
+            // Mark feedback as Resolved
             feedback.Status = "Resolved";
             _uow.Feedbacks.Update(feedback);
             await _uow.SaveChangesAsync();
@@ -220,6 +272,15 @@ namespace BusinessLogicLayer.Services.Implementation
             var feedback = await _uow.Feedbacks.GetByIdAsync(feedbackId);
             if (feedback == null)
                 throw new InvalidOperationException("Feedback not found");
+
+            // Notify citizen
+            await _uow.Notifications.AddAsync(new Notification
+            {
+                UserId = feedback.UserId,
+                Content = $"Your complaint about report #{feedback.ReportId} has been reviewed and was found to be invalid.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
 
             feedback.Status = "Rejected";
             _uow.Feedbacks.Update(feedback);

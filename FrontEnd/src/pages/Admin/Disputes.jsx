@@ -9,11 +9,6 @@ const Disputes = () => {
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [filter, setFilter] = useState('All');
-
-  // Resolve form
-  const [revertReport, setRevertReport] = useState(false);
-  const [cancelAssignment, setCancelAssignment] = useState(false);
-  const [deactivateCollector, setDeactivateCollector] = useState(false);
   const [adminNote, setAdminNote] = useState('');
   const [resolving, setResolving] = useState(false);
 
@@ -49,10 +44,6 @@ const Disputes = () => {
       setLoadingDetail(true);
       const data = await feedbackService.getFeedbackDetail(id);
       setDetail(data);
-      // Reset actions
-      setRevertReport(false);
-      setCancelAssignment(false);
-      setDeactivateCollector(false);
       setAdminNote('');
     } catch (error) {
       console.error('Failed to load detail:', error);
@@ -62,19 +53,24 @@ const Disputes = () => {
     }
   };
 
-  const handleResolve = async () => {
+  const handleResolve = async (action) => {
     if (!selectedId) return;
+    if (!adminNote.trim()) {
+      alert('Please enter a resolution note');
+      return;
+    }
     setResolving(true);
     try {
       await feedbackService.resolveFeedback(selectedId, {
-        adminNote,
-        revertReport,
-        cancelAssignment,
-        deactivateCollector,
+        action,
+        adminNote: adminNote.trim(),
       });
       await loadFeedbacks();
       await loadDetail(selectedId);
-      alert('Feedback resolved successfully!');
+      alert(action === 'warn'
+        ? 'Collector has been warned!'
+        : 'Report reassigned, collector warned!'
+      );
     } catch (error) {
       console.error(error);
       alert('Failed to resolve');
@@ -89,7 +85,7 @@ const Disputes = () => {
       await feedbackService.rejectFeedback(selectedId);
       await loadFeedbacks();
       await loadDetail(selectedId);
-      alert('Feedback rejected');
+      alert('Complaint rejected');
     } catch (error) {
       console.error(error);
       alert('Failed to reject');
@@ -103,6 +99,14 @@ const Disputes = () => {
     Pending: '#f59e0b',
     Resolved: '#10b981',
     Rejected: '#ef4444',
+  };
+
+  const warningLevel = (count) => {
+    if (count >= 4) return { color: '#dc2626', label: 'DEACTIVATED' };
+    if (count >= 3) return { color: '#ea580c', label: `${count}/4 — CRITICAL` };
+    if (count >= 2) return { color: '#f59e0b', label: `${count}/4` };
+    if (count >= 1) return { color: '#eab308', label: `${count}/4` };
+    return { color: '#10b981', label: '0/4 — Clean' };
   };
 
   return (
@@ -217,8 +221,7 @@ const Disputes = () => {
                 <h4 className="section-title">💬 Citizen's Complaint</h4>
                 <div style={boxStyle}>{detail.content}</div>
                 <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
-                  Submitted:{' '}
-                  {detail.createdAt ? new Date(detail.createdAt).toLocaleString() : 'N/A'}
+                  Submitted: {detail.createdAt ? new Date(detail.createdAt).toLocaleString() : 'N/A'}
                 </div>
               </div>
 
@@ -256,6 +259,36 @@ const Disputes = () => {
                   <h4 className="section-title">🚛 Collector & Assignment</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <InfoItem label="Collector" value={detail.collectorName || 'Unknown'} />
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Warning Points</div>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: warningLevel(detail.collectorWarningCount || 0).color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}>
+                        ⚠️ {warningLevel(detail.collectorWarningCount || 0).label}
+                        <span style={{
+                          display: 'inline-block',
+                          width: 60,
+                          height: 6,
+                          borderRadius: 3,
+                          background: '#e5e7eb',
+                          position: 'relative',
+                          overflow: 'hidden',
+                        }}>
+                          <span style={{
+                            display: 'block',
+                            width: `${Math.min(((detail.collectorWarningCount || 0) / 4) * 100, 100)}%`,
+                            height: '100%',
+                            borderRadius: 3,
+                            background: warningLevel(detail.collectorWarningCount || 0).color,
+                          }} />
+                        </span>
+                      </div>
+                    </div>
                     <InfoItem label="Assignment Status" value={detail.assignmentStatus || 'N/A'} />
                     <InfoItem label="Assigned At" value={detail.assignedAt ? new Date(detail.assignedAt).toLocaleString() : 'N/A'} />
                     <InfoItem label="Started At" value={detail.startedAt ? new Date(detail.startedAt).toLocaleString() : 'N/A'} />
@@ -277,42 +310,29 @@ const Disputes = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 12, color: '#dc2626', marginBottom: 4, fontWeight: 600 }}>
-                        📸 Citizen's Complaint Photo
+                        📸 Citizen's Complaint
                       </div>
                       {detail.feedbackImageUrl ? (
-                        <img
-                          src={buildFileUrl(detail.feedbackImageUrl)}
-                          alt="Citizen Evidence"
-                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '2px solid #fca5a5' }}
-                        />
-                      ) : (
-                        <div style={placeholderStyle}>No photo attached</div>
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>
-                        📸 Before Collection
-                      </div>
-                      {detail.confirmationBeforeImageUrl ? (
-                        <img
-                          src={buildFileUrl(detail.confirmationBeforeImageUrl)}
-                          alt="Before"
-                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }}
-                        />
+                        <img src={buildFileUrl(detail.feedbackImageUrl)} alt="Citizen Evidence"
+                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '2px solid #fca5a5' }} />
                       ) : (
                         <div style={placeholderStyle}>No photo</div>
                       )}
                     </div>
                     <div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>
-                        📸 After Collection
-                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>📸 Before Collection</div>
+                      {detail.confirmationBeforeImageUrl ? (
+                        <img src={buildFileUrl(detail.confirmationBeforeImageUrl)} alt="Before"
+                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }} />
+                      ) : (
+                        <div style={placeholderStyle}>No photo</div>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>📸 After Collection</div>
                       {detail.confirmationAfterImageUrl ? (
-                        <img
-                          src={buildFileUrl(detail.confirmationAfterImageUrl)}
-                          alt="After"
-                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }}
-                        />
+                        <img src={buildFileUrl(detail.confirmationAfterImageUrl)} alt="After"
+                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }} />
                       ) : (
                         <div style={placeholderStyle}>No photo</div>
                       )}
@@ -326,65 +346,15 @@ const Disputes = () => {
 
               <div className="divider" />
 
-              {/* Admin Actions */}
+              {/* Resolution Actions */}
               {detail.status === 'Pending' && (
                 <div className="section-block">
-                  <h4 className="section-title">⚖️ Resolution Actions</h4>
-                  <div style={{ background: '#fffbeb', padding: 14, borderRadius: 8, border: '1px solid #fde68a', marginBottom: 12 }}>
-                    <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
-                      Select the actions to take when resolving this complaint. These actions will be applied immediately.
-                    </p>
-                  </div>
-
-                  <label style={checkboxLabelStyle}>
-                    <input
-                      type="checkbox"
-                      checked={revertReport}
-                      onChange={(e) => setRevertReport(e.target.checked)}
-                      style={{ marginRight: 8 }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600 }}>🔄 Revert Report Status</div>
-                      <div style={{ fontSize: 12, color: '#64748b' }}>
-                        Change report status from "Collected" back to "Accepted" so it can be reassigned
-                      </div>
-                    </div>
-                  </label>
-
-                  <label style={checkboxLabelStyle}>
-                    <input
-                      type="checkbox"
-                      checked={cancelAssignment}
-                      onChange={(e) => setCancelAssignment(e.target.checked)}
-                      style={{ marginRight: 8 }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600 }}>❌ Cancel Collector Assignment</div>
-                      <div style={{ fontSize: 12, color: '#64748b' }}>
-                        Cancel the current collector's assignment for this report
-                      </div>
-                    </div>
-                  </label>
-
-                  <label style={{ ...checkboxLabelStyle, borderColor: '#fecaca' }}>
-                    <input
-                      type="checkbox"
-                      checked={deactivateCollector}
-                      onChange={(e) => setDeactivateCollector(e.target.checked)}
-                      style={{ marginRight: 8 }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, color: '#dc2626' }}>🚫 Deactivate Collector</div>
-                      <div style={{ fontSize: 12, color: '#64748b' }}>
-                        Disable this collector's account (they will not be able to login)
-                      </div>
-                    </div>
-                  </label>
+                  <h4 className="section-title">⚖️ Resolution</h4>
 
                   <textarea
                     value={adminNote}
                     onChange={(e) => setAdminNote(e.target.value)}
-                    placeholder="Admin resolution note (optional)..."
+                    placeholder="Enter resolution reason (required)..."
                     rows={2}
                     style={{
                       width: '100%',
@@ -392,23 +362,66 @@ const Disputes = () => {
                       borderRadius: 8,
                       border: '1px solid #e2e8f0',
                       fontSize: 13,
-                      marginTop: 8,
+                      marginBottom: 14,
                       boxSizing: 'border-box',
                     }}
                   />
 
-                  <div className="detail-actions" style={{ marginTop: 14 }}>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {/* Warn button */}
                     <button
-                      className="btn-outline"
-                      onClick={handleResolve}
+                      onClick={() => handleResolve('warn')}
                       disabled={resolving}
-                      style={{ fontWeight: 600 }}
+                      style={{
+                        ...actionBtnBase,
+                        background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                        flex: 1,
+                      }}
                     >
-                      {resolving ? '⏳ Processing...' : '✅ Resolve Complaint'}
+                      <span style={{ fontSize: 18 }}>🟡</span>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>Warn Collector</div>
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>+1 warning point</div>
+                      </div>
                     </button>
-                    <button className="btn-outline red" onClick={handleReject}>
-                      ❌ Reject (Invalid Complaint)
+
+                    {/* Reassign button */}
+                    <button
+                      onClick={() => handleResolve('reassign')}
+                      disabled={resolving}
+                      style={{
+                        ...actionBtnBase,
+                        background: 'linear-gradient(135deg, #fb923c, #ea580c)',
+                        flex: 1,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>🟠</span>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>Reassign + Warn</div>
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>+2 pts, revert report, notify enterprise</div>
+                      </div>
                     </button>
+
+                    {/* Reject button */}
+                    <button
+                      onClick={handleReject}
+                      disabled={resolving}
+                      style={{
+                        ...actionBtnBase,
+                        background: 'linear-gradient(135deg, #94a3b8, #64748b)',
+                        flex: 1,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>❌</span>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>Reject</div>
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>Invalid complaint</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop: 10, padding: '8px 12px', background: '#fef2f2', borderRadius: 6, fontSize: 12, color: '#991b1b' }}>
+                    ⚠️ Collector auto-deactivated at 4 warning points. Current: <strong>{detail.collectorWarningCount || 0}/4</strong>
                   </div>
                 </div>
               )}
@@ -458,15 +471,19 @@ const placeholderStyle = {
   border: '1px dashed #d1d5db',
 };
 
-const checkboxLabelStyle = {
+const actionBtnBase = {
   display: 'flex',
-  alignItems: 'flex-start',
-  padding: '12px 14px',
-  borderRadius: 8,
-  border: '1px solid #e2e8f0',
-  marginBottom: 8,
+  alignItems: 'center',
+  gap: 10,
+  padding: '12px 16px',
+  borderRadius: 10,
+  border: 'none',
+  color: '#fff',
   cursor: 'pointer',
-  transition: 'background 0.15s',
+  fontSize: 13,
+  textAlign: 'left',
+  transition: 'transform 0.1s, opacity 0.15s',
+  minWidth: 150,
 };
 
 export default Disputes;

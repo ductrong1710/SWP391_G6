@@ -23,8 +23,7 @@ namespace BusinessLogicLayer.DTOs.Feedback
     }
 
     /// <summary>
-    /// Detailed feedback view for admin with full context about the report,
-    /// collector assignment, and collection confirmation.
+    /// Detailed feedback view for admin with full context
     /// </summary>
     public class FeedbackDetailDto
     {
@@ -47,17 +46,18 @@ namespace BusinessLogicLayer.DTOs.Feedback
         public DateTime? ReportCreatedAt { get; set; }
         public List<string> WasteTypeNames { get; set; } = new();
 
-        // Collector assignment info (if exists)
+        // Collector assignment info
         public int? AssignmentId { get; set; }
         public string? AssignmentStatus { get; set; }
         public int? CollectorId { get; set; }
         public string? CollectorName { get; set; }
+        public int? CollectorWarningCount { get; set; }
         public DateTime? AssignedAt { get; set; }
         public DateTime? StartedAt { get; set; }
         public DateTime? ArrivedAt { get; set; }
         public string? BeforeImageUrl { get; set; }
 
-        // Collection confirmation info (if exists)
+        // Collection confirmation info
         public int? ConfirmationId { get; set; }
         public string? ConfirmationNote { get; set; }
         public DateTime? ConfirmedAt { get; set; }
@@ -69,26 +69,19 @@ namespace BusinessLogicLayer.DTOs.Feedback
         public string? EnterpriseName { get; set; }
     }
 
+    /// <summary>
+    /// Admin resolve action: "warn" (+1pt) or "reassign" (+2pt)
+    /// </summary>
     public class ResolveFeedbackDto
     {
         /// <summary>
-        /// Admin's resolution note
+        /// "warn" or "reassign"
         /// </summary>
-        public string? AdminNote { get; set; }
+        public string Action { get; set; } = null!;
 
         /// <summary>
-        /// Revert report status from Collected back to Accepted
+        /// Admin's resolution note (required)
         /// </summary>
-        public bool RevertReport { get; set; }
-
-        /// <summary>
-        /// Cancel the collector's assignment
-        /// </summary>
-        public bool CancelAssignment { get; set; }
-
-        /// <summary>
-        /// Deactivate the collector's account
-        /// </summary>
-        public bool DeactivateCollector { get; set; }
+        public string AdminNote { get; set; } = null!;
     }
 }
