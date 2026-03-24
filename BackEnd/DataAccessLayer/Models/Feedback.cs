@@ -19,6 +19,8 @@ public partial class Feedback
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? ResolutionNote { get; set; }
+
     public virtual Wastereport? Report { get; set; }
 
     public virtual User User { get; set; } = null!;

@@ -340,6 +340,23 @@ const HistoryReportModal = ({
                   <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
                     {fb.createdAt ? new Date(fb.createdAt).toLocaleString() : ""}
                   </div>
+                  {/* Resolution note from admin */}
+                  {fb.resolutionNote && (fb.status === "Resolved" || fb.status === "Rejected") && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        padding: "8px 10px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        background: fb.status === "Resolved" ? "#ecfdf5" : "#fef2f2",
+                        border: `1px solid ${fb.status === "Resolved" ? "#a7f3d0" : "#fecaca"}`,
+                        color: fb.status === "Resolved" ? "#065f46" : "#991b1b",
+                      }}
+                    >
+                      <strong>{fb.status === "Resolved" ? "✅" : "❌"} Admin:</strong> {fb.resolutionNote}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

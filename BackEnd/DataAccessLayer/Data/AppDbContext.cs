@@ -229,6 +229,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.ImageUrl)
                 .HasColumnType("text")
                 .HasColumnName("image_url");
+            entity.Property(e => e.ResolutionNote)
+                .HasColumnType("text")
+                .HasColumnName("resolution_note");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.Report).WithMany(p => p.Feedbacks)

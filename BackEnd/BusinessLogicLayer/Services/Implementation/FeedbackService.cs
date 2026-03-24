@@ -29,6 +29,12 @@ namespace BusinessLogicLayer.Services.Implementation
             if (report == null)
                 throw new InvalidOperationException("Report not found");
 
+            // Anti-spam: block if there's already a Pending feedback for this report
+            var allFeedbacks = await _uow.Feedbacks.GetAllAsync();
+            var hasPending = allFeedbacks.Any(f => f.ReportId == dto.ReportId && f.Status == "Pending");
+            if (hasPending)
+                throw new InvalidOperationException("A complaint for this report is already pending review. Please wait for admin resolution before submitting a new one.");
+
             var feedback = new Feedback
             {
                 UserId = userId,
@@ -318,8 +324,9 @@ namespace BusinessLogicLayer.Services.Implementation
                 });
             }
 
-            // Mark feedback as Resolved
+            // Mark feedback as Resolved and save admin note
             feedback.Status = "Resolved";
+            feedback.ResolutionNote = dto.AdminNote;
             _uow.Feedbacks.Update(feedback);
             await _uow.SaveChangesAsync();
 
@@ -359,6 +366,7 @@ namespace BusinessLogicLayer.Services.Implementation
             Content = f.Content,
             Status = f.Status,
             ImageUrl = f.ImageUrl,
+            ResolutionNote = f.ResolutionNote,
             CreatedAt = f.CreatedAt
         };
     }
