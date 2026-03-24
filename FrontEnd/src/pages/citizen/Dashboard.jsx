@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import wasteReportService from "../../services/wasteReportService";
 import rewardService from "../../services/rewardService";
-
+import "./Dashboard.css"; // Import file CSS vừa tạo
 const STATUS_PROGRESS = {
   Pending: 20,
   Accepted: 40,
@@ -119,8 +119,13 @@ const Dashboard = () => {
           ) : activeRequests.length === 0 ? (
             <div className="request-card slide-anim">No active reports.</div>
           ) : (
-            <div className="slider-track" style={{ display: "grid", gap: 16 }}>
-              {activeRequests.slice(0, 3).map((req) => {
+            <div className="slider-track" 
+            style={{ display: "grid", gap: 16 ,
+                    maxHeight: "400px",  // Giới hạn chiều cao của khu vực này, ví dụ 400px
+                    overflowY: "auto",  // Tự động hiện thanh trượt dọc khi nội dung vượt quá maxHeight
+                    paddingRight: "8px" // Tạo không gian cho thanh trượt không đè lên thẻ
+                  }}>
+              {activeRequests.map((req) => {
                 const progress = STATUS_PROGRESS[req.status] ?? 10;
                 const wasteLabel = req.wasteTypeNames?.length
                   ? req.wasteTypeNames.join(", ")

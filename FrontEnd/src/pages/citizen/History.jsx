@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import HistoryReportCard from "../../components/citizen/HistoryReportCard";
 import HistoryReportModal from "../../components/citizen/HistoryReportModal";
 import wasteReportService from "../../services/wasteReportService";
-
+import "./History.css"; // Import file CSS vừa tạo
 const History = () => {
   const [reports, setReports] = useState([]);
   const [wasteTypes, setWasteTypes] = useState([]);

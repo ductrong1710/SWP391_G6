@@ -2,7 +2,7 @@ import React from "react";
 import ReportMap from "../../components/citizen/ReportMap";
 import WasteTypeSelector from "../../components/citizen/WasteTypeSelector";
 import useCreateReportForm from "../../hooks/useCreateReportForm";
-
+import "./CitizenReport.css";
 const CreateReport = () => {
   const {
     fileInputRef,

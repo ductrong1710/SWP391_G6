@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import wasteReportService from "../../services/wasteReportService";
+import api from "../../services/api"; // Đảm bảo import axios instance của bạn để gọi API thực tế
 import "./Rules.css";
 
 const Rules = () => {
@@ -9,6 +10,8 @@ const Rules = () => {
   const [pointMultipliers, setPointMultipliers] = useState([]);
   const [autoAssign, setAutoAssign] = useState(true);
   const [priorityThreshold, setPriorityThreshold] = useState(80);
+  
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -20,54 +23,34 @@ const Rules = () => {
   });
 
   useEffect(() => {
-    fetchWasteTypes();
-    fetchSettings();
+    loadInitialData();
   }, []);
 
-  const fetchWasteTypes = async () => {
+  const loadInitialData = async () => {
+    setInitialLoading(true);
     try {
+      // 1. Lấy danh sách Waste Types thực tế từ backend
       const wasteTypes = await wasteReportService.getWasteTypes();
       setAllWasteTypes(wasteTypes);
 
-      setAcceptedWasteTypes([1, 2, 3]);
-    } catch (err) {
-      console.error("Error fetching waste types:", err);
-    }
-  };
+      // 2. Lấy cấu hình Rules & Capacity của Enterprise từ backend
+      // Lưu ý: Cập nhật URL '/api/Users/enterprise-settings' khớp với Controller của bạn trong .NET
+      const response = await api.get("/api/Users/enterprise-settings");
+      const data = response.data;
 
-  const fetchSettings = () => {
-    setPointMultipliers([
-      {
-        wasteTypeId: 1,
-        wastetype: { name: "Plastic" },
-        quality: "High",
-        multiplier: 2.0,
-      },
-      {
-        wasteTypeId: 1,
-        wastetype: { name: "Plastic" },
-        quality: "Medium",
-        multiplier: 1.5,
-      },
-      {
-        wasteTypeId: 2,
-        wastetype: { name: "Electronics" },
-        quality: "Working",
-        multiplier: 3.0,
-      },
-      {
-        wasteTypeId: 3,
-        wastetype: { name: "Paper" },
-        quality: "Clean",
-        multiplier: 1.8,
-      },
-      {
-        wasteTypeId: 4,
-        wastetype: { name: "Metal" },
-        quality: "High",
-        multiplier: 2.5,
-      },
-    ]);
+      if (data) {
+        setDailyLimit(data.dailyLimit || 15);
+        setAcceptedWasteTypes(data.acceptedWasteTypes || []);
+        setPointMultipliers(data.pointMultipliers || []);
+        setAutoAssign(data.autoAssign !== undefined ? data.autoAssign : true);
+        setPriorityThreshold(data.priorityThreshold || 80);
+      }
+    } catch (err) {
+      console.error("Error fetching initial data:", err);
+      setError("⚠️ Không thể tải cấu hình từ máy chủ. Đang sử dụng dữ liệu mặc định.");
+    } finally {
+      setInitialLoading(false);
+    }
   };
 
   const handleToggleWasteType = (wasteTypeId) => {
@@ -86,7 +69,7 @@ const Rules = () => {
       !newMultiplier.quality ||
       !newMultiplier.multiplier
     ) {
-      setError("❌ Please fill in all required fields");
+      setError("❌ Vui lòng điền đầy đủ các trường yêu cầu");
       setTimeout(() => setError(""), 3000);
       return;
     }
@@ -99,39 +82,61 @@ const Rules = () => {
       ...prev,
       {
         wasteTypeId: parseInt(newMultiplier.wasteTypeId),
-        wastetype: wasteType,
+        wastetype: wasteType, // Giữ nguyên object để render UI
         quality: newMultiplier.quality,
         multiplier: parseFloat(newMultiplier.multiplier),
       },
     ]);
 
     setNewMultiplier({ wasteTypeId: "", quality: "", multiplier: 1.0 });
-    setSuccess("✅ New multiplier added");
+    setSuccess("✅ Đã thêm hệ số nhân mới");
     setTimeout(() => setSuccess(""), 3000);
   };
 
   const handleRemoveMultiplier = (index) => {
     setPointMultipliers((prev) => prev.filter((_, i) => i !== index));
-    setSuccess("✅ Multiplier removed");
+    setSuccess("✅ Đã xóa hệ số nhân");
     setTimeout(() => setSuccess(""), 3000);
   };
 
   const handleSaveChanges = async () => {
     try {
       setLoading(true);
+      setError("");
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Chuẩn bị payload gửi xuống .NET Backend
+      const payload = {
+        dailyLimit,
+        acceptedWasteTypes,
+        pointMultipliers,
+        autoAssign,
+        priorityThreshold,
+      };
 
-      setSuccess("✅ Settings saved successfully!");
+      // Gọi API thực tế để cập nhật. Thay thế bằng URL thực tế trên Backend của bạn
+      await api.put("/api/Users/enterprise-settings", payload);
+
+      setSuccess("✅ Đã lưu cấu hình thành công!");
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Error saving settings:", err);
-      setError("❌ Unable to save settings");
+      setError("❌ Không thể lưu cấu hình. Vui lòng thử lại.");
       setTimeout(() => setError(""), 3000);
     } finally {
       setLoading(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="rules-container">
+        <div className="rules-header">
+          <h1>Capacity & Rules</h1>
+          <p>Đang tải cấu hình...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rules-container">
@@ -139,14 +144,14 @@ const Rules = () => {
       <div className="rules-header">
         <div>
           <h1>Capacity & Rules</h1>
-          <p>Configure your collection capacity and point multiplier rules</p>
+          <p>Cấu hình năng lực thu gom và các luật hệ số điểm thưởng</p>
         </div>
         <button
           className="btn-save"
           onClick={handleSaveChanges}
           disabled={loading}
         >
-          {loading ? "⏳ Saving..." : "💾 Save Changes"}
+          {loading ? "⏳ Đang lưu..." : "💾 Lưu thay đổi"}
         </button>
       </div>
 
@@ -158,15 +163,15 @@ const Rules = () => {
         {/* LEFT: CAPACITY SETTINGS */}
         <div className="settings-card">
           <div className="card-icon">📊</div>
-          <h3>Capacity Settings</h3>
+          <h3>Cấu hình năng lực (Capacity)</h3>
           <p className="card-description">
-            Set your daily collection limits and preferences
+            Thiết lập giới hạn thu gom hàng ngày và các tùy chọn của bạn
           </p>
 
           {/* DAILY LIMIT */}
           <div className="setting-group">
             <label className="setting-label">
-              Daily Collection Limit
+              Giới hạn thu gom hàng ngày
               <span className="limit-value">{dailyLimit} tons</span>
             </label>
             <input
@@ -185,7 +190,7 @@ const Rules = () => {
 
           {/* ACCEPTED WASTE TYPES */}
           <div className="setting-group">
-            <label className="setting-label">Accepted Waste Types</label>
+            <label className="setting-label">Loại rác thải chấp nhận</label>
             <div className="waste-types-grid">
               {allWasteTypes.map((wasteType) => (
                 <label key={wasteType.wasteTypeId} className="checkbox-card">
@@ -223,9 +228,9 @@ const Rules = () => {
               />
               <span className="toggle-switch"></span>
               <span className="toggle-text">
-                Auto-assign Collectors
+                Tự động điều phối
                 <small>
-                  Automatically assign available collectors to requests
+                  Tự động chỉ định Collector sẵn sàng cho các yêu cầu mới
                 </small>
               </span>
             </label>
@@ -234,7 +239,7 @@ const Rules = () => {
           {/* PRIORITY THRESHOLD */}
           <div className="setting-group">
             <label className="setting-label">
-              Auto-accept Priority Threshold
+              Ngưỡng điểm ưu tiên duyệt tự động
               <span className="limit-value">{priorityThreshold}+ score</span>
             </label>
             <input
@@ -251,8 +256,7 @@ const Rules = () => {
               <span>100</span>
             </div>
             <p className="setting-hint">
-              Requests with AI priority scores above this threshold will be
-              automatically accepted
+              Các báo cáo có điểm ưu tiên AI vượt qua ngưỡng này sẽ được hệ thống tự động phê duyệt
             </p>
           </div>
         </div>
@@ -260,9 +264,9 @@ const Rules = () => {
         {/* RIGHT: POINT MULTIPLIERS */}
         <div className="settings-card">
           <div className="card-icon">➕</div>
-          <h3>Point Multipliers</h3>
+          <h3>Hệ số điểm thưởng (Multipliers)</h3>
           <p className="card-description">
-            Configure bonus multipliers for different waste types and qualities
+            Cấu hình điểm thưởng cộng thêm cho các loại rác và chất lượng khác nhau
           </p>
 
           {/* EXISTING MULTIPLIERS */}
@@ -295,7 +299,7 @@ const Rules = () => {
 
           {/* ADD NEW MULTIPLIER */}
           <div className="add-multiplier-form">
-            <h4>Add New Multiplier</h4>
+            <h4>Thêm hệ số mới</h4>
             <div className="form-row">
               <select
                 value={newMultiplier.wasteTypeId}
@@ -307,7 +311,7 @@ const Rules = () => {
                 }
                 className="form-select"
               >
-                <option value="">Select Waste Type</option>
+                <option value="">Chọn loại rác</option>
                 {allWasteTypes.map((wt) => (
                   <option key={wt.wasteTypeId} value={wt.wasteTypeId}>
                     {wt.name}
@@ -325,13 +329,13 @@ const Rules = () => {
                 }
                 className="form-select"
               >
-                <option value="">Select Quality</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-                <option value="Clean">Clean</option>
-                <option value="Working">Working</option>
-                <option value="Broken">Broken</option>
+                <option value="">Chọn chất lượng</option>
+                <option value="High">Cao</option>
+                <option value="Medium">Trung bình</option>
+                <option value="Low">Thấp</option>
+                <option value="Clean">Sạch</option>
+                <option value="Working">Còn hoạt động</option>
+                <option value="Broken">Hư hỏng</option>
               </select>
 
               <input
@@ -351,7 +355,7 @@ const Rules = () => {
               />
 
               <button className="btn-add" onClick={handleAddMultiplier}>
-                ➕ Add
+                ➕ Thêm
               </button>
             </div>
           </div>
@@ -363,11 +367,9 @@ const Rules = () => {
         <div className="info-card">
           <div className="info-icon">💡</div>
           <div className="info-content">
-            <h4>How Point Multipliers Work</h4>
+            <h4>Cách hoạt động của hệ số điểm</h4>
             <p>
-              Citizens earn base points for each waste collection. Multipliers
-              increase rewards based on waste type and quality. For example,
-              high-quality plastic gets 2x points.
+              Người dân kiếm được điểm cơ bản cho mỗi lần thu gom. Hệ số nhân sẽ tăng phần thưởng dựa trên loại và chất lượng rác. Ví dụ: Nhựa chất lượng cao nhận 2x điểm.
             </p>
           </div>
         </div>
@@ -375,11 +377,9 @@ const Rules = () => {
         <div className="info-card">
           <div className="info-icon">⚙️</div>
           <div className="info-content">
-            <h4>Auto-assign Collectors</h4>
+            <h4>Tự động điều phối Collector</h4>
             <p>
-              When enabled, the system automatically assigns the nearest
-              available collector to new requests. This reduces response time
-              and improves efficiency.
+              Khi bật, hệ thống sẽ tự động gán collector có sẵn gần nhất cho các yêu cầu mới. Điều này giúp giảm thời gian phản hồi và cải thiện hiệu suất.
             </p>
           </div>
         </div>
@@ -387,11 +387,9 @@ const Rules = () => {
         <div className="info-card">
           <div className="info-icon">🎯</div>
           <div className="info-content">
-            <h4>Priority Threshold</h4>
+            <h4>Ngưỡng tự động duyệt</h4>
             <p>
-              The AI scoring system evaluates each report. High-priority
-              requests (above threshold) are automatically approved to ensure
-              quick response to urgent situations.
+              Hệ thống AI sẽ đánh giá từng báo cáo. Các báo cáo có độ ưu tiên cao (vượt ngưỡng) sẽ được tự động duyệt để đảm bảo giải quyết nhanh các tình huống khẩn cấp.
             </p>
           </div>
         </div>

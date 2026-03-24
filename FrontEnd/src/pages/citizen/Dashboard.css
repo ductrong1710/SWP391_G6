@@ -1,0 +1,86 @@
+/* ==========================================================================
+   3. DASHBOARD PAGE (Dashboard.jsx)
+   Bao gồm: Stats row, Slider requests, Leaderboard
+   ========================================================================== */
+
+.dashboard-container { max-width: 1200px; margin: 0 auto; padding: 32px; }
+
+/* Stats Row */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+.stat-card {
+  background: white; padding: 24px; border-radius: 12px; border: 1px solid #e5e7eb;
+  display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.stat-label { color: #6b7280; font-size: 14px; margin-bottom: 8px; }
+.stat-value { font-size: 30px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+.stat-change { font-size: 13px; font-weight: 600; color: #059669; }
+.text-green { color: #059669; }
+.icon-box {
+  width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; background-color: #f0fdf4;
+}
+
+/* Content Grid (Active Requests & Leaderboard) */
+.content-grid { display: grid; grid-template-columns: 3fr 1fr; gap: 24px; align-items: start; }
+.active-requests-section { width: 100%; overflow: visible; }
+.section-title { font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 16px; }
+
+/* Slider Components */
+.slider-wrapper { position: relative; padding: 0 4px; }
+.slider-track { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+.nav-btn {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 10;
+  width: 40px; height: 40px; border-radius: 50%; background: white; border: 1px solid #e5e7eb;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-btn svg { width: 20px; height: 20px; }
+.prev-btn { left: -20px; }
+.next-btn { right: -20px; }
+.nav-btn:hover:not(:disabled) {
+  background-color: #10b981; color: white; border-color: #10b981; transform: translateY(-50%) scale(1.1);
+}
+.nav-btn:disabled { opacity: 0; pointer-events: none; }
+
+/* Request Card */
+.request-card {
+  background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 170px; width: 100%; animation: fadeIn 0.4s ease-out;
+}
+.req-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.req-weight { font-size: 22px; font-weight: 700; color: #1f2937; margin-bottom: 10px; margin-top: 0; }
+.req-footer { display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; }
+.req-date { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+.status-pill { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.status-pill.pending { background: #fff7ed; color: #c2410c; }
+.status-pill.on-way { background: #eff6ff; color: #2563eb; }
+.status-pill.collected { background: #ecfdf5; color: #059669; }
+.progress-bar-bg { height: 6px; background: #f3f4f6; border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+.progress-bar-fill { height: 100%; border-radius: 10px; }
+
+/* Leaderboard */
+.leaderboard-card {
+  background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.leaderboard-item { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f3f4f6; }
+.rank {
+  width: 24px; height: 24px; border-radius: 50%; background: #f3f4f6;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  color: #6b7280; margin-right: 12px; flex-shrink: 0;
+}
+.rank.top { background: #fef3c7; color: #b45309; }
+.user-info-wrapper { flex: 1; display: flex; flex-direction: column; }
+.user-details { font-size: 14px; font-weight: 500; color: #374151; }
+.user-points { font-weight: 700; font-size: 14px; color: #111827; }
+.leaderboard-item.highlight { background-color: #ecfdf5; }
+.highlight .rank { background: #10b981; color: white; }
+.top-rank-text { font-size: 11px; color: #059669; font-weight: 600; margin-top: 2px; }
+.leaderboard-footer {
+  background-color: #f0fdf4; padding: 12px; text-align: center; color: #059669;
+  font-weight: 600; font-size: 13px; border-top: 1px solid #e5e7eb;
+}
+
