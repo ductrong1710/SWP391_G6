@@ -54,6 +54,11 @@ const userService = {
     const response = await api.put(`/users/${userId}/activate`);
     return normalizeUser(response.data);
   },
+
+  createUser: async (data) => {
+    const response = await api.post("/users", data);
+    return normalizeUser(response.data);
+  },
 };
 
 export default userService;

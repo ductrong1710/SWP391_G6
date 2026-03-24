@@ -22,6 +22,11 @@ export default function Users() {
   const [editForm, setEditForm] = useState({ fullName: "", phone: "", roleId: 0, status: "" });
   const [saving, setSaving] = useState(false);
 
+  // Create modal state
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ fullName: "", email: "", password: "", phone: "", roleId: 2 });
+  const [creating, setCreating] = useState(false);
+
   // Action menu
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -135,11 +140,50 @@ export default function Users() {
     }
   };
 
+  const handleCreate = async () => {
+    if (!createForm.fullName.trim() || !createForm.email.trim() || !createForm.password.trim()) {
+      toast.error("Full name, email, and password are required");
+      return;
+    }
+    setCreating(true);
+    try {
+      await userService.createUser(createForm);
+      toast.success("Account created successfully!");
+      setShowCreate(false);
+      setCreateForm({ fullName: "", email: "", password: "", phone: "", roleId: 2 });
+      loadUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create account");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="admin-main-content">
-      <div className="admin-page-header">
-        <h2>User Management</h2>
-        <p className="text-gray">Manage all platform users and their permissions</p>
+      <div className="admin-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2>User Management</h2>
+          <p className="text-gray">Manage all platform users and their permissions</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+            color: "#fff",
+            fontWeight: 600,
+            fontSize: 14,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          ➕ Create Account
+        </button>
       </div>
 
       {/* Filters */}
@@ -369,6 +413,117 @@ export default function Users() {
                 }}
               >
                 {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Account Modal */}
+      {showCreate && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              padding: 28,
+              width: 440,
+              maxHeight: "80vh",
+              overflow: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Create Account</h3>
+            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>
+              Create a new Enterprise or Collector account
+            </div>
+
+            <label style={labelStyle}>Role *</label>
+            <select
+              style={inputStyle}
+              value={createForm.roleId}
+              onChange={(e) => setCreateForm({ ...createForm, roleId: Number(e.target.value) })}
+            >
+              <option value={2}>Enterprise</option>
+              <option value={3}>Collector</option>
+            </select>
+
+            <label style={labelStyle}>Full Name *</label>
+            <input
+              style={inputStyle}
+              value={createForm.fullName}
+              onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
+              placeholder="Enter full name"
+            />
+
+            <label style={labelStyle}>Email *</label>
+            <input
+              style={inputStyle}
+              type="email"
+              value={createForm.email}
+              onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+              placeholder="Enter email address"
+            />
+
+            <label style={labelStyle}>Password *</label>
+            <input
+              style={inputStyle}
+              type="password"
+              value={createForm.password}
+              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+              placeholder="Enter password"
+            />
+
+            <label style={labelStyle}>Phone</label>
+            <input
+              style={inputStyle}
+              value={createForm.phone}
+              onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+              placeholder="Enter phone number (optional)"
+            />
+
+            <div style={{ display: "flex", gap: 10, marginTop: 24, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowCreate(false)}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                  background: "#fff",
+                  color: "#475569",
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                style={{
+                  padding: "8px 24px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: creating ? "#94a3b8" : "linear-gradient(135deg, #3b82f6, #2563eb)",
+                  color: "#fff",
+                  cursor: creating ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                {creating ? "Creating..." : "Create Account"}
               </button>
             </div>
           </div>
