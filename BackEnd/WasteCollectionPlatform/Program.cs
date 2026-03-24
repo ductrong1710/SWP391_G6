@@ -141,6 +141,22 @@ namespace WasteCollectionPlatform
 
             app.MapControllers();
 
+            // Warm-up: pre-load dashboard cache on startup
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = app.Services.CreateScope();
+                    var dashboard = scope.ServiceProvider.GetRequiredService<BusinessLogicLayer.Services.Interface.IDashboardService>();
+                    await dashboard.GetAdminDashboardAsync(DateTime.Now.Year);
+                    Console.WriteLine("✅ Dashboard cache warmed up successfully");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ Dashboard warm-up failed: {ex.Message}");
+                }
+            });
+
             app.Run();
         }
     }
