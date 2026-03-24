@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
 import useDispatchData from "../../hooks/useDispatchData";
+import assignmentService from "../../services/assignmentService";
 import { buildFileUrl } from "../../services/api";
 import {
   DISPATCH_FILTERS,
@@ -41,6 +42,28 @@ const Dispatch = () => {
     handleReportAction,
     handleAssignCollector,
   } = useDispatchData();
+
+  const [cancelledCollectorIds, setCancelledCollectorIds] = useState([]);
+
+  // Load cancelled collector IDs when a request item is selected
+  useEffect(() => {
+    const loadCancelledCollectors = async () => {
+      if (selectedItem?.kind === "request" && selectedItem?.requestId) {
+        try {
+          const history = await assignmentService.getAssignmentHistory(selectedItem.requestId);
+          const cancelledIds = history
+            .filter((a) => (a.status || a.Status) === "Cancelled")
+            .map((a) => a.assignedCollector || a.AssignedCollector);
+          setCancelledCollectorIds([...new Set(cancelledIds)]);
+        } catch {
+          setCancelledCollectorIds([]);
+        }
+      } else {
+        setCancelledCollectorIds([]);
+      }
+    };
+    loadCancelledCollectors();
+  }, [selectedItem?.requestId, selectedItem?.kind]);
 
   const mapCenter = getDispatchMapCenter(selectedItem, DEFAULT_CENTER);
 
@@ -231,7 +254,7 @@ const Dispatch = () => {
                   </div>
                 </div>
 
-                {selectedItem.kind === "request" && selectedItem.status === "Accepted" && (
+                {selectedItem.kind === "request" && (selectedItem.status === "Accepted" || selectedItem.status === "Pending") && (
                   <div
                     className="assignment-box"
                     style={{
@@ -258,7 +281,11 @@ const Dispatch = () => {
                           flex: 1,
                           padding: 10,
                           borderRadius: 6,
-                          border: "1px solid #cbd5e1",
+                          border: `1px solid ${
+                            cancelledCollectorIds.includes(selectedCollectorMap[selectedItem.requestId])
+                              ? "#ef4444"
+                              : "#cbd5e1"
+                          }`,
                           fontSize: 14,
                         }}
                         value={selectedCollectorMap[selectedItem.requestId] || ""}
@@ -270,30 +297,73 @@ const Dispatch = () => {
                         }
                       >
                         <option value="">-- Select a collector to assign --</option>
-                        {collectors.map((collector) => (
-                          <option key={collector.userId} value={collector.userId}>
-                            {collector.fullName} - {collector.email}
-                          </option>
-                        ))}
+                        {collectors.map((collector) => {
+                          const isCancelled = cancelledCollectorIds.includes(collector.userId);
+                          return (
+                            <option
+                              key={collector.userId}
+                              value={collector.userId}
+                              style={isCancelled ? { color: "#ef4444" } : {}}
+                            >
+                              {isCancelled ? "⚠️ " : ""}
+                              {collector.fullName} - {collector.email}
+                              {isCancelled ? " (Previously removed)" : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                       <button
                         style={{
                           padding: "10px 20px",
-                          backgroundColor: "#3b82f6",
+                          backgroundColor: cancelledCollectorIds.includes(selectedCollectorMap[selectedItem.requestId])
+                            ? "#94a3b8"
+                            : "#3b82f6",
                           color: "white",
                           border: "none",
                           borderRadius: 6,
                           fontWeight: "bold",
-                          cursor: actionLoading ? "not-allowed" : "pointer",
+                          cursor:
+                            actionLoading || cancelledCollectorIds.includes(selectedCollectorMap[selectedItem.requestId])
+                              ? "not-allowed"
+                              : "pointer",
                         }}
                         disabled={
-                          actionLoading || !selectedCollectorMap[selectedItem.requestId]
+                          actionLoading ||
+                          !selectedCollectorMap[selectedItem.requestId] ||
+                          cancelledCollectorIds.includes(selectedCollectorMap[selectedItem.requestId])
                         }
                         onClick={() => handleAssignCollector(selectedItem.requestId)}
                       >
                         Assign Job
                       </button>
                     </div>
+
+                    {/* Warning when selecting a previously cancelled collector */}
+                    {cancelledCollectorIds.includes(selectedCollectorMap[selectedItem.requestId]) && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: "10px 14px",
+                          backgroundColor: "#fef2f2",
+                          border: "1px solid #fecaca",
+                          borderRadius: 6,
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 8,
+                        }}
+                      >
+                        <span style={{ fontSize: 18 }}>🚫</span>
+                        <div>
+                          <div style={{ fontWeight: 700, color: "#dc2626", fontSize: 13 }}>
+                            Cannot assign this collector
+                          </div>
+                          <div style={{ fontSize: 12, color: "#991b1b", marginTop: 2 }}>
+                            This collector was previously removed from this request due to a citizen complaint.
+                            Please select a different collector.
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
