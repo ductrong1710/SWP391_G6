@@ -112,6 +112,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("User not found");
 
             user.Status = "Active";
+            user.WarningCount = 0; // Reset warnings on reactivation
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
 
