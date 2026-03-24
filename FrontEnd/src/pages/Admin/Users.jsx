@@ -26,6 +26,7 @@ export default function Users() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ fullName: "", email: "", password: "", phone: "", roleId: 2 });
   const [creating, setCreating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Action menu
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -478,13 +479,33 @@ export default function Users() {
             />
 
             <label style={labelStyle}>Password *</label>
-            <input
-              style={inputStyle}
-              type="password"
-              value={createForm.password}
-              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-              placeholder="Enter password"
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                style={{ ...inputStyle, paddingRight: 40 }}
+                type={showPassword ? "text" : "password"}
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                placeholder="Enter password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  padding: 4,
+                  color: "#64748b",
+                }}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
 
             <label style={labelStyle}>Phone</label>
             <input
