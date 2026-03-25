@@ -12,6 +12,10 @@ const normalizeUser = (user) => ({
   isAvailable: Boolean(user.isAvailable ?? user.IsAvailable ?? false),
   availabilityUpdatedAt:
     user.availabilityUpdatedAt ?? user.AvailabilityUpdatedAt ?? null,
+  managedDistrictId:
+    user.managedDistrictId ?? user.ManagedDistrictId ?? null,
+  enterpriseId:
+    user.enterpriseId ?? user.EnterpriseId ?? null,
 });
 
 
