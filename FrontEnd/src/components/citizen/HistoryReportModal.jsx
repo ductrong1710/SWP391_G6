@@ -378,7 +378,8 @@ const HistoryReportModal = ({
           )}
 
           {/* Send new feedback */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {(report.status === "Collected" || report.status === "Completed") ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <textarea
               rows={2}
               value={feedbackText}
@@ -453,7 +454,12 @@ const HistoryReportModal = ({
                 {sendingFeedback ? "..." : "Send"}
               </button>
             </div>
-          </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: "#6b7280", fontStyle: "italic", marginTop: 12, textAlign: "center", padding: "10px", backgroundColor: "#f3f4f6", borderRadius: "6px" }}>
+              Complaints can only be submitted after the collector marks this report as Collected or Completed.
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

@@ -35,6 +35,11 @@ namespace BusinessLogicLayer.Services.Implementation
             if (hasPending)
                 throw new InvalidOperationException("A complaint for this report is already pending review. Please wait for admin resolution before submitting a new one.");
 
+            if (report.Status != "Collected" && report.Status != "Completed")
+            {
+                throw new InvalidOperationException("Complaints can only be submitted after the collector has marked this report as Collected or Completed.");
+            }
+
             var feedback = new Feedback
             {
                 UserId = userId,
