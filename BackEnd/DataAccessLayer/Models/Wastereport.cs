@@ -20,6 +20,8 @@ public partial class Wastereport
     public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+    public int? DistrictId { get; set; }
+    public virtual District? District { get; set; }
 
     public virtual ICollection<AiWastePrediction> AiWastePredictions { get; set; } = new List<AiWastePrediction>();
 

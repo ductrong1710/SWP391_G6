@@ -7,5 +7,8 @@ namespace BusinessLogicLayer.DTOs.User
         public string Phone { get; set; } = string.Empty;
         public int RoleId { get; set; }
         public string Status { get; set; } = string.Empty;
+        public int? ManagedDistrictId { get; set; }
+        public int? EnterpriseId { get; set; }
+
     }
 }

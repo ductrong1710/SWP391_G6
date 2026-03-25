@@ -3,6 +3,7 @@ using BusinessLogicLayer.Services.Interface;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 
+
 namespace BusinessLogicLayer.Services.Implementation
 {
     public class AssignmentService : IAssignmentService
@@ -44,10 +45,21 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new ArgumentException("Selected user is not a Collector");
             }
-            if (!collector.IsAvailable)
+            if (collector.CollectorProfile == null)
+            {
+                throw new InvalidOperationException("Collector profile not found");
+            }
+
+            if (collector.CollectorProfile.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException("You can only assign collectors from your own enterprise");
+            }
+
+            if (!collector.CollectorProfile.IsAvailable)
             {
                 throw new InvalidOperationException("Collector is currently offline and cannot receive new assignments");
             }
+
 
             var openAssignments = await _uow.CollectorAssignments.CountOpenAssignmentsByCollectorAsync(dto.CollectorId);
             if (openAssignments >= MaxOpenAssignmentsPerCollector)
@@ -57,11 +69,18 @@ namespace BusinessLogicLayer.Services.Implementation
                 );
             }
 
-            // Check if already assigned
+            // Check if already assigned (active)
             var existingAssignments = await _uow.CollectorAssignments.GetByRequestIdAsync(requestId);
             if (existingAssignments.Any(x => x.AssignedCollector == dto.CollectorId && x.Status != "Cancelled"))
             {
                 throw new InvalidOperationException("This collector is already assigned to this request");
+            }
+
+            // Block re-assigning a collector who was previously cancelled on this request (e.g. warned by admin)
+            if (existingAssignments.Any(x => x.AssignedCollector == dto.CollectorId && x.Status == "Cancelled"))
+            {
+                throw new InvalidOperationException(
+                    "This collector was previously removed from this request due to a complaint. Please assign a different collector.");
             }
 
             // Create assignment
@@ -148,10 +167,21 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new InvalidOperationException("New collector is the same as current collector");
             }
-            if (!newCollector.IsAvailable)
+            if (newCollector.CollectorProfile == null)
+            {
+                throw new InvalidOperationException("Collector profile not found");
+            }
+
+            if (newCollector.CollectorProfile.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException("You can only reassign to collectors from your own enterprise");
+            }
+
+            if (!newCollector.CollectorProfile.IsAvailable)
             {
                 throw new InvalidOperationException("Collector is currently offline and cannot receive new assignments");
             }
+
 
             // Update assignment
             assignment.AssignedCollector = dto.NewCollectorId;

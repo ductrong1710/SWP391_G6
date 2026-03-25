@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DataAccessLayer.Models;
@@ -23,10 +23,8 @@ public partial class User
 
     public int TotalPoints { get; set; }
 
-    public bool IsAvailable { get; set; }
-
-    public DateTime? AvailabilityUpdatedAt { get; set; }
-
+    public virtual EnterpriseProfile? EnterpriseProfile { get; set; }
+    public virtual CollectorProfile? CollectorProfile { get; set; }
 
     public virtual ICollection<Collectionrequest> Collectionrequests { get; set; } = new List<Collectionrequest>();
 

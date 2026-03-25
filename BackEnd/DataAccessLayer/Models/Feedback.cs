@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DataAccessLayer.Models;
@@ -15,7 +15,11 @@ public partial class Feedback
 
     public string? Status { get; set; }
 
+    public string? ImageUrl { get; set; }
+
     public DateTime? CreatedAt { get; set; }
+
+    public string? ResolutionNote { get; set; }
 
     public virtual Wastereport? Report { get; set; }
 

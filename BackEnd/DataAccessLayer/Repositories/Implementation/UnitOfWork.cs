@@ -24,6 +24,7 @@ namespace DataAccessLayer.Repositories.Implementation
         public IGenericRepository<DataAccessLayer.Models.CollectionDetail> CollectionDetails { get; }
         public IGenericRepository<DataAccessLayer.Models.Rewardtransaction> RewardTransactions { get; }
         public INotificationRepository Notifications { get; private set; }
+        public IGenericRepository<DataAccessLayer.Models.Feedback> Feedbacks { get; }
 
         public UnitOfWork(
             AppDbContext context,
@@ -45,6 +46,7 @@ namespace DataAccessLayer.Repositories.Implementation
             CollectionDetails = new GenericRepository<DataAccessLayer.Models.CollectionDetail>(_context);
             RewardTransactions = new GenericRepository<DataAccessLayer.Models.Rewardtransaction>(_context);
             Notifications = new NotificationRepository(context);
+            Feedbacks = new GenericRepository<DataAccessLayer.Models.Feedback>(_context);
         }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
