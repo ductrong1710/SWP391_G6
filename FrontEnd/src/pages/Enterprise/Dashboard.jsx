@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import assignmentService from "../../services/assignmentService";
-import userService from "../../services/userService";
-import authService from "../../services/authService";
+import wasteReportService from "../../services/wasteReportService";
+import { buildDispatchItems } from "../../utils/dispatch";
 import "./Dashboard.css";
 
 const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
@@ -48,26 +48,28 @@ const Dashboard = () => {
     try {
       setLoading(true);
 
-      const currentUser = authService.getCurrentUser();
-
-      const [requests] = await Promise.all([
+      const [pendingReports, collectionRequests] = await Promise.all([
+        wasteReportService.getAllReports(),
         assignmentService.getCollectionRequests(),
-        userService.getCollectors(),
       ]);
+
+      const mergedItems = buildDispatchItems({
+        pendingReports,
+        collectionRequests,
+      });
 
       const { start, end } = getDateRange();
 
-      const filteredRequests = requests.filter((item) => {
-        const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
+      const filteredItems = mergedItems.filter((item) => {
+        const rawDate = item.createdAt || item.reportCreatedAt || item.assignedAt;
         if (!rawDate) return false;
+
         const date = new Date(rawDate);
         return date >= start && date <= end;
       });
 
-      const completedItems = filteredRequests.filter(
-        (item) =>
-          String(item.status).toLowerCase() === "completed" ||
-          String(item.assignmentStatus).toLowerCase() === "completed"
+      const completedItems = filteredItems.filter(
+        (item) => String(item.status).toLowerCase() === "completed"
       );
 
       const totalCollectedKg = completedItems.reduce((sum, item) => {
@@ -76,12 +78,12 @@ const Dashboard = () => {
 
       setStats({
         totalCollectedKg,
-        totalRequests: filteredRequests.length,
+        totalRequests: filteredItems.length,
         completedRequests: completedItems.length,
       });
 
       const wasteTypeCounts = {};
-      filteredRequests.forEach((item) => {
+      filteredItems.forEach((item) => {
         const types = String(item.wasteTypeName || "Other")
           .split(",")
           .map((type) => type.trim())
@@ -114,12 +116,14 @@ const Dashboard = () => {
         const now = new Date();
         const monthlyData = Array.from({ length: 12 }, (_, index) => {
           const month = index;
-          const count = filteredRequests.filter((item) => {
-            const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
+          const count = filteredItems.filter((item) => {
+            const rawDate = item.createdAt || item.reportCreatedAt || item.assignedAt;
             if (!rawDate) return false;
+
             const date = new Date(rawDate);
             return (
-              date.getMonth() === month && date.getFullYear() === now.getFullYear()
+              date.getMonth() === month &&
+              date.getFullYear() === now.getFullYear()
             );
           }).length;
 
@@ -151,11 +155,11 @@ const Dashboard = () => {
               ? date.toLocaleString("en-US", { weekday: "short" })
               : String(index + 1);
 
-          const count = filteredRequests.filter((item) => {
-            const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
+          const count = filteredItems.filter((item) => {
+            const rawDate = item.createdAt || item.reportCreatedAt || item.assignedAt;
             if (!rawDate) return false;
-            const itemDate = new Date(rawDate);
 
+            const itemDate = new Date(rawDate);
             return (
               itemDate.getDate() === date.getDate() &&
               itemDate.getMonth() === date.getMonth() &&
@@ -169,21 +173,27 @@ const Dashboard = () => {
         setCollectionTrend(dailyData);
       }
 
-      const recent = [...filteredRequests]
+      const recent = [...filteredItems]
         .sort((a, b) => {
-          const dateA = new Date(a.reportCreatedAt || a.createdAt || a.assignedAt || 0);
-          const dateB = new Date(b.reportCreatedAt || b.createdAt || b.assignedAt || 0);
+          const dateA = new Date(a.createdAt || a.reportCreatedAt || a.assignedAt || 0);
+          const dateB = new Date(b.createdAt || b.reportCreatedAt || b.assignedAt || 0);
           return dateB - dateA;
         })
         .slice(0, 5)
         .map((item) => ({
-          id: item.requestId,
-          userName: item.assignedCollectorName || "Unassigned Collector",
-          requestId: `REQ-${String(item.requestId).padStart(4, "0")}`,
+          id: `${item.kind || "item"}-${item.id || item.requestId || item.reportId}`,
+          userName:
+            item.kind === "report"
+              ? item.submittedByName || `Citizen #${item.reportId}`
+              : item.assignedCollectorName || `Request #${item.requestId}`,
+          requestId:
+            item.kind === "report"
+              ? `REPORT-${String(item.reportId || item.id).padStart(4, "0")}`
+              : `REQ-${String(item.requestId || item.id).padStart(4, "0")}`,
           wasteType: item.wasteTypeName || "Unknown",
-          status: item.assignmentStatus || item.status || "Unknown",
+          status: item.status || "Unknown",
           time: new Date(
-            item.reportCreatedAt || item.createdAt || item.assignedAt
+            item.createdAt || item.reportCreatedAt || item.assignedAt
           ).toLocaleString(),
         }));
 

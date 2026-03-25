@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
 import NotificationBell from "../NotificationBell";
 import ProfileDropdown from "../ProfileDropdown";
@@ -13,10 +13,16 @@ const NAV_ITEMS = [
 const EnterpriseHeader = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const user = authService.getCurrentUser();
 
   const handleLogout = () => {
     authService.logout();
+  };
+
+  const handleOpenSettings = () => {
+    navigate("/enterprise/settings");
+    setShowDropdown(false);
   };
 
   const displayName = user?.fullName || "Enterprise";
@@ -51,9 +57,9 @@ const EnterpriseHeader = () => {
           roleLabel={user?.roleName || "Enterprise"}
           open={showDropdown}
           onToggle={() => setShowDropdown((prev) => !prev)}
-          onProfile={() => setShowDropdown(false)}
-          onSettings={() => setShowDropdown(false)}
+          onSettings={handleOpenSettings}
           onLogout={handleLogout}
+          showProfile={false}
           wrapperClassName="ent-profile-wrapper"
           triggerClassName="ent-profile"
           avatarClassName="ent-avatar-placeholder"

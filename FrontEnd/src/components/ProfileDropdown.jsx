@@ -8,6 +8,7 @@ const ProfileDropdown = ({
   onProfile,
   onSettings,
   onLogout,
+  showProfile = true,
   wrapperClassName = "",
   triggerClassName = "",
   avatarClassName = "",
@@ -33,9 +34,11 @@ const ProfileDropdown = ({
 
           <div className="dd-divider"></div>
 
-          <button className="dd-item" onClick={onProfile}>
-            👤 Profile
-          </button>
+          {showProfile && (
+            <button className="dd-item" onClick={onProfile}>
+              👤 Profile
+            </button>
+          )}
 
           <button className="dd-item" onClick={onSettings}>
             ⚙️ Settings
