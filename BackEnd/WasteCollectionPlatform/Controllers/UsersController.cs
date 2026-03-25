@@ -229,5 +229,49 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin: Soft-delete user (set status to Inactive)
+        /// </summary>
+        [HttpPut("{id:int}/deactivate")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeactivateUser(int id)
+        {
+            try
+            {
+                var result = await _userService.SoftDeleteUserAsync(id);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Admin: Reactivate user (set status to Active)
+        /// </summary>
+        [HttpPut("{id:int}/activate")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ActivateUser(int id)
+        {
+            try
+            {
+                var result = await _userService.ReactivateUserAsync(id);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
     }
 }

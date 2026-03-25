@@ -20,6 +20,7 @@ namespace DataAccessLayer.Repositories.Interface
         IGenericRepository<DataAccessLayer.Models.CollectionDetail> CollectionDetails { get; }
         IGenericRepository<DataAccessLayer.Models.Rewardtransaction> RewardTransactions { get; }
         INotificationRepository Notifications { get; }
+        IGenericRepository<DataAccessLayer.Models.Feedback> Feedbacks { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }

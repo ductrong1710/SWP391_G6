@@ -226,6 +226,12 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Open'::character varying")
                 .HasColumnName("status");
+            entity.Property(e => e.ImageUrl)
+                .HasColumnType("text")
+                .HasColumnName("image_url");
+            entity.Property(e => e.ResolutionNote)
+                .HasColumnType("text")
+                .HasColumnName("resolution_note");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.Report).WithMany(p => p.Feedbacks)
@@ -377,6 +383,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.AvailabilityUpdatedAt)
                 .HasColumnName("availability_updated_at")
                 .HasColumnType("timestamp with time zone");
+            entity.Property(e => e.WarningCount)
+                .HasDefaultValue(0)
+                .HasColumnName("warning_count");
 
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)

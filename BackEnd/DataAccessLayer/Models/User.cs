@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DataAccessLayer.Models;
@@ -26,6 +26,8 @@ public partial class User
     public bool IsAvailable { get; set; }
 
     public DateTime? AvailabilityUpdatedAt { get; set; }
+
+    public int WarningCount { get; set; }
 
 
     public virtual ICollection<Collectionrequest> Collectionrequests { get; set; } = new List<Collectionrequest>();
