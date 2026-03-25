@@ -132,7 +132,7 @@ namespace BusinessLogicLayer.Services.Implementation
                         detail.AssignmentStatus = assignment.Status;
                         detail.CollectorId = assignment.AssignedCollector;
                         detail.CollectorName = collector?.FullName;
-                        detail.CollectorWarningCount = collector?.WarningCount ?? 0;
+                        detail.CollectorWarningCount = collector?.CollectorProfile?.WarningCount ?? 0;
                         detail.AssignedAt = assignment.AssignedAt;
                         detail.StartedAt = assignment.StartedAt;
                         detail.ArrivedAt = assignment.ArrivedAt;
@@ -248,14 +248,14 @@ namespace BusinessLogicLayer.Services.Implementation
             if (collectorId.HasValue)
             {
                 var collector = await _uow.Users.GetByIdAsync(collectorId.Value);
-                if (collector != null)
+                if (collector?.CollectorProfile != null)
                 {
                     int points = action == "reassign" ? ReassignPoints : WarnPoints;
-                    collector.WarningCount += points;
 
-                    // Auto-deactivate if >= threshold
+                    collector.CollectorProfile.WarningCount += points;
+
                     bool autoDeactivated = false;
-                    if (collector.WarningCount >= WarningThreshold)
+                    if (collector.CollectorProfile.WarningCount >= WarningThreshold)
                     {
                         collector.Status = "Inactive";
                         autoDeactivated = true;
@@ -263,10 +263,9 @@ namespace BusinessLogicLayer.Services.Implementation
 
                     _uow.Users.Update(collector);
 
-                    // Notify collector
                     string collectorMsg = action == "reassign"
-                        ? $"You received a warning (+{points} pts, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Your assignment has been cancelled due to a valid citizen complaint."
-                        : $"You received a warning (+{points} pt, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Reason: {dto.AdminNote}";
+                        ? $"You received a warning (+{points} pts, total: {collector.CollectorProfile.WarningCount}/{WarningThreshold}) for report #{reportId}. Your assignment has been cancelled due to a valid citizen complaint."
+                        : $"You received a warning (+{points} pt, total: {collector.CollectorProfile.WarningCount}/{WarningThreshold}) for report #{reportId}. Reason: {dto.AdminNote}";
 
                     if (autoDeactivated)
                     {
