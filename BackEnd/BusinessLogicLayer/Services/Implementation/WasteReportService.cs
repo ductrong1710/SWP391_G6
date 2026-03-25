@@ -2,6 +2,9 @@ using BusinessLogicLayer.DTOs.WasteReport;
 using BusinessLogicLayer.Services.Interface;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
+using DataAccessLayer.Data;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace BusinessLogicLayer.Services.Implementation
 {
@@ -9,11 +12,54 @@ namespace BusinessLogicLayer.Services.Implementation
     {
         private const int DuplicateRadiusMeters = 30;
         private readonly IUnitOfWork _uow;
+        private readonly AppDbContext _db;
 
-        public WasteReportService(IUnitOfWork uow)
+        public WasteReportService(IUnitOfWork uow, AppDbContext db)
         {
             _uow = uow;
+            _db = db;
         }
+
+        private async Task<int?> ResolveDistrictIdAsync(decimal latitude, decimal longitude)
+        {
+            var conn = _db.Database.GetDbConnection();
+
+            if (conn.State != System.Data.ConnectionState.Open)
+            {
+                await conn.OpenAsync();
+            }
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                select district_id
+                from districts
+                where is_active = true
+                  and st_contains(
+                boundary,
+                st_setsrid(st_point(@lng, @lat), 4326)
+                     )
+                 limit 1;";
+            var latParam = cmd.CreateParameter();
+            latParam.ParameterName = "@lat";
+            latParam.Value = latitude;
+            cmd.Parameters.Add(latParam);
+
+            var lngParam = cmd.CreateParameter();
+            lngParam.ParameterName = "@lng";
+            lngParam.Value = longitude;
+            cmd.Parameters.Add(lngParam);
+
+            var result = await cmd.ExecuteScalarAsync();
+
+            if (result == null || result == DBNull.Value)
+            {
+                return null;
+            }
+
+            return Convert.ToInt32(result);
+        }
+
+
 
         public async Task<WasteReportCreatedResponseDto> CreateAsync(int userId, CreateWasteReportDto dto)
         {
@@ -92,6 +138,11 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new InvalidOperationException("A similar waste report already exists in this location.");
             }
+            var districtId = await ResolveDistrictIdAsync(dto.Latitude, dto.Longitude);
+            if (!districtId.HasValue)
+            {
+                throw new InvalidOperationException("This location is outside supported service districts.");
+            }
 
             var entity = new Wastereport
             {
@@ -99,10 +150,11 @@ namespace BusinessLogicLayer.Services.Implementation
                 ImageUrl = dto.Image,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
+                DistrictId = districtId.Value,
                 Description = dto.Description,
                 Status = "Pending",
                 CreatedAt = nowUtc,
-                WasteTypes = wasteTypes 
+                WasteTypes = wasteTypes
             };
 
             await _uow.WasteReports.AddAsync(entity);
@@ -116,22 +168,24 @@ namespace BusinessLogicLayer.Services.Implementation
             await _uow.Notifications.AddAsync(notif);
 
             var enterprises = await _uow.Users.GetUsersByRoleAsync("Enterprise");
-            if (enterprises != null && enterprises.Any())
+            var targetEnterprise = enterprises.FirstOrDefault(e =>
+                e.EnterpriseProfile != null &&
+                e.EnterpriseProfile.ManagedDistrictId == districtId.Value
+            );
+
+            if (targetEnterprise != null)
             {
-                foreach (var enterprise in enterprises)
+                var enterpriseNotif = new Notification
                 {
-                    var enterpriseNotif = new Notification
-                    {
-                        UserId = enterprise.UserId,
-                        Content = $"A new waste report (Pending) has been submitted and is waiting for assignment.",
-                        IsRead = false,
-                        CreatedAt = nowUtc
-                    };
-                    await _uow.Notifications.AddAsync(enterpriseNotif);
-                }
+                    UserId = targetEnterprise.UserId,
+                    Content = $"A new waste report (Pending) has been submitted in your managed district.",
+                    IsRead = false,
+                    CreatedAt = nowUtc
+                };
+                await _uow.Notifications.AddAsync(enterpriseNotif);
             }
 
-            await _uow.SaveChangesAsync();
+        await _uow.SaveChangesAsync();
 
             return new WasteReportCreatedResponseDto
             {
@@ -149,6 +203,22 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("WasteReport not found");
             }
 
+            var enterprise = await _uow.Users.GetByIdAsync(enterpriseId);
+            if (enterprise == null || enterprise.EnterpriseProfile == null)
+            {
+                throw new InvalidOperationException("Enterprise profile not found");
+            }
+
+            if (!report.DistrictId.HasValue)
+            {
+                throw new InvalidOperationException("Report district is missing");
+            }
+
+            if (enterprise.EnterpriseProfile.ManagedDistrictId != report.DistrictId.Value)
+            {
+                throw new UnauthorizedAccessException("You can only accept reports in your managed district.");
+            }
+
             if (!string.Equals(report.Status, "Pending", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only Pending reports can be accepted");
@@ -159,7 +229,6 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new InvalidOperationException("Collection request already exists for this report");
             }
-
             report.Status = "Accepted";
             _uow.WasteReports.Update(report);
 
@@ -317,6 +386,12 @@ namespace BusinessLogicLayer.Services.Implementation
                 <= DuplicateRadiusMeters
             );
 
+            var districtId = await ResolveDistrictIdAsync(dto.Latitude, dto.Longitude);
+            if (!districtId.HasValue)
+            {
+                throw new InvalidOperationException("This location is outside supported service districts.");
+            }
+
             if (isDuplicate)
             {
                 throw new InvalidOperationException("A similar waste report already exists in this location.");
@@ -335,7 +410,7 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 report.WasteTypes.Add(wt);
             }
-
+            report.DistrictId = districtId.Value;
             _uow.WasteReports.Update(report);
             await _uow.SaveChangesAsync();
 

@@ -1,17 +1,21 @@
 using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
+using DataAccessLayer.Data;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
+using Microsoft.EntityFrameworkCore;
 
 namespace BusinessLogicLayer.Services.Implementation
 {
     public class UserService : IUserService
     {
         private readonly IUnitOfWork _uow;
+        private readonly AppDbContext _db;
 
-        public UserService(IUnitOfWork uow)
+        public UserService(IUnitOfWork uow, AppDbContext db)
         {
             _uow = uow;
+            _db = db;
         }
 
         public async Task<UserResponseDto> CreateUserAsync(CreateUserRequestDto request)
@@ -19,11 +23,30 @@ namespace BusinessLogicLayer.Services.Implementation
             if (string.IsNullOrWhiteSpace(request.Email))
                 throw new ArgumentException("Email is required");
 
+            if (string.IsNullOrWhiteSpace(request.Password))
+                throw new ArgumentException("Password is required");
+
             if (await _uow.Users.EmailExistsAsync(request.Email))
                 throw new InvalidOperationException("Email already exists");
 
             if (!string.IsNullOrWhiteSpace(request.Phone) && await _uow.Users.PhoneExistsAsync(request.Phone))
                 throw new InvalidOperationException("Phone already exists");
+
+            var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
+            if (role == null)
+                throw new InvalidOperationException("Role not found");
+
+            if (string.Equals(role.RoleName, "Enterprise", StringComparison.OrdinalIgnoreCase)
+                && !request.ManagedDistrictId.HasValue)
+            {
+                throw new ArgumentException("ManagedDistrictId is required for Enterprise");
+            }
+
+            if (string.Equals(role.RoleName, "Collector", StringComparison.OrdinalIgnoreCase)
+                && !request.EnterpriseId.HasValue)
+            {
+                throw new ArgumentException("EnterpriseId is required for Collector");
+            }
 
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
@@ -41,8 +64,31 @@ namespace BusinessLogicLayer.Services.Implementation
             await _uow.Users.AddAsync(user);
             await _uow.SaveChangesAsync();
 
-            var created = await _uow.Users.GetByIdAsync(user.UserId);
+            if (string.Equals(role.RoleName, "Enterprise", StringComparison.OrdinalIgnoreCase))
+            {
+                _db.EnterpriseProfiles.Add(new EnterpriseProfile
+                {
+                    EnterpriseId = user.UserId,
+                    ManagedDistrictId = request.ManagedDistrictId!.Value,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else if (string.Equals(role.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
+            {
+                _db.CollectorProfiles.Add(new CollectorProfile
+                {
+                    CollectorId = user.UserId,
+                    EnterpriseId = request.EnterpriseId!.Value,
+                    IsAvailable = true,
+                    AvailabilityUpdatedAt = DateTime.UtcNow,
+                    WarningCount = 0,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
 
+            await _uow.SaveChangesAsync();
+
+            var created = await _uow.Users.GetByIdAsync(user.UserId);
             return MapToDto(created!);
         }
 
@@ -64,8 +110,6 @@ namespace BusinessLogicLayer.Services.Implementation
             if (user == null)
                 throw new InvalidOperationException("User not found");
 
-            // Email is NOT allowed to be changed by admin
-
             if (!string.IsNullOrWhiteSpace(request.Phone) && request.Phone != user.Phone)
             {
                 if (await _uow.Users.PhoneExistsExceptAsync(request.Phone, id))
@@ -78,11 +122,79 @@ namespace BusinessLogicLayer.Services.Implementation
             if (!string.IsNullOrWhiteSpace(request.Phone))
                 user.Phone = request.Phone;
 
-            if (request.RoleId > 0)
-                user.RoleId = request.RoleId;
-
             if (!string.IsNullOrWhiteSpace(request.Status))
                 user.Status = request.Status;
+
+            var targetRoleId = request.RoleId > 0 ? request.RoleId : user.RoleId;
+            var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleId == targetRoleId);
+            if (role == null)
+                throw new InvalidOperationException("Role not found");
+
+            user.RoleId = targetRoleId;
+
+            if (string.Equals(role.RoleName, "Enterprise", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!request.ManagedDistrictId.HasValue)
+                    throw new ArgumentException("ManagedDistrictId is required for Enterprise");
+
+                if (user.CollectorProfile != null)
+                {
+                    _db.CollectorProfiles.Remove(user.CollectorProfile);
+                }
+
+                if (user.EnterpriseProfile == null)
+                {
+                    _db.EnterpriseProfiles.Add(new EnterpriseProfile
+                    {
+                        EnterpriseId = user.UserId,
+                        ManagedDistrictId = request.ManagedDistrictId.Value,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    user.EnterpriseProfile.ManagedDistrictId = request.ManagedDistrictId.Value;
+                }
+            }
+            else if (string.Equals(role.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!request.EnterpriseId.HasValue)
+                    throw new ArgumentException("EnterpriseId is required for Collector");
+
+                if (user.EnterpriseProfile != null)
+                {
+                    _db.EnterpriseProfiles.Remove(user.EnterpriseProfile);
+                }
+
+                if (user.CollectorProfile == null)
+                {
+                    _db.CollectorProfiles.Add(new CollectorProfile
+                    {
+                        CollectorId = user.UserId,
+                        EnterpriseId = request.EnterpriseId.Value,
+                        IsAvailable = true,
+                        AvailabilityUpdatedAt = DateTime.UtcNow,
+                        WarningCount = 0,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    user.CollectorProfile.EnterpriseId = request.EnterpriseId.Value;
+                }
+            }
+            else
+            {
+                if (user.EnterpriseProfile != null)
+                {
+                    _db.EnterpriseProfiles.Remove(user.EnterpriseProfile);
+                }
+
+                if (user.CollectorProfile != null)
+                {
+                    _db.CollectorProfiles.Remove(user.CollectorProfile);
+                }
+            }
 
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
@@ -112,7 +224,12 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new InvalidOperationException("User not found");
 
             user.Status = "Active";
-            user.WarningCount = 0; // Reset warnings on reactivation
+
+            if (user.CollectorProfile != null)
+            {
+                user.CollectorProfile.WarningCount = 0;
+            }
+
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
 
@@ -125,6 +242,16 @@ namespace BusinessLogicLayer.Services.Implementation
             var user = await _uow.Users.GetByIdAsync(id);
             if (user == null)
                 throw new InvalidOperationException("User not found");
+
+            if (user.EnterpriseProfile != null)
+            {
+                _db.EnterpriseProfiles.Remove(user.EnterpriseProfile);
+            }
+
+            if (user.CollectorProfile != null)
+            {
+                _db.CollectorProfiles.Remove(user.CollectorProfile);
+            }
 
             _uow.Users.Delete(user);
             await _uow.SaveChangesAsync();
@@ -156,6 +283,7 @@ namespace BusinessLogicLayer.Services.Implementation
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
         }
+
         public async Task<UserResponseDto> UpdateCollectorAvailabilityAsync(int userId, bool isAvailable)
         {
             var user = await _uow.Users.GetByIdAsync(userId);
@@ -165,8 +293,11 @@ namespace BusinessLogicLayer.Services.Implementation
             if (!string.Equals(user.Role?.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
                 throw new UnauthorizedAccessException("Only collectors can update availability");
 
-            user.IsAvailable = isAvailable;
-            user.AvailabilityUpdatedAt = DateTime.UtcNow;
+            if (user.CollectorProfile == null)
+                throw new InvalidOperationException("Collector profile not found");
+
+            user.CollectorProfile.IsAvailable = isAvailable;
+            user.CollectorProfile.AvailabilityUpdatedAt = DateTime.UtcNow;
 
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync();
@@ -180,17 +311,19 @@ namespace BusinessLogicLayer.Services.Implementation
             return new UserResponseDto
             {
                 UserId = user.UserId,
+                RoleId = user.RoleId,
                 Email = user.Email ?? string.Empty,
                 FullName = user.FullName ?? string.Empty,
                 Phone = user.Phone ?? string.Empty,
                 RoleName = user.Role?.RoleName ?? string.Empty,
                 Status = user.Status ?? string.Empty,
                 CreatedAt = user.CreatedAt,
-                IsAvailable = user.IsAvailable,
-                AvailabilityUpdatedAt = user.AvailabilityUpdatedAt
+                IsAvailable = user.CollectorProfile?.IsAvailable ?? false,
+                AvailabilityUpdatedAt = user.CollectorProfile?.AvailabilityUpdatedAt,
+                ManagedDistrictId = user.EnterpriseProfile?.ManagedDistrictId,
+                EnterpriseId = user.CollectorProfile?.EnterpriseId
             };
         }
 
-        
     }
 }

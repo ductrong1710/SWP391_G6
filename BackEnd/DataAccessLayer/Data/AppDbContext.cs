@@ -38,7 +38,9 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Wastetype> Wastetypes { get; set; }
     public virtual DbSet<CollectionDetail> CollectionDetails { get; set; }
-
+    public virtual DbSet<District> Districts { get; set; }
+    public virtual DbSet<EnterpriseProfile> EnterpriseProfiles { get; set; }
+    public virtual DbSet<CollectorProfile> CollectorProfiles { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -378,16 +380,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.TotalPoints)
                 .HasDefaultValue(0)
                 .HasColumnName("total_points");
-            entity.Property(e => e.IsAvailable)
-                 .HasColumnName("is_available");
-            entity.Property(e => e.AvailabilityUpdatedAt)
-                .HasColumnName("availability_updated_at")
-                .HasColumnType("timestamp with time zone");
-            entity.Property(e => e.WarningCount)
-                .HasDefaultValue(0)
-                .HasColumnName("warning_count");
-
-
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -422,6 +414,13 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("'Pending'::character varying")
                 .HasColumnName("status");
             entity.Property(e => e.SubmittedBy).HasColumnName("submitted_by");
+
+            entity.Property(e => e.DistrictId).HasColumnName("district_id");
+
+            entity.HasOne(d => d.District).WithMany(p => p.Wastereports)
+                .HasForeignKey(d => d.DistrictId)
+                .HasConstraintName("fk_wastereports_district");
+
 
             entity.HasOne(d => d.SubmittedByNavigation).WithMany(p => p.Wastereports)
                 .HasForeignKey(d => d.SubmittedBy)
@@ -483,6 +482,71 @@ public partial class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.ClientSetNull)
                   .HasConstraintName("collection_details_waste_type_id_fkey");
         });
+
+        modelBuilder.Entity<District>(entity =>
+        {
+            entity.HasKey(e => e.DistrictId).HasName("districts_pkey");
+            entity.ToTable("districts");
+
+            entity.Property(e => e.DistrictId).HasColumnName("district_id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Code).HasMaxLength(20).HasColumnName("code");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
+        });
+
+        modelBuilder.Entity<EnterpriseProfile>(entity =>
+        {
+            entity.HasKey(e => e.EnterpriseId).HasName("enterprise_profiles_pkey");
+            entity.ToTable("enterprise_profiles");
+
+            entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
+            entity.Property(e => e.ManagedDistrictId).HasColumnName("managed_district_id");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Enterprise).WithOne(p => p.EnterpriseProfile)
+                .HasForeignKey<EnterpriseProfile>(d => d.EnterpriseId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(d => d.ManagedDistrict).WithMany(p => p.EnterpriseProfiles)
+                .HasForeignKey(d => d.ManagedDistrictId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<CollectorProfile>(entity =>
+        {
+            entity.HasKey(e => e.CollectorId).HasName("collector_profiles_pkey");
+            entity.ToTable("collector_profiles");
+
+            entity.Property(e => e.CollectorId).HasColumnName("collector_id");
+            entity.Property(e => e.EnterpriseId).HasColumnName("enterprise_id");
+            entity.Property(e => e.IsAvailable).HasColumnName("is_available");
+            entity.Property(e => e.AvailabilityUpdatedAt)
+                .HasColumnName("availability_updated_at")
+                .HasColumnType("timestamp with time zone");
+            entity.Property(e => e.WarningCount)
+                .HasDefaultValue(0)
+                .HasColumnName("warning_count");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Collector).WithOne(p => p.CollectorProfile)
+                .HasForeignKey<CollectorProfile>(d => d.CollectorId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(d => d.Enterprise).WithMany()
+                .HasForeignKey(d => d.EnterpriseId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(d => d.EnterpriseProfile).WithMany(p => p.CollectorProfiles)
+                .HasForeignKey(d => d.EnterpriseId)
+                .HasPrincipalKey(p => p.EnterpriseId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+        });
+
 
         OnModelCreatingPartial(modelBuilder);
     }

@@ -32,6 +32,8 @@ namespace BusinessLogicLayer
             services.AddScoped<IRewardService, RewardService>();
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IFeedbackService, FeedbackService>();
+            services.AddScoped<IDistrictService, DistrictService>();
+
 
             return services;
         }

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import userService from "../../services/userService";
+import api from "../../services/api";
 import { toast } from "react-toastify";
 import "./Admin.css";
 
@@ -10,25 +11,45 @@ const ROLE_OPTIONS = [
   { id: 4, name: "Admin" },
 ];
 
+const ENTERPRISE_ROLE_ID = 2;
+const COLLECTOR_ROLE_ID = 3;
+
+const emptyEditForm = {
+  fullName: "",
+  phone: "",
+  roleId: 0,
+  status: "Active",
+  managedDistrictId: "",
+  enterpriseId: "",
+};
+
+const emptyCreateForm = {
+  fullName: "",
+  email: "",
+  password: "",
+  phone: "",
+  roleId: ENTERPRISE_ROLE_ID,
+  managedDistrictId: "",
+  enterpriseId: "",
+};
+
 export default function Users() {
   const [users, setUsers] = useState([]);
+  const [districts, setDistricts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // Edit modal state
   const [editingUser, setEditingUser] = useState(null);
-  const [editForm, setEditForm] = useState({ fullName: "", phone: "", roleId: 0, status: "" });
+  const [editForm, setEditForm] = useState(emptyEditForm);
   const [saving, setSaving] = useState(false);
 
-  // Create modal state
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ fullName: "", email: "", password: "", phone: "", roleId: 2 });
+  const [createForm, setCreateForm] = useState(emptyCreateForm);
   const [creating, setCreating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Action menu
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const loadUsers = async () => {
@@ -43,21 +64,40 @@ export default function Users() {
     }
   };
 
+  const loadDistricts = async () => {
+    try {
+      const response = await api.get("/districts");
+      const items = Array.isArray(response.data) ? response.data : [];
+      setDistricts(items);
+    } catch {
+      setDistricts([]);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
+    loadDistricts();
   }, []);
 
-  // Close action menu on outside click
   useEffect(() => {
     const handler = () => setOpenMenuId(null);
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, []);
 
+  const enterpriseUsers = useMemo(
+    () =>
+      users
+        .filter((u) => Number(u.roleId) === ENTERPRISE_ROLE_ID || u.roleName === "Enterprise")
+        .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "")),
+    [users]
+  );
+
   const roles = useMemo(
     () => ["All", ...Array.from(new Set(users.map((u) => u.roleName || "Unknown")))],
     [users]
   );
+
   const statuses = useMemo(
     () => ["All", ...Array.from(new Set(users.map((u) => u.status || "Unknown")))],
     [users]
@@ -82,7 +122,11 @@ export default function Users() {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? "N/A"
-      : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      : date.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
   };
 
   const initialsOf = (name) => {
@@ -92,7 +136,28 @@ export default function Users() {
     return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
   };
 
-  // ── Edit handlers ──
+  const resetCreateForm = () => {
+    setCreateForm(emptyCreateForm);
+    setShowPassword(false);
+  };
+
+  const normalizeRoleFields = (form) => {
+    const roleId = Number(form.roleId);
+
+    return {
+      ...form,
+      roleId,
+      managedDistrictId:
+        roleId === ENTERPRISE_ROLE_ID && form.managedDistrictId !== ""
+          ? Number(form.managedDistrictId)
+          : null,
+      enterpriseId:
+        roleId === COLLECTOR_ROLE_ID && form.enterpriseId !== ""
+          ? Number(form.enterpriseId)
+          : null,
+    };
+  };
+
   const openEdit = (user) => {
     setEditingUser(user);
     setEditForm({
@@ -100,15 +165,59 @@ export default function Users() {
       phone: user.phone || "",
       roleId: user.roleId || ROLE_OPTIONS.find((r) => r.name === user.roleName)?.id || 1,
       status: user.status || "Active",
+      managedDistrictId:
+        user.managedDistrictId !== null && user.managedDistrictId !== undefined
+          ? String(user.managedDistrictId)
+          : "",
+      enterpriseId:
+        user.enterpriseId !== null && user.enterpriseId !== undefined
+          ? String(user.enterpriseId)
+          : "",
     });
     setOpenMenuId(null);
   };
 
+  const handleEditRoleChange = (roleId) => {
+    setEditForm((prev) => ({
+      ...prev,
+      roleId,
+      managedDistrictId: roleId === ENTERPRISE_ROLE_ID ? prev.managedDistrictId : "",
+      enterpriseId: roleId === COLLECTOR_ROLE_ID ? prev.enterpriseId : "",
+    }));
+  };
+
+  const handleCreateRoleChange = (roleId) => {
+    setCreateForm((prev) => ({
+      ...prev,
+      roleId,
+      managedDistrictId: roleId === ENTERPRISE_ROLE_ID ? prev.managedDistrictId : "",
+      enterpriseId: roleId === COLLECTOR_ROLE_ID ? prev.enterpriseId : "",
+    }));
+  };
+
   const handleSave = async () => {
     if (!editingUser) return;
+
+    const payload = normalizeRoleFields(editForm);
+
+    if (!payload.fullName.trim()) {
+      toast.error("Full name is required");
+      return;
+    }
+
+    if (payload.roleId === ENTERPRISE_ROLE_ID && !payload.managedDistrictId) {
+      toast.error("Please select a district for Enterprise");
+      return;
+    }
+
+    if (payload.roleId === COLLECTOR_ROLE_ID && !payload.enterpriseId) {
+      toast.error("Please select an enterprise for Collector");
+      return;
+    }
+
     setSaving(true);
     try {
-      await userService.updateUser(editingUser.userId, editForm);
+      await userService.updateUser(editingUser.userId, payload);
       toast.success("User updated successfully");
       setEditingUser(null);
       loadUsers();
@@ -119,7 +228,6 @@ export default function Users() {
     }
   };
 
-  // ── Deactivate / Activate ──
   const handleDeactivate = async (userId) => {
     setOpenMenuId(null);
     if (!window.confirm("Are you sure you want to deactivate this user?")) return;
@@ -144,16 +252,29 @@ export default function Users() {
   };
 
   const handleCreate = async () => {
-    if (!createForm.fullName.trim() || !createForm.email.trim() || !createForm.password.trim() || !createForm.phone.trim()) {
+    const payload = normalizeRoleFields(createForm);
+
+    if (!payload.fullName.trim() || !payload.email.trim() || !payload.password.trim() || !payload.phone.trim()) {
       toast.error("Full name, email, password, and phone are required");
       return;
     }
+
+    if (payload.roleId === ENTERPRISE_ROLE_ID && !payload.managedDistrictId) {
+      toast.error("Please select a district for Enterprise");
+      return;
+    }
+
+    if (payload.roleId === COLLECTOR_ROLE_ID && !payload.enterpriseId) {
+      toast.error("Please select an enterprise for Collector");
+      return;
+    }
+
     setCreating(true);
     try {
-      await userService.createUser(createForm);
+      await userService.createUser(payload);
       toast.success("Account created successfully!");
       setShowCreate(false);
-      setCreateForm({ fullName: "", email: "", password: "", phone: "", roleId: 2 });
+      resetCreateForm();
       loadUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to create account");
@@ -185,11 +306,10 @@ export default function Users() {
             gap: 6,
           }}
         >
-          ➕ Create Account
+          Create Account
         </button>
       </div>
 
-      {/* Filters */}
       <div className="admin-card mb-4 filter-bar">
         <div className="search-wrapper">
           <span className="search-icon">🔍</span>
@@ -203,18 +323,21 @@ export default function Users() {
         <div className="filter-actions">
           <select className="filter-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
             {roles.map((role) => (
-              <option key={role} value={role}>{role}</option>
+              <option key={role} value={role}>
+                {role}
+              </option>
             ))}
           </select>
           <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             {statuses.map((status) => (
-              <option key={status} value={status}>{status}</option>
+              <option key={status} value={status}>
+                {status}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Table */}
       <div className="admin-card no-padding">
         <table className="admin-table">
           <thead>
@@ -229,15 +352,25 @@ export default function Users() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ padding: 24 }}>Loading...</td></tr>
+              <tr>
+                <td colSpan={6} style={{ padding: 24 }}>
+                  Loading...
+                </td>
+              </tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>No users found</td></tr>
+              <tr>
+                <td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#94a3b8" }}>
+                  No users found
+                </td>
+              </tr>
             ) : (
               filtered.map((user) => (
                 <tr key={user.userId ?? user.email}>
                   <td>
                     <div className="user-cell">
-                      <div className="user-avatar" aria-hidden>{initialsOf(user.fullName)}</div>
+                      <div className="user-avatar" aria-hidden>
+                        {initialsOf(user.fullName)}
+                      </div>
                       <div>
                         <div className="u-name">{user.fullName || "Unknown"}</div>
                         <div className="u-email">{user.email || "No email"}</div>
@@ -283,25 +416,22 @@ export default function Users() {
                         }}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button
-                          style={menuBtnStyle}
-                          onClick={() => openEdit(user)}
-                        >
-                          ✏️ Edit User
+                        <button className="admin-menu-btn" onClick={() => openEdit(user)}>
+                          Edit User
                         </button>
                         {user.status === "Inactive" ? (
                           <button
-                            style={{ ...menuBtnStyle, color: "#059669" }}
+                            className="admin-menu-btn admin-menu-btn-success"
                             onClick={() => handleActivate(user.userId)}
                           >
-                            ✅ Activate
+                            Activate
                           </button>
                         ) : (
                           <button
-                            style={{ ...menuBtnStyle, color: "#ef4444" }}
+                            className="admin-menu-btn admin-menu-btn-danger"
                             onClick={() => handleDeactivate(user.userId)}
                           >
-                            🚫 Deactivate
+                            Deactivate
                           </button>
                         )}
                       </div>
@@ -314,70 +444,84 @@ export default function Users() {
         </table>
       </div>
 
-      {/* Edit Modal */}
       {editingUser && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
+          className="admin-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setEditingUser(null);
           }}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setEditingUser(null); }}
         >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 14,
-              padding: 28,
-              width: 440,
-              maxHeight: "80vh",
-              overflow: "auto",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700 }}>Edit User</h3>
-            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 20 }}>
-            </div>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="admin-modal-title">Edit User</h3>
 
-            {/* Full Name */}
-            <label style={labelStyle}>Full Name</label>
+            <label className="admin-form-label">Full Name</label>
             <input
-              style={inputStyle}
+              className="admin-form-input"
               value={editForm.fullName}
               onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
               placeholder="Full name"
             />
 
-            {/* Phone */}
-            <label style={labelStyle}>Phone</label>
+            <label className="admin-form-label">Phone</label>
             <input
-              style={inputStyle}
+              className="admin-form-input"
               value={editForm.phone}
               onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
               placeholder="Phone number"
             />
 
-            {/* Role */}
-            <label style={labelStyle}>Role</label>
+            <label className="admin-form-label">Role</label>
             <select
-              style={inputStyle}
+              className="admin-form-select"
               value={editForm.roleId}
-              onChange={(e) => setEditForm({ ...editForm, roleId: Number(e.target.value) })}
+              onChange={(e) => handleEditRoleChange(Number(e.target.value))}
             >
               {ROLE_OPTIONS.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
               ))}
             </select>
 
-            {/* Status */}
-            <label style={labelStyle}>Status</label>
+            {Number(editForm.roleId) === ENTERPRISE_ROLE_ID && (
+              <>
+                <label className="admin-form-label">Managed District</label>
+                <select
+                  className="admin-form-select"
+                  value={editForm.managedDistrictId}
+                  onChange={(e) => setEditForm({ ...editForm, managedDistrictId: e.target.value })}
+                >
+                  <option value="">Select district</option>
+                  {districts.map((d) => (
+                    <option key={d.districtId ?? d.id} value={d.districtId ?? d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {Number(editForm.roleId) === COLLECTOR_ROLE_ID && (
+              <>
+                <label className="admin-form-label">Enterprise</label>
+                <select
+                  className="admin-form-select"
+                  value={editForm.enterpriseId}
+                  onChange={(e) => setEditForm({ ...editForm, enterpriseId: e.target.value })}
+                >
+                  <option value="">Select enterprise</option>
+                  {enterpriseUsers.map((u) => (
+                    <option key={u.userId} value={u.userId}>
+                      {u.fullName} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            <label className="admin-form-label">Status</label>
             <select
-              style={inputStyle}
+              className="admin-form-select"
               value={editForm.status}
               onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
             >
@@ -385,36 +529,11 @@ export default function Users() {
               <option value="Inactive">Inactive</option>
             </select>
 
-            {/* Buttons */}
-            <div style={{ display: "flex", gap: 10, marginTop: 24, justifyContent: "flex-end" }}>
-              <button
-                onClick={() => setEditingUser(null)}
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: 8,
-                  border: "1px solid #e2e8f0",
-                  background: "#fff",
-                  color: "#475569",
-                  cursor: "pointer",
-                  fontSize: 14,
-                }}
-              >
+            <div className="admin-modal-actions">
+              <button className="admin-btn-secondary" onClick={() => setEditingUser(null)}>
                 Cancel
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  padding: "8px 24px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: saving ? "#94a3b8" : "#10b981",
-                  color: "#fff",
-                  cursor: saving ? "not-allowed" : "pointer",
-                  fontWeight: 600,
-                  fontSize: 14,
-                }}
-              >
+              <button className="admin-btn-primary" onClick={handleSave} disabled={saving}>
                 {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
@@ -422,68 +541,87 @@ export default function Users() {
         </div>
       )}
 
-      {/* Create Account Modal */}
       {showCreate && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
+          className="admin-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCreate(false);
+              resetCreateForm();
+            }
           }}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}
         >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 14,
-              padding: 28,
-              width: 440,
-              maxHeight: "80vh",
-              overflow: "auto",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Create Account</h3>
-            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>
-              Create a new Enterprise or Collector account
-            </div>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="admin-modal-title">Create Account</h3>
+            <div className="admin-modal-subtitle">Create a new Enterprise or Collector account</div>
 
-            <label style={labelStyle}>Role *</label>
+            <label className="admin-form-label">Role *</label>
             <select
-              style={inputStyle}
+              className="admin-form-select"
               value={createForm.roleId}
-              onChange={(e) => setCreateForm({ ...createForm, roleId: Number(e.target.value) })}
+              onChange={(e) => handleCreateRoleChange(Number(e.target.value))}
             >
-              <option value={2}>Enterprise</option>
-              <option value={3}>Collector</option>
+              <option value={ENTERPRISE_ROLE_ID}>Enterprise</option>
+              <option value={COLLECTOR_ROLE_ID}>Collector</option>
             </select>
 
-            <label style={labelStyle}>Full Name *</label>
+            {Number(createForm.roleId) === ENTERPRISE_ROLE_ID && (
+              <>
+                <label className="admin-form-label">Managed District *</label>
+                <select
+                  className="admin-form-select"
+                  value={createForm.managedDistrictId}
+                  onChange={(e) => setCreateForm({ ...createForm, managedDistrictId: e.target.value })}
+                >
+                  <option value="">Select district</option>
+                  {districts.map((d) => (
+                    <option key={d.districtId ?? d.id} value={d.districtId ?? d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {Number(createForm.roleId) === COLLECTOR_ROLE_ID && (
+              <>
+                <label className="admin-form-label">Enterprise *</label>
+                <select
+                  className="admin-form-select"
+                  value={createForm.enterpriseId}
+                  onChange={(e) => setCreateForm({ ...createForm, enterpriseId: e.target.value })}
+                >
+                  <option value="">Select enterprise</option>
+                  {enterpriseUsers.map((u) => (
+                    <option key={u.userId} value={u.userId}>
+                      {u.fullName} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            <label className="admin-form-label">Full Name *</label>
             <input
-              style={inputStyle}
+              className="admin-form-input"
               value={createForm.fullName}
               onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
               placeholder="Enter full name"
             />
 
-            <label style={labelStyle}>Email *</label>
+            <label className="admin-form-label">Email *</label>
             <input
-              style={inputStyle}
+              className="admin-form-input"
               type="email"
               value={createForm.email}
               onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
               placeholder="Enter email address"
             />
 
-            <label style={labelStyle}>Password *</label>
-            <div style={{ position: "relative" }}>
+            <label className="admin-form-label">Password *</label>
+            <div className="admin-password-wrap">
               <input
-                style={{ ...inputStyle, paddingRight: 40 }}
+                className="admin-form-input admin-password-input"
                 type={showPassword ? "text" : "password"}
                 value={createForm.password}
                 onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
@@ -491,61 +629,32 @@ export default function Users() {
               />
               <button
                 type="button"
+                className="admin-password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: "absolute",
-                  right: 8,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  padding: 4,
-                  color: "#64748b",
-                }}
               >
                 {showPassword ? "🙈" : "👁️"}
               </button>
             </div>
 
-            <label style={labelStyle}>Phone *</label>
+            <label className="admin-form-label">Phone *</label>
             <input
-              style={inputStyle}
+              className="admin-form-input"
               value={createForm.phone}
               onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
               placeholder="Enter phone number"
             />
 
-            <div style={{ display: "flex", gap: 10, marginTop: 24, justifyContent: "flex-end" }}>
+            <div className="admin-modal-actions">
               <button
-                onClick={() => setShowCreate(false)}
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: 8,
-                  border: "1px solid #e2e8f0",
-                  background: "#fff",
-                  color: "#475569",
-                  cursor: "pointer",
-                  fontSize: 14,
+                className="admin-btn-secondary"
+                onClick={() => {
+                  setShowCreate(false);
+                  resetCreateForm();
                 }}
               >
                 Cancel
               </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating}
-                style={{
-                  padding: "8px 24px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: creating ? "#94a3b8" : "linear-gradient(135deg, #3b82f6, #2563eb)",
-                  color: "#fff",
-                  cursor: creating ? "not-allowed" : "pointer",
-                  fontWeight: 600,
-                  fontSize: 14,
-                }}
-              >
+              <button className="admin-btn-create" onClick={handleCreate} disabled={creating}>
                 {creating ? "Creating..." : "Create Account"}
               </button>
             </div>
@@ -555,36 +664,3 @@ export default function Users() {
     </div>
   );
 }
-
-const menuBtnStyle = {
-  display: "block",
-  width: "100%",
-  padding: "10px 16px",
-  border: "none",
-  background: "transparent",
-  textAlign: "left",
-  cursor: "pointer",
-  fontSize: 14,
-  color: "#334155",
-  transition: "background 0.15s",
-};
-
-const labelStyle = {
-  display: "block",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "#334155",
-  marginBottom: 4,
-  marginTop: 14,
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "9px 12px",
-  borderRadius: 8,
-  border: "1px solid #e2e8f0",
-  fontSize: 14,
-  color: "#0f172a",
-  outline: "none",
-  boxSizing: "border-box",
-};
