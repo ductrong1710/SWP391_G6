@@ -164,9 +164,16 @@ const useCreateReportForm = () => {
 
     try {
       setLoading(true);
-      await wasteReportService.createReport(
-        buildReportPayload({ selectedFile, formData })
-      );
+     const payload = buildReportPayload({ selectedFile, formData });
+console.log("Submitting payload from hook:", {
+  latitude: formData.latitude,
+  longitude: formData.longitude,
+  description: formData.description,
+  wasteTypeIds: formData.wasteTypeIds,
+  fileName: selectedFile?.name,
+});
+await wasteReportService.createReport(payload);
+
 
       setSuccess("✅ Report submitted successfully! Redirecting to home...");
 
@@ -178,9 +185,13 @@ const useCreateReportForm = () => {
         window.location.href = "/citizen/home";
       }, 2000);
     } catch (submitError) {
-      console.error("❌ Error submitting report:", submitError);
-      setError(formatReportSubmitError(submitError));
-    } finally {
+  console.error("❌ Error submitting report:", submitError);
+  console.error("❌ Backend response status:", submitError?.response?.status);
+  console.error("❌ Backend response data:", submitError?.response?.data);
+  console.error("❌ Backend response message:", submitError?.response?.data?.message);
+  setError(formatReportSubmitError(submitError));
+} finally {
+
       setLoading(false);
     }
   };
