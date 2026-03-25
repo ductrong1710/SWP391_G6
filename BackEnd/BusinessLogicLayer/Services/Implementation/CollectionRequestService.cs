@@ -9,42 +9,69 @@ namespace BusinessLogicLayer.Services.Implementation
     {
         private readonly IUnitOfWork _uow;
 
+        private static readonly string[] VisibleAssignmentStatuses =
+        {
+            "Assigned",
+            "OnTheWay",
+            "Arrived",
+            "ReportedIssue",
+            "Failed"
+        };
+
         public CollectionRequestService(IUnitOfWork uow)
         {
             _uow = uow;
         }
 
-        // View methods
+        private static DataAccessLayer.Models.Collectorassignment? GetCurrentAssignment(
+            IEnumerable<DataAccessLayer.Models.Collectorassignment> assignments)
+        {
+            return assignments
+                .Where(a => !string.IsNullOrWhiteSpace(a.Status)
+                    && VisibleAssignmentStatuses.Contains(a.Status))
+                .OrderByDescending(a => a.ArrivedAt ?? DateTime.MinValue)
+                .ThenByDescending(a => a.StartedAt ?? DateTime.MinValue)
+                .ThenByDescending(a => a.AssignedAt ?? DateTime.MinValue)
+                .FirstOrDefault();
+        }
+
         public async Task<IEnumerable<CollectionRequestDto>> GetCollectionRequestsByEnterpriseAsync(int enterpriseId)
         {
             var requests = await _uow.CollectionRequests.GetByEnterpriseIdAsync(enterpriseId);
 
-            return requests.Select(r => new CollectionRequestDto
+            return requests.Select(r =>
             {
-                RequestId = r.RequestId,
-                ReportId = r.ReportId,
-                EnterpriseId = r.EnterpriseId,
-                EnterpriseName = r.Enterprise?.FullName,
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
+                var currentAssignment = GetCurrentAssignment(r.Collectorassignments);
 
-                // Waste report info
-                WasteTypeId = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.WasteTypeId)) : string.Empty,
-                WasteTypeName = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.Name)) : string.Empty,
+                return new CollectionRequestDto
+                {
+                    RequestId = r.RequestId,
+                    ReportId = r.ReportId,
+                    EnterpriseId = r.EnterpriseId,
+                    EnterpriseName = r.Enterprise?.FullName,
+                    Status = r.Status,
+                    CreatedAt = r.CreatedAt,
 
-                ReportImageUrl = r.Report?.ImageUrl,
-                Latitude = r.Report?.Latitude,
-                Longitude = r.Report?.Longitude,
-                ReportDescription = r.Report?.Description,
-                ReportStatus = r.Report?.Status,
-                ReportCreatedAt = r.Report?.CreatedAt,
+                    WasteTypeId = r.Report?.WasteTypes != null
+                        ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.WasteTypeId))
+                        : string.Empty,
+                    WasteTypeName = r.Report?.WasteTypes != null
+                        ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.Name))
+                        : string.Empty,
 
-                // Current active assignment
-                CurrentAssignmentId = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignmentId,
-                AssignedCollectorId = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignedCollector,
-                AssignedCollectorName = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignedCollectorNavigation?.FullName,
-                AssignmentStatus = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.Status,
-                AssignedAt = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignedAt
+                    ReportImageUrl = r.Report?.ImageUrl,
+                    Latitude = r.Report?.Latitude,
+                    Longitude = r.Report?.Longitude,
+                    ReportDescription = r.Report?.Description,
+                    ReportStatus = r.Report?.Status,
+                    ReportCreatedAt = r.Report?.CreatedAt,
+
+                    CurrentAssignmentId = currentAssignment?.AssignmentId,
+                    AssignedCollectorId = currentAssignment?.AssignedCollector,
+                    AssignedCollectorName = currentAssignment?.AssignedCollectorNavigation?.FullName,
+                    AssignmentStatus = currentAssignment?.Status,
+                    AssignedAt = currentAssignment?.AssignedAt
+                };
             }).ToList();
         }
 
@@ -56,7 +83,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 return null;
             }
 
-            // Validate request belongs to this enterprise
             if (request.EnterpriseId != enterpriseId)
             {
                 throw new UnauthorizedAccessException("You can only view your own collection requests");
@@ -81,7 +107,6 @@ namespace BusinessLogicLayer.Services.Implementation
                     CitizenEmail = request.Report.SubmittedByNavigation?.Email,
                     WasteTypeIds = request.Report.WasteTypes?.Select(wt => wt.WasteTypeId).ToList() ?? new List<int>(),
                     WasteTypeNames = request.Report.WasteTypes?.Select(wt => wt.Name).ToList() ?? new List<string>(),
-
                     ImageUrl = request.Report.ImageUrl,
                     Latitude = request.Report.Latitude,
                     Longitude = request.Report.Longitude,
@@ -110,39 +135,44 @@ namespace BusinessLogicLayer.Services.Implementation
         {
             var requests = await _uow.CollectionRequests.GetAllWithDetailsAsync();
 
-            return requests.Select(r => new CollectionRequestDto
+            return requests.Select(r =>
             {
-                RequestId = r.RequestId,
-                ReportId = r.ReportId,
-                EnterpriseId = r.EnterpriseId,
-                EnterpriseName = r.Enterprise?.FullName,
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
+                var currentAssignment = GetCurrentAssignment(r.Collectorassignments);
 
-                // Waste report info
-                WasteTypeId = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.WasteTypeId)) : string.Empty,
-                WasteTypeName = r.Report?.WasteTypes != null ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.Name)) : string.Empty,
+                return new CollectionRequestDto
+                {
+                    RequestId = r.RequestId,
+                    ReportId = r.ReportId,
+                    EnterpriseId = r.EnterpriseId,
+                    EnterpriseName = r.Enterprise?.FullName,
+                    Status = r.Status,
+                    CreatedAt = r.CreatedAt,
 
-                ReportImageUrl = r.Report?.ImageUrl,
-                Latitude = r.Report?.Latitude,
-                Longitude = r.Report?.Longitude,
-                ReportDescription = r.Report?.Description,
-                ReportStatus = r.Report?.Status,
-                ReportCreatedAt = r.Report?.CreatedAt,
+                    WasteTypeId = r.Report?.WasteTypes != null
+                        ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.WasteTypeId))
+                        : string.Empty,
+                    WasteTypeName = r.Report?.WasteTypes != null
+                        ? string.Join(", ", r.Report.WasteTypes.Select(wt => wt.Name))
+                        : string.Empty,
 
-                // Current active assignment
-                CurrentAssignmentId = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignmentId,
-                AssignedCollectorId = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignedCollector,
-                AssignedCollectorName = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignedCollectorNavigation?.FullName,
-                AssignmentStatus = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.Status,
-                AssignedAt = r.Collectorassignments.FirstOrDefault(a => a.Status == "Assigned")?.AssignedAt
+                    ReportImageUrl = r.Report?.ImageUrl,
+                    Latitude = r.Report?.Latitude,
+                    Longitude = r.Report?.Longitude,
+                    ReportDescription = r.Report?.Description,
+                    ReportStatus = r.Report?.Status,
+                    ReportCreatedAt = r.Report?.CreatedAt,
+
+                    CurrentAssignmentId = currentAssignment?.AssignmentId,
+                    AssignedCollectorId = currentAssignment?.AssignedCollector,
+                    AssignedCollectorName = currentAssignment?.AssignedCollectorNavigation?.FullName,
+                    AssignmentStatus = currentAssignment?.Status,
+                    AssignedAt = currentAssignment?.AssignedAt
+                };
             }).ToList();
         }
 
-        // Assignment history (read-only, no operations)
         public async Task<IEnumerable<AssignmentHistoryDto>> GetAssignmentHistoryByRequestAsync(int requestId, int enterpriseId)
         {
-            // Validate request exists and belongs to this enterprise
             var request = await _uow.CollectionRequests.GetByIdAsync(requestId);
             if (request == null)
             {
@@ -154,7 +184,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 throw new UnauthorizedAccessException("You can only view assignments for your own collection requests");
             }
 
-            // Get assignments for this request
             var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(requestId);
 
             return assignments.Select(a => new AssignmentHistoryDto

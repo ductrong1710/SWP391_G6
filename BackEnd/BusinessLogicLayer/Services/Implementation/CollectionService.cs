@@ -111,11 +111,10 @@ namespace BusinessLogicLayer.Services.Implementation
             assignment.StartedAt = startedAt;  // ✅ Track actual start time
             _uow.CollectorAssignments.Update(assignment);
 
-            // Update collection request status to "InProgress"
             var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
             if (request != null)
             {
-                request.Status = "InProgress";
+                request.Status = "OnTheWay";
                 _uow.CollectionRequests.Update(request);
             }
 
@@ -170,7 +169,15 @@ namespace BusinessLogicLayer.Services.Implementation
             assignment.BeforeImageUrl = beforeImageUrl;
             _uow.CollectorAssignments.Update(assignment);
 
+            var request = await _uow.CollectionRequests.GetByIdAsync(assignment.RequestId);
+            if (request != null)
+            {
+                request.Status = "Arrived";
+                _uow.CollectionRequests.Update(request);
+            }
+
             await _uow.SaveChangesAsync();
+
 
             return new ArrivedAtLocationResponseDto
             {
