@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./Dashboard";
 import Dispatch from "./Dispatch";
 import Rules from "./Rules";
-import Analytics from "./Analytics";
 import EnterpriseHeader from "../../components/Enterprise/EnterpriseHeader";
 import "./EnterpriseApp.css";
 
@@ -11,7 +10,6 @@ const ROUTE_CONFIG = [
   { path: "/dashboard", element: <Dashboard /> },
   { path: "/dispatch", element: <Dispatch /> },
   { path: "/rules", element: <Rules /> },
-  { path: "/analytics", element: <Analytics /> },
 ];
 
 const EnterpriseApp = () => {
@@ -22,6 +20,7 @@ const EnterpriseApp = () => {
       <main className="main-content">
         <Routes>
           <Route path="/" element={<Navigate to="/enterprise/dashboard" replace />} />
+          <Route path="/analytics" element={<Navigate to="/enterprise/dashboard" replace />} />
           {ROUTE_CONFIG.map((route) => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}
