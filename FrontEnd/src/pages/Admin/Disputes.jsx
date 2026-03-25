@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import feedbackService from '../../services/feedbackService';
 import { buildFileUrl } from '../../services/api';
 
@@ -56,7 +57,7 @@ const Disputes = () => {
   const handleResolve = async (action) => {
     if (!selectedId) return;
     if (!adminNote.trim()) {
-      alert('Please enter a resolution note');
+      toast.error('Please enter a resolution note');
       return;
     }
     setResolving(true);
@@ -67,13 +68,13 @@ const Disputes = () => {
       });
       await loadFeedbacks();
       await loadDetail(selectedId);
-      alert(action === 'warn'
+      toast.success(action === 'warn'
         ? 'Collector has been warned!'
         : 'Report reassigned, collector warned!'
       );
     } catch (error) {
       console.error(error);
-      alert('Failed to resolve');
+      toast.error('Failed to resolve');
     } finally {
       setResolving(false);
     }
@@ -85,10 +86,10 @@ const Disputes = () => {
       await feedbackService.rejectFeedback(selectedId);
       await loadFeedbacks();
       await loadDetail(selectedId);
-      alert('Complaint rejected');
+      toast.success('Complaint rejected');
     } catch (error) {
       console.error(error);
-      alert('Failed to reject');
+      toast.error('Failed to reject');
     }
   };
 
