@@ -385,7 +385,7 @@ const Disputes = () => {
                       </div>
                     </button>
 
-                    {/* Reassign button */}
+                    {/* Redo button */}
                     <button
                       onClick={() => handleResolve('reassign')}
                       disabled={resolving}
@@ -397,8 +397,8 @@ const Disputes = () => {
                     >
                       <span style={{ fontSize: 18 }}>🟠</span>
                       <div>
-                        <div style={{ fontWeight: 700 }}>Reassign + Warn</div>
-                        <div style={{ fontSize: 11, opacity: 0.9 }}>+2 pts, revert report, notify enterprise</div>
+                        <div style={{ fontWeight: 700 }}>Force Redo</div>
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>+2 pts & Re-clean</div>
                       </div>
                     </button>
 
