@@ -280,8 +280,8 @@ namespace BusinessLogicLayer.Services.Implementation
                     _uow.Users.Update(collector);
 
                     string collectorMsg = action == "reassign"
-                        ? $"URGENT: You received a warning (+{points} pts, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Your collection was rejected due to a valid complaint. You MUST return to the location and re-clean the area."
-                        : $"You received a warning (+{points} pt, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Reason: {dto.AdminNote}";
+                        ? $"URGENT: You received a warning (+{points} pts, total: {collector.CollectorProfile.WarningCount}/{WarningThreshold}) for report #{reportId}. Your collection was rejected due to a valid complaint. You MUST return to the location and re-clean the area."
+                        : $"You received a warning (+{points} pt, total: {collector.CollectorProfile.WarningCount}/{WarningThreshold}) for report #{reportId}. Reason: {dto.AdminNote}";
 
                     if (autoDeactivated)
                     {
