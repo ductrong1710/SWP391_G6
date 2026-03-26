@@ -493,5 +493,63 @@ namespace BusinessLogicLayer.Services.Implementation
         {
             return degrees * Math.PI / 180;
         }
+        public async Task<WasteReportStatusResponseDto> CancelByEnterpriseAsync(int reportId, int enterpriseId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            var request = await _uow.CollectionRequests.GetByReportIdAsync(reportId);
+            if (request == null)
+            {
+                throw new InvalidOperationException("Collection request not found");
+            }
+
+            if (request.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException("You can only cancel your own collection requests");
+            }
+
+            if (!string.Equals(report.Status, "Accepted", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(report.Status, "Assigned", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(report.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(report.Status, "Arrived", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("This report cannot be cancelled in its current status");
+            }
+
+            report.Status = "Cancelled";
+            _uow.WasteReports.Update(report);
+
+            request.Status = "Cancelled";
+            _uow.CollectionRequests.Update(request);
+
+            var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(request.RequestId);
+            foreach (var assignment in assignments.Where(a =>
+                a.Status != "Completed" && a.Status != "Cancelled"))
+            {
+                assignment.Status = "Cancelled";
+                _uow.CollectorAssignments.Update(assignment);
+            }
+
+            await _uow.Notifications.AddAsync(new Notification
+            {
+                UserId = report.SubmittedBy,
+                Content = $"Your waste report #{reportId} has been cancelled by the enterprise.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportStatusResponseDto
+            {
+                Id = report.ReportId,
+                Status = report.Status
+            };
+        }
+
     }
 }

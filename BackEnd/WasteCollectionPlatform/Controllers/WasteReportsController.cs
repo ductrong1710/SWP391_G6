@@ -34,10 +34,6 @@ namespace WasteCollectionPlatform.Controllers
             public List<int> WasteTypeIds { get; set; } = new List<int>();
         }
 
-
-        /// <summary>
-        /// Citizen/Admin/Enterprise: Get all waste reports
-        /// </summary>
         [HttpGet]
         [Authorize(Roles = "Admin,Citizen,Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -75,9 +71,6 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(reports);
         }
 
-        /// <summary>
-        /// Citizen/Admin/Enterprise: Get waste report details
-        /// </summary>
         [HttpGet("{id:int}")]
         [Authorize(Roles = "Admin,Citizen,Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -109,10 +102,6 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(report);
         }
 
-
-        /// <summary>
-        /// Citizen: Create new waste report
-        /// </summary>
         [HttpPost]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
@@ -152,13 +141,8 @@ namespace WasteCollectionPlatform.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-
         }
 
-
-        /// <summary>
-        /// Citizen: Update waste report
-        /// </summary>
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Citizen")]
         [Consumes("multipart/form-data")]
@@ -191,7 +175,7 @@ namespace WasteCollectionPlatform.Controllers
                 var updated = await _service.UpdateAsync(id, userId, dto);
                 return Ok(updated);
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return Forbid();
             }
@@ -209,10 +193,6 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        
-        /// <summary>
-        /// Citizen: Cancel waste report
-        /// </summary>
         [HttpPut("{id:int}/cancel")]
         [Authorize(Roles = "Citizen")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -233,7 +213,7 @@ namespace WasteCollectionPlatform.Controllers
                 var updated = await _service.CancelAsync(id, userId);
                 return Ok(updated);
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return Forbid();
             }
@@ -247,9 +227,6 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Enterprise: Accept waste report and create collection request
-        /// </summary>
         [HttpPut("{id:int}/accept")]
         [Authorize(Roles = "Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -270,6 +247,10 @@ namespace WasteCollectionPlatform.Controllers
                 var updated = await _service.AcceptAsync(id, enterpriseId);
                 return Ok(updated);
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 return NotFound(new { message = ex.Message });
@@ -280,9 +261,6 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Enterprise: Reject waste report
-        /// </summary>
         [HttpPut("{id:int}/reject")]
         [Authorize(Roles = "Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -296,6 +274,35 @@ namespace WasteCollectionPlatform.Controllers
             {
                 var updated = await _service.RejectAsync(id);
                 return Ok(updated);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("{id:int}/enterprise-cancel")]
+        [Authorize(Roles = "Enterprise")]
+        public async Task<IActionResult> CancelByEnterprise(int id)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var enterpriseId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            try
+            {
+                var updated = await _service.CancelByEnterpriseAsync(id, enterpriseId);
+                return Ok(updated);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {

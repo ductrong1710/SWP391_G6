@@ -11,6 +11,8 @@ namespace BusinessLogicLayer.Services.Interface
         Task<WasteReportDto?> GetByIdAsync(int reportId, int? userId);
         Task<WasteReportDto> UpdateAsync(int reportId, int userId, UpdateWasteReportDto dto);
         Task<WasteReportStatusResponseDto> CancelAsync(int reportId, int userId);
+        Task<WasteReportStatusResponseDto> CancelByEnterpriseAsync(int reportId, int enterpriseId);
+
     }
 }
 
