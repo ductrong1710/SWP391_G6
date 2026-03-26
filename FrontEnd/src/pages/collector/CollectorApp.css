@@ -1262,8 +1262,6 @@ input:checked + .toggle-slider:before {
   .decline-modal-actions {
     grid-template-columns: 1fr;
   }
-<<<<<<< Updated upstream
-=======
 }
 
 /* Khóa z-index của bản đồ Leaflet không cho đè lên Header */
@@ -1278,5 +1276,4 @@ input:checked + .toggle-slider:before {
 .leaflet-top,
 .leaflet-bottom {
   z-index: 10 !important;
->>>>>>> Stashed changes
 }

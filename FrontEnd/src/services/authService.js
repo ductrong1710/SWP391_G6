@@ -58,13 +58,6 @@ const authService = {
     };
   },
 
-<<<<<<< Updated upstream
-  // ===============================================
-  // THÊM HÀM NÀY VÀO ĐỂ XỬ LÝ ĐỔI MẬT KHẨU
-  // ===============================================
-  
-=======
->>>>>>> Stashed changes
   // Thêm hàm changePassword gọi api backend
   changePassword: async (passwordData) => {
     // passwordData truyền vào sẽ có dạng: { oldPassword, newPassword, confirmPassword }
@@ -99,12 +92,12 @@ const authService = {
     return response.data;
   },
 
-  resetPassword: async (email, otp, password, confirmPassword) => {
+  resetPassword: async (email, otp, NewPassword, confirmPassword) => {
     const response = await api.post("/auth/reset-password", { 
-      email, 
-      otp, 
-      password, // Sửa lại tên biến cho chuẩn
-      confirmPassword // Thêm trường này
+      email: email, 
+      otp: otp, 
+      newPassword: NewPassword, // Ép về chuẩn camelCase để C# dễ map data
+      confirmPassword: confirmPassword 
     });
     return response.data;
   },

@@ -35,13 +35,8 @@ const userService = {
   },
   
   updateMyAvailability: async (isAvailable) => {
-<<<<<<< Updated upstream
-    const response = await api.put("/users/me/availability", { isAvailable });
-    return normalizeUser(response.data);
-=======
   const response = await api.put("/users/me/availability", { isAvailable });
   return normalizeUser(response.data);
->>>>>>> Stashed changes
   },
 
   updateProfile: async (profileData) => {
@@ -69,8 +64,4 @@ const userService = {
   // ---------------------------------------------------
 };
 
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
 export default userService;

@@ -1,11 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
-<<<<<<< Updated upstream
-import ForgotPasswordModal from "./ForgotPasswordModal"; // Đã thêm import Modal
-=======
 import ForgotPasswordModal from "./ForgotPasswordModal";
->>>>>>> Stashed changes
 import "./Auth.css";
 
 const Login = () => {
@@ -16,13 +12,8 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-<<<<<<< Updated upstream
-  const [showPassword, setShowPassword] = useState(false);
-  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false); // Đã thêm state
-=======
   const [showPassword, setShowPassword] = useState(false); // Dòng cũ của bạn
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false); // Thêm dòng này
->>>>>>> Stashed changes
 
   const handleChange = (e) => {
     setFormData({
@@ -147,17 +138,11 @@ const Login = () => {
             <div className="form-group">
               <div className="password-label-row">
                 <label htmlFor="password">Password</label>
-<<<<<<< Updated upstream
-                {/* Đã sửa dòng span dưới đây để có thể click được */}
-                <span 
-                  className="forgot-link" 
-=======
                 
 
                 {/* Thay bằng đoạn này: */}
                 <span
                   className="forgot-link"
->>>>>>> Stashed changes
                   onClick={() => setIsForgotModalOpen(true)}
                   style={{ cursor: "pointer" }}
                 >
@@ -200,11 +185,6 @@ const Login = () => {
           </div>
         </div>
       </div>
-<<<<<<< Updated upstream
-
-      {/* Đã thêm Component Modal nằm gọn gàng bên trong thẻ div container ngoài cùng */}
-=======
->>>>>>> Stashed changes
       {isForgotModalOpen && (
         <ForgotPasswordModal onClose={() => setIsForgotModalOpen(false)} />
       )}

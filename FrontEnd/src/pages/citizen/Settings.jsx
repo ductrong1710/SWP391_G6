@@ -7,10 +7,7 @@ import userService from "../../services/userService";
 // 1. COMPONENT CẬP NHẬT THÔNG TIN (GENERAL)
 // ==========================================
 const ProfileSettings = () => {
-<<<<<<< Updated upstream
-=======
   // Đã xóa city, stateProvince, zipCode khỏi state cho gọn code
->>>>>>> Stashed changes
   const [profileData, setProfileData] = useState({
     fullName: "",
     email: "",
@@ -30,11 +27,7 @@ const ProfileSettings = () => {
           fullName: userData.fullName || userData.FullName || "",
           email: userData.email || userData.Email || "",
           phone: userData.phone || userData.Phone || "",
-<<<<<<< Updated upstream
-          address: "", 
-=======
           address: "", // Nếu sau này có DB lưu địa chỉ thì map vào đây
->>>>>>> Stashed changes
         });
       } catch (error) {
         console.error("Lỗi khi gọi API getProfile:", error);
@@ -72,11 +65,7 @@ const ProfileSettings = () => {
         localStorage.setItem('user', JSON.stringify(currentUser));
       }
       
-<<<<<<< Updated upstream
-      setStatus({ type: "success", message: "Cập nhật thành công! Giao diện sẽ tải lại..." });
-=======
       setStatus({ type: "success", message: "Update successful! The interface will reload..." });
->>>>>>> Stashed changes
 
       setTimeout(() => {
         window.location.reload();
@@ -85,11 +74,7 @@ const ProfileSettings = () => {
     } catch (error) {
       setStatus({ 
         type: "error", 
-<<<<<<< Updated upstream
-        message: error.response?.data?.message || "Đã xảy ra lỗi khi cập nhật." 
-=======
         message: error.response?.data?.message || "An error occurred while updating the profile." 
->>>>>>> Stashed changes
       });
     } finally {
       setIsLoading(false);
@@ -118,10 +103,6 @@ const ProfileSettings = () => {
           </div>
           <div className="form-group">
             <label>Email Address</label>
-<<<<<<< Updated upstream
-            {/* Ô Email bị khóa lại (disabled), không cho phép đổi */}
-=======
->>>>>>> Stashed changes
             <input type="email" name="email" value={profileData.email} onChange={handleChange} className="form-input" required disabled title="Email không được phép đổi" />
           </div>
           <div className="form-group">
@@ -133,20 +114,14 @@ const ProfileSettings = () => {
             <input type="text" className="form-input bg-gray" value="Citizen" disabled />
           </div>
           
-<<<<<<< Updated upstream
-=======
           {/* Ô Address vẫn được giữ lại theo hình ảnh của bạn */}
->>>>>>> Stashed changes
           <div className="form-group full-width">
             <label>Address</label>
             <input type="text" name="address" value={profileData.address} onChange={handleChange} className="form-input" placeholder="Enter your street address" />
           </div>
-<<<<<<< Updated upstream
-=======
           
           {/* ĐÃ XÓA: City, State/Province, ZIP Code ở đây */}
           
->>>>>>> Stashed changes
         </div>
 
         <div className="form-actions" style={{ marginTop: "20px" }}>
@@ -182,11 +157,7 @@ const SecuritySettings = () => {
     setStatus({ type: "", message: "" });
 
     if (formData.newPassword !== formData.confirmPassword) {
-<<<<<<< Updated upstream
-      setStatus({ type: "error", message: "Mật khẩu xác nhận không khớp!" });
-=======
       setStatus({ type: "error", message: "The new passwords do not match!" });
->>>>>>> Stashed changes
       return;
     }
 
@@ -198,32 +169,19 @@ const SecuritySettings = () => {
         confirmPassword: formData.confirmPassword,
       });
 
-<<<<<<< Updated upstream
-      setStatus({ type: "success", message: response.message || "Đổi mật khẩu thành công!" });
-      setFormData({ oldPassword: "", newPassword: "", confirmPassword: "" });
-    } catch (error) {
-      setStatus({ type: "error", message: error.response?.data?.message || "Đã xảy ra lỗi khi đổi mật khẩu." });
-=======
       setStatus({ type: "success", message: response.message || "Password changed successfully!" });
       setFormData({ oldPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
       setStatus({ type: "error", message: error.response?.data?.message || "An error occurred while changing the password." });
->>>>>>> Stashed changes
     } finally {
       setIsLoading(false);
     }
   };
 
   const inputFields = [
-<<<<<<< Updated upstream
-    { label: "Mật khẩu hiện tại", name: "oldPassword", placeholder: "Enter current password" },
-    { label: "Mật khẩu mới", name: "newPassword", placeholder: "Enter new password" },
-    { label: "Xác nhận mật khẩu mới", name: "confirmPassword", placeholder: "Confirm new password" },
-=======
     { label: "Current password", name: "oldPassword" },
     { label: "New password", name: "newPassword" },
     { label: "Confirm new password", name: "confirmPassword" },
->>>>>>> Stashed changes
   ];
 
   return (
@@ -248,10 +206,6 @@ const SecuritySettings = () => {
                 value={formData[field.name]}
                 onChange={handleChange}
                 required
-<<<<<<< Updated upstream
-                placeholder={field.placeholder}
-=======
->>>>>>> Stashed changes
                 className="form-input"
                 style={{ paddingRight: "40px", width: "100%" }}
               />
@@ -320,11 +274,7 @@ const Settings = () => {
         <div className="tab-pane">
           <h3 className="pane-title">Notification Settings</h3>
           <p className="text-gray-sm">Choose how you want to receive notifications</p>
-<<<<<<< Updated upstream
-          
-=======
           {/* ... (Các toggle switch của preferences) ... */}
->>>>>>> Stashed changes
           <div className="toggle-item">
             <div className="toggle-info">
               <h4 style={{ fontSize: "14px", fontWeight: "600", margin: "0 0 4px 0" }}>Email Notifications</h4>
@@ -335,38 +285,6 @@ const Settings = () => {
               <span className="slider round"></span>
             </label>
           </div>
-<<<<<<< Updated upstream
-
-          <div className="toggle-item" style={{ borderTop: "none", borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-            <div className="toggle-info">
-              <h4 style={{ fontSize: "14px", fontWeight: "600", margin: "0 0 4px 0" }}>SMS Notifications</h4>
-              <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>Receive urgent alerts via text message</p>
-            </div>
-            <label className="switch">
-              <input type="checkbox" />
-              <span className="slider round"></span>
-            </label>
-          </div>
-
-          <hr style={{ border: "0", borderTop: "1px solid #e5e7eb", margin: "30px 0" }} />
-
-          <h3 className="pane-title">Language & Region</h3>
-          <p className="text-gray-sm">Set your preferred language and regional settings</p>
-
-          <div className="form-group" style={{ maxWidth: "400px" }}>
-            <label>Display Language</label>
-            <select className="form-input" style={{ appearance: "auto", cursor: "pointer" }}>
-              <option>English (US)</option>
-              <option>Vietnamese (VN)</option>
-              <option>Japanese (JP)</option>
-            </select>
-          </div>
-
-          <div className="form-actions" style={{ marginTop: "20px" }}>
-            <button className="btn-save">Save Preferences</button>
-          </div>
-=======
->>>>>>> Stashed changes
         </div>
       )}
     </div>

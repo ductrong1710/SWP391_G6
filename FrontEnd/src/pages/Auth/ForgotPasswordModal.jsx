@@ -47,7 +47,7 @@ const ForgotPasswordModal = ({ onClose }) => {
     setMessage("");
 
     try {
-      await authService.resetPassword(email, otp, password, confirmPassword);
+      await authService.resetPassword(email.trim(), otp.trim(), password, confirmPassword);
       setMessage("Password reset successfully! You can now log in.");
       setTimeout(() => {
         onClose();
@@ -206,8 +206,4 @@ onClick={onClose}
   );
 };
 
-<<<<<<< Updated upstream
 export default ForgotPasswordModal;
-=======
-export default ForgotPasswordModal;
->>>>>>> Stashed changes
