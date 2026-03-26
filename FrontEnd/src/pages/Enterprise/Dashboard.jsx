@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import assignmentService from "../../services/assignmentService";
-import wasteReportService from "../../services/wasteReportService";
-import { buildDispatchItems } from "../../utils/dispatch";
+import userService from "../../services/userService";
+import authService from "../../services/authService";
 import "./Dashboard.css";
 
 const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
@@ -48,28 +48,26 @@ const Dashboard = () => {
     try {
       setLoading(true);
 
-      const [pendingReports, collectionRequests] = await Promise.all([
-        wasteReportService.getAllReports(),
-        assignmentService.getCollectionRequests(),
-      ]);
+      const currentUser = authService.getCurrentUser();
 
-      const mergedItems = buildDispatchItems({
-        pendingReports,
-        collectionRequests,
-      });
+      const [requests] = await Promise.all([
+        assignmentService.getCollectionRequests(),
+        userService.getCollectors(),
+      ]);
 
       const { start, end } = getDateRange();
 
-      const filteredItems = mergedItems.filter((item) => {
-        const rawDate = item.createdAt || item.reportCreatedAt || item.assignedAt;
+      const filteredRequests = requests.filter((item) => {
+        const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
         if (!rawDate) return false;
-
         const date = new Date(rawDate);
         return date >= start && date <= end;
       });
 
-      const completedItems = filteredItems.filter(
-        (item) => String(item.status).toLowerCase() === "completed"
+      const completedItems = filteredRequests.filter(
+        (item) =>
+          String(item.status).toLowerCase() === "completed" ||
+          String(item.assignmentStatus).toLowerCase() === "completed"
       );
 
       const totalCollectedKg = completedItems.reduce((sum, item) => {
@@ -78,12 +76,12 @@ const Dashboard = () => {
 
       setStats({
         totalCollectedKg,
-        totalRequests: filteredItems.length,
+        totalRequests: filteredRequests.length,
         completedRequests: completedItems.length,
       });
 
       const wasteTypeCounts = {};
-      filteredItems.forEach((item) => {
+      filteredRequests.forEach((item) => {
         const types = String(item.wasteTypeName || "Other")
           .split(",")
           .map((type) => type.trim())
@@ -116,14 +114,12 @@ const Dashboard = () => {
         const now = new Date();
         const monthlyData = Array.from({ length: 12 }, (_, index) => {
           const month = index;
-          const count = filteredItems.filter((item) => {
-            const rawDate = item.createdAt || item.reportCreatedAt || item.assignedAt;
+          const count = filteredRequests.filter((item) => {
+            const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
             if (!rawDate) return false;
-
             const date = new Date(rawDate);
             return (
-              date.getMonth() === month &&
-              date.getFullYear() === now.getFullYear()
+              date.getMonth() === month && date.getFullYear() === now.getFullYear()
             );
           }).length;
 
@@ -155,11 +151,11 @@ const Dashboard = () => {
               ? date.toLocaleString("en-US", { weekday: "short" })
               : String(index + 1);
 
-          const count = filteredItems.filter((item) => {
-            const rawDate = item.createdAt || item.reportCreatedAt || item.assignedAt;
+          const count = filteredRequests.filter((item) => {
+            const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
             if (!rawDate) return false;
-
             const itemDate = new Date(rawDate);
+
             return (
               itemDate.getDate() === date.getDate() &&
               itemDate.getMonth() === date.getMonth() &&
@@ -173,27 +169,21 @@ const Dashboard = () => {
         setCollectionTrend(dailyData);
       }
 
-      const recent = [...filteredItems]
+      const recent = [...filteredRequests]
         .sort((a, b) => {
-          const dateA = new Date(a.createdAt || a.reportCreatedAt || a.assignedAt || 0);
-          const dateB = new Date(b.createdAt || b.reportCreatedAt || b.assignedAt || 0);
+          const dateA = new Date(a.reportCreatedAt || a.createdAt || a.assignedAt || 0);
+          const dateB = new Date(b.reportCreatedAt || b.createdAt || b.assignedAt || 0);
           return dateB - dateA;
         })
         .slice(0, 5)
         .map((item) => ({
-          id: `${item.kind || "item"}-${item.id || item.requestId || item.reportId}`,
-          userName:
-            item.kind === "report"
-              ? item.submittedByName || `Citizen #${item.reportId}`
-              : item.assignedCollectorName || `Request #${item.requestId}`,
-          requestId:
-            item.kind === "report"
-              ? `REPORT-${String(item.reportId || item.id).padStart(4, "0")}`
-              : `REQ-${String(item.requestId || item.id).padStart(4, "0")}`,
+          id: item.requestId,
+          userName: item.assignedCollectorName || "Unassigned Collector",
+          requestId: `REQ-${String(item.requestId).padStart(4, "0")}`,
           wasteType: item.wasteTypeName || "Unknown",
-          status: item.status || "Unknown",
+          status: item.assignmentStatus || item.status || "Unknown",
           time: new Date(
-            item.createdAt || item.reportCreatedAt || item.assignedAt
+            item.reportCreatedAt || item.createdAt || item.assignedAt
           ).toLocaleString(),
         }));
 
@@ -392,9 +382,21 @@ const Dashboard = () => {
                 </div>
 
                 <div className="transaction-details">
-                  <div className="transaction-weight">{transaction.status}</div>
-                  <div className="transaction-type">{transaction.wasteType}</div>
-                </div>
+  <span
+    className={`transaction-status-badge ${
+      String(transaction.status).toLowerCase() === "completed"
+        ? "completed"
+        : "default"
+    }`}
+  >
+    {transaction.status}
+  </span>
+
+  <div className="transaction-type-pill">
+    {transaction.wasteType}
+  </div>
+</div>
+
 
                 <div className="transaction-time">{transaction.time}</div>
               </div>

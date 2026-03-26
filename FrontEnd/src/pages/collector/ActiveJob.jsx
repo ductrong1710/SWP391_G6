@@ -13,8 +13,8 @@ import {
   getStatusMeta,
   JOB_STATUS,
 } from "../../utils/collectorJob";
-import userService from "../../services/userService";
 import authService from "../../services/authService";
+
 
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -631,21 +631,21 @@ const ActiveJob = () => {
     [reportIssue, withErrorHandler]
   );
 
-  const handleToggleAvailability = useCallback(async () => {
-    const nextValue = !isOnline;
-    setIsOnline(nextValue);
+const handleToggleAvailability = useCallback(() => {
+  const nextValue = !isOnline;
+  const fallbackTime = new Date().toISOString();
 
-    try {
-      const updatedUser = await userService.updateMyAvailability(nextValue);
-      authService.updateCurrentUser({
-        isAvailable: updatedUser.isAvailable,
-        availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
-      });
-    } catch (err) {
-      setIsOnline((prev) => !prev);
-      setError(err?.response?.data?.message || "Unable to update availability.");
-    }
-  }, [isOnline, setError]);
+  setError("");
+  setIsOnline(nextValue);
+
+  authService.updateCurrentUser({
+    isAvailable: nextValue,
+    availabilityUpdatedAt: fallbackTime,
+  });
+}, [isOnline, setError]);
+
+
+
 
   const openDeclineModal = useCallback(() => {
     setDeclineReason("");

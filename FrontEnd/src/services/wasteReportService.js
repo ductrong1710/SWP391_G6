@@ -122,6 +122,11 @@ const wasteReportService = {
         }))
       : [];
   },
+  cancelByEnterprise: async (reportId) => {
+    const response = await api.put(`/waste-reports/${reportId}/enterprise-cancel`);
+    return response.data;
+  },
+
 };
 
 export default wasteReportService;
