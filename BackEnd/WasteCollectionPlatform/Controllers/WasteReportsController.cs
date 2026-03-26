@@ -42,15 +42,26 @@ namespace WasteCollectionPlatform.Controllers
         [Authorize(Roles = "Admin,Citizen,Enterprise")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            [FromServices] DataAccessLayer.Data.AppDbContext db)
         {
             var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
             var isAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase);
             var isEnterprise = string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase);
 
             int? userId = null;
+            int? districtId = null;
 
-            if (!isAdmin && !isEnterprise)
+            if (isEnterprise)
+            {
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+                if (int.TryParse(userIdClaim, out var entId))
+                {
+                    var profile = await db.EnterpriseProfiles.FindAsync(entId);
+                    districtId = profile?.ManagedDistrictId;
+                }
+            }
+            else if (!isAdmin)
             {
                 var userIdClaim = User.FindFirst("UserId")?.Value;
                 if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var parsedUserId))
@@ -60,7 +71,7 @@ namespace WasteCollectionPlatform.Controllers
                 userId = parsedUserId;
             }
 
-            var reports = await _service.GetAllAsync(userId);
+            var reports = await _service.GetAllAsync(userId, districtId);
             return Ok(reports);
         }
 

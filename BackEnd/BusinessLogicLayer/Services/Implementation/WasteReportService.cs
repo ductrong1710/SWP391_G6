@@ -293,7 +293,7 @@ namespace BusinessLogicLayer.Services.Implementation
             };
         }
 
-        public async Task<IEnumerable<WasteReportDto>> GetAllAsync(int? userId)
+        public async Task<IEnumerable<WasteReportDto>> GetAllAsync(int? userId, int? districtId = null)
         {
             IEnumerable<Wastereport> reports;
 
@@ -304,6 +304,12 @@ namespace BusinessLogicLayer.Services.Implementation
             else
             {
                 reports = await _uow.WasteReports.GetAllAsync();
+            }
+
+            // Filter by district if provided (Enterprise sees only their managed district)
+            if (districtId.HasValue)
+            {
+                reports = reports.Where(r => r.DistrictId == districtId.Value);
             }
 
             return reports.Select(MapToDto);
