@@ -6,6 +6,5 @@ namespace DataAccessLayer.Repositories.Interface
     {
         Task AddAsync(Collectionconfirmation entity);
         Task<Collectionconfirmation?> GetByAssignmentIdAsync(int assignmentId);
-        void Remove(Collectionconfirmation entity);
     }
 }

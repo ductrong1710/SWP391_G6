@@ -36,16 +36,10 @@ namespace BusinessLogicLayer.Services.Implementation
             if (role == null)
                 throw new InvalidOperationException("Role not found");
 
-            if (string.Equals(role.RoleName, "Enterprise", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(role.RoleName, "Enterprise", StringComparison.OrdinalIgnoreCase)
+                && !request.ManagedDistrictId.HasValue)
             {
-                if (!request.ManagedDistrictId.HasValue)
-                    throw new ArgumentException("ManagedDistrictId is required for Enterprise");
-
-                var districtAlreadyAssigned = await _db.EnterpriseProfiles
-                    .AnyAsync(x => x.ManagedDistrictId == request.ManagedDistrictId.Value);
-
-                if (districtAlreadyAssigned)
-                    throw new InvalidOperationException("This district already has a registered enterprise");
+                throw new ArgumentException("ManagedDistrictId is required for Enterprise");
             }
 
             if (string.Equals(role.RoleName, "Collector", StringComparison.OrdinalIgnoreCase)
@@ -142,14 +136,6 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 if (!request.ManagedDistrictId.HasValue)
                     throw new ArgumentException("ManagedDistrictId is required for Enterprise");
-
-                var districtAlreadyAssigned = await _db.EnterpriseProfiles
-                    .AnyAsync(x =>
-                        x.ManagedDistrictId == request.ManagedDistrictId.Value &&
-                        x.EnterpriseId != user.UserId);
-
-                if (districtAlreadyAssigned)
-                    throw new InvalidOperationException("This district already has a registered enterprise");
 
                 if (user.CollectorProfile != null)
                 {
@@ -367,5 +353,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 EnterpriseId = user.CollectorProfile?.EnterpriseId
             };
         }
+
     }
 }
