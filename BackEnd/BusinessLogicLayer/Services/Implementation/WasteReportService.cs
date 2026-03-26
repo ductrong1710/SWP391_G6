@@ -95,6 +95,29 @@ namespace BusinessLogicLayer.Services.Implementation
             }
 
             var nowUtc = DateTime.UtcNow;
+
+            // --- Anti-Spam Rate Limiting ---
+            var userReports = await _uow.WasteReports.GetByUserIdAsync(userId);
+            
+            // 1. Daily Limit (max 5 reports per day)
+            var reportsToday = userReports.Count(r => r.CreatedAt.HasValue && r.CreatedAt.Value.Date == nowUtc.Date);
+            if (reportsToday >= 5)
+            {
+                throw new InvalidOperationException("You have reached the maximum limit of 5 waste reports per day. Thank you for your contributions!");
+            }
+
+            // 2. Cooldown Limit (2 minutes between reports)
+            var latestReport = userReports.FirstOrDefault(); // GetByUserIdAsync already sorts by CreatedAt DESC
+            if (latestReport != null && latestReport.CreatedAt.HasValue)
+            {
+                var timeSinceLastReport = nowUtc - latestReport.CreatedAt.Value;
+                if (timeSinceLastReport.TotalMinutes < 2)
+                {
+                    int waitSeconds = (int)(120 - timeSinceLastReport.TotalSeconds);
+                    throw new InvalidOperationException($"Please wait {waitSeconds} seconds before submitting another report.");
+                }
+            }
+
             var latDelta = 0.001m;
             var lonDelta = 0.001m;
 
@@ -464,5 +487,63 @@ namespace BusinessLogicLayer.Services.Implementation
         {
             return degrees * Math.PI / 180;
         }
+        public async Task<WasteReportStatusResponseDto> CancelByEnterpriseAsync(int reportId, int enterpriseId)
+        {
+            var report = await _uow.WasteReports.GetByIdAsync(reportId);
+            if (report == null)
+            {
+                throw new InvalidOperationException("WasteReport not found");
+            }
+
+            var request = await _uow.CollectionRequests.GetByReportIdAsync(reportId);
+            if (request == null)
+            {
+                throw new InvalidOperationException("Collection request not found");
+            }
+
+            if (request.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException("You can only cancel your own collection requests");
+            }
+
+            if (!string.Equals(report.Status, "Accepted", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(report.Status, "Assigned", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(report.Status, "OnTheWay", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(report.Status, "Arrived", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("This report cannot be cancelled in its current status");
+            }
+
+            report.Status = "Cancelled";
+            _uow.WasteReports.Update(report);
+
+            request.Status = "Cancelled";
+            _uow.CollectionRequests.Update(request);
+
+            var assignments = await _uow.CollectorAssignments.GetByRequestIdAsync(request.RequestId);
+            foreach (var assignment in assignments.Where(a =>
+                a.Status != "Completed" && a.Status != "Cancelled"))
+            {
+                assignment.Status = "Cancelled";
+                _uow.CollectorAssignments.Update(assignment);
+            }
+
+            await _uow.Notifications.AddAsync(new Notification
+            {
+                UserId = report.SubmittedBy,
+                Content = $"Your waste report #{reportId} has been cancelled by the enterprise.",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _uow.SaveChangesAsync();
+
+            return new WasteReportStatusResponseDto
+            {
+                Id = report.ReportId,
+                Status = report.Status
+            };
+        }
+
     }
 }

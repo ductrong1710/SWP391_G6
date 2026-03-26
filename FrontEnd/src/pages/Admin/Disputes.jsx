@@ -1,329 +1,490 @@
 import React, { useState, useEffect } from 'react';
-import complaintService from '../../services/complaintService';
+import { toast } from 'react-toastify';
+import feedbackService from '../../services/feedbackService';
+import { buildFileUrl } from '../../services/api';
 
 const Disputes = () => {
-  const [ticketsData, setTicketsData] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-
-  // Editable local states for the active ticket
-  const [complaintText, setComplaintText] = useState('');
-  const [citizenVal, setCitizenVal] = useState('');
-  const [collectorVal, setCollectorVal] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [filter, setFilter] = useState('All');
+  const [adminNote, setAdminNote] = useState('');
+  const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
-    fetchComplaints();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadFeedbacks();
   }, []);
 
-  // When selectedId or ticketsData changes, load editable states
   useEffect(() => {
-    const t = ticketsData.find((x) => x.id === selectedId);
-    if (t) {
-      setComplaintText(t.details || '');
-      setCitizenVal(t.claim?.citizenVal ?? '');
-      setCollectorVal(t.claim?.collectorVal ?? '');
-      setChatMessages(t.chat || []);
-      setNewMessage('');
+    if (selectedId) {
+      loadDetail(selectedId);
     } else {
-      setComplaintText('');
-      setCitizenVal('');
-      setCollectorVal('');
-      setChatMessages([]);
-      setNewMessage('');
+      setDetail(null);
     }
-  }, [selectedId, ticketsData]);
+  }, [selectedId]);
 
-  const fetchComplaints = async () => {
+  const loadFeedbacks = async () => {
     try {
-      const complaints = await complaintService.getComplaints();
-      setTicketsData(complaints || []);
-      if (complaints && complaints.length > 0) {
-        setSelectedId((prev) => prev || complaints[0].id);
+      setLoading(true);
+      const data = await feedbackService.getAllFeedbacks();
+      setFeedbacks(data);
+      if (data.length > 0 && !selectedId) {
+        setSelectedId(data[0].feedbackId);
       }
     } catch (error) {
-      console.error('Fetch complaints error:', error);
+      console.error('Failed to load feedbacks:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleApprove = async (id) => {
+  const loadDetail = async (id) => {
     try {
-      await complaintService.approveComplaint(id);
-      await fetchComplaints();
-      alert('Complaint approved');
+      setLoadingDetail(true);
+      const data = await feedbackService.getFeedbackDetail(id);
+      setDetail(data);
+      setAdminNote('');
+    } catch (error) {
+      console.error('Failed to load detail:', error);
+      setDetail(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const handleResolve = async (action) => {
+    if (!selectedId) return;
+    if (!adminNote.trim()) {
+      toast.error('Please enter a resolution note');
+      return;
+    }
+    setResolving(true);
+    try {
+      await feedbackService.resolveFeedback(selectedId, {
+        action,
+        adminNote: adminNote.trim(),
+      });
+      await loadFeedbacks();
+      await loadDetail(selectedId);
+      toast.success(action === 'warn'
+        ? 'Collector has been warned!'
+        : 'Report reassigned, collector warned!'
+      );
     } catch (error) {
       console.error(error);
-      alert('Approve failed');
+      toast.error('Failed to resolve');
+    } finally {
+      setResolving(false);
     }
   };
 
-  const handleReject = async (id) => {
-    try {
-      await complaintService.rejectComplaint(id);
-      await fetchComplaints();
-      alert('Complaint rejected');
-    } catch (error) {
-      console.error(error);
-      alert('Reject failed');
-    }
-  };
-
-  const handleSaveClaim = async () => {
+  const handleReject = async () => {
     if (!selectedId) return;
     try {
-      await complaintService.updateComplaint(selectedId, {
-        details: complaintText,
-        claim: {
-          citizenVal: citizenVal || null,
-          collectorVal: collectorVal || null,
-        },
-      });
-    } catch (err) {
-      // ignore network error; still update local
-      console.warn('Save claim remote error (continuing with local update):', err);
-    } finally {
-      setTicketsData((prev) =>
-        prev.map((t) =>
-          t.id === selectedId
-            ? {
-                ...t,
-                details: complaintText,
-                claim: { ...(t.claim || {}), citizenVal: citizenVal || null, collectorVal: collectorVal || null },
-              }
-            : t
-        )
-      );
-      alert('Claim saved');
+      await feedbackService.rejectFeedback(selectedId);
+      await loadFeedbacks();
+      await loadDetail(selectedId);
+      toast.success('Complaint rejected');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to reject');
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedId) return;
-    const msg = {
-      sender: 'Admin',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: newMessage.trim(),
-      avatar: 'A',
-      color: 'admin',
-    };
+  const filteredFeedbacks =
+    filter === 'All' ? feedbacks : feedbacks.filter((f) => f.status === filter);
 
-    try {
-      // try persist to API (endpoint may vary)
-      await complaintService.sendComplaintMessage(selectedId, { text: msg.text });
-    } catch (err) {
-      // ignore if endpoint not available
-      console.warn('Send message remote error (falling back to local):', err);
-    } finally {
-      setChatMessages((prev) => {
-        const next = [...prev, msg];
-        // also update ticketsData so UI persists while on page
-        setTicketsData((td) => td.map((t) => (t.id === selectedId ? { ...t, chat: next } : t)));
-        return next;
-      });
-      setNewMessage('');
-    }
+  const statusColor = {
+    Pending: '#f59e0b',
+    Resolved: '#10b981',
+    Rejected: '#ef4444',
   };
 
-  const activeTicket =
-    ticketsData.find((t) => t.id === selectedId) || {
-      id: '',
-      reason: '',
-      details: '',
-      createdAt: '',
-      status: 'Pending',
-      claim: { desc: '', citizenVal: null, collectorVal: null },
-      chat: [],
-      hasEvidence: false,
-    };
+  const warningLevel = (count) => {
+    if (count >= 4) return { color: '#dc2626', label: 'DEACTIVATED' };
+    if (count >= 3) return { color: '#ea580c', label: `${count}/4 — CRITICAL` };
+    if (count >= 2) return { color: '#f59e0b', label: `${count}/4` };
+    if (count >= 1) return { color: '#eab308', label: `${count}/4` };
+    return { color: '#10b981', label: '0/4 — Clean' };
+  };
 
   return (
     <div className="admin-disputes-page fade-in">
       <div className="admin-page-header">
-        <h2>Dispute Resolution</h2>
-        <p className="text-gray">Review and resolve user disputes</p>
+        <h2>Feedback & Disputes</h2>
+        <p className="text-gray">
+          Review citizen complaints, compare evidence, and take action
+        </p>
+      </div>
+
+      {/* Filter */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+        {['All', 'Pending', 'Resolved', 'Rejected'].map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 20,
+              border: '1px solid #e2e8f0',
+              background: filter === s ? '#3b82f6' : '#fff',
+              color: filter === s ? '#fff' : '#475569',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: 13,
+            }}
+          >
+            {s} ({s === 'All' ? feedbacks.length : feedbacks.filter(f => f.status === s).length})
+          </button>
+        ))}
       </div>
 
       <div className="disputes-layout">
         {/* Sidebar */}
         <div className="tickets-sidebar admin-card no-padding">
           <div className="sidebar-header">
-            <h3>Open Tickets</h3>
+            <h3>Complaints ({filteredFeedbacks.length})</h3>
           </div>
           <div className="ticket-list">
-            {ticketsData.map((t) => (
-              <div
-                key={t.id}
-                className={`ticket-item ${selectedId === t.id ? 'active' : ''}`}
-                onClick={() => setSelectedId(t.id)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="t-header">
-                  <span className="t-title">📝 {t.reason || 'No title'}</span>
-                  <span className="status-tag">{t.status || 'Pending'}</span>
+            {loading ? (
+              <div style={{ padding: 20, color: '#94a3b8' }}>Loading...</div>
+            ) : filteredFeedbacks.length === 0 ? (
+              <div style={{ padding: 20, color: '#94a3b8' }}>No feedbacks</div>
+            ) : (
+              filteredFeedbacks.map((fb) => (
+                <div
+                  key={fb.feedbackId}
+                  className={`ticket-item ${selectedId === fb.feedbackId ? 'active' : ''}`}
+                  onClick={() => setSelectedId(fb.feedbackId)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="t-header">
+                    <span className="t-title">📋 Report #{fb.reportId}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontWeight: 600,
+                        background: `${statusColor[fb.status] || '#94a3b8'}20`,
+                        color: statusColor[fb.status] || '#64748b',
+                      }}
+                    >
+                      {fb.status}
+                    </span>
+                  </div>
+                  <div className="t-id">By: {fb.userName}</div>
+                  <div className="t-date">
+                    🕒 {fb.createdAt ? new Date(fb.createdAt).toLocaleString() : ''}
+                  </div>
                 </div>
-                <div className="t-id">ID: {t.id}</div>
-                <div className="t-date">🕒 {t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</div>
-              </div>
-            ))}
-            {ticketsData.length === 0 && <div className="p-4 text-gray">No tickets</div>}
+              ))
+            )}
           </div>
         </div>
 
         {/* Detail pane */}
-        <div className="ticket-detail admin-card">
-          <div className="detail-header">
-            <div>
-              <h3>{activeTicket.reason || 'No title selected'}</h3>
-              <div className="text-gray">{activeTicket.id}</div>
+        <div className="ticket-detail admin-card" style={{ overflowY: 'auto', maxHeight: '80vh' }}>
+          {loadingDetail ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+              Loading details...
             </div>
-            <span className="status-tag large">{activeTicket.status || 'Pending'}</span>
-          </div>
-
-          <div className="divider"></div>
-
-          {/* Complaint Details - editable */}
-          <div className="section-block">
-            <h4 className="section-title">📄 Complaint Details</h4>
-            <textarea
-              value={complaintText}
-              onChange={(e) => setComplaintText(e.target.value)}
-              placeholder="Enter complaint details..."
-              style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 8, border: '1px solid #e6eef2' }}
-            />
-          </div>
-
-          {/* VS */}
-          {activeTicket?.collectionId && (
-            <div className="vs-section">
-              <div className="party-card">
-                <div className="p-avatar blue">C</div>
+          ) : detail ? (
+            <>
+              {/* Header */}
+              <div className="detail-header">
                 <div>
-                  <div className="p-name">Citizen</div>
-                  <div className="p-role">Complaint Owner</div>
+                  <h3>Complaint #{detail.feedbackId}</h3>
+                  <div className="text-gray">
+                    Report #{detail.reportId} — by {detail.userName}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontSize: 13,
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    fontWeight: 600,
+                    background: `${statusColor[detail.status] || '#94a3b8'}20`,
+                    color: statusColor[detail.status] || '#64748b',
+                  }}
+                >
+                  {detail.status}
+                </span>
+              </div>
+
+              <div className="divider" />
+
+              {/* Citizen's complaint */}
+              <div className="section-block">
+                <h4 className="section-title">💬 Citizen's Complaint</h4>
+                <div style={boxStyle}>{detail.content}</div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
+                  Submitted: {detail.createdAt ? new Date(detail.createdAt).toLocaleString() : 'N/A'}
                 </div>
               </div>
 
-              <div className="vs-badge">VS</div>
-
-              <div className="party-card right">
-                <div>
-                  <div className="p-name text-right">Enterprise</div>
-                  <div className="p-role text-right">Service Provider</div>
+              {/* Report info */}
+              <div className="section-block">
+                <h4 className="section-title">📋 Report Information</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <InfoItem label="Report ID" value={`#${detail.reportId}`} />
+                  <InfoItem label="Status" value={detail.reportStatus || 'N/A'} color={detail.reportStatus === 'Collected' ? '#10b981' : '#f59e0b'} />
+                  <InfoItem label="Location" value={`${detail.latitude}, ${detail.longitude}`} />
+                  <InfoItem label="Created" value={detail.reportCreatedAt ? new Date(detail.reportCreatedAt).toLocaleString() : 'N/A'} />
+                  <InfoItem label="Waste Types" value={detail.wasteTypeNames?.join(', ') || 'N/A'} />
+                  <InfoItem label="Enterprise" value={detail.enterpriseName || 'N/A'} />
                 </div>
-                <div className="p-avatar green">E</div>
+                {detail.reportDescription && (
+                  <div style={{ ...boxStyle, marginTop: 10 }}>
+                    <strong>Description:</strong> {detail.reportDescription}
+                  </div>
+                )}
+                {detail.reportImageUrl && (
+                  <div style={{ marginTop: 10 }}>
+                    <strong style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }}>Citizen's Report Photo:</strong>
+                    <img
+                      src={buildFileUrl(detail.reportImageUrl)}
+                      alt="Report"
+                      style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, background: '#f1f5f9' }}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          )}
 
-          {/* Claim Details - editable */}
-          <div className="section-block">
-            <h4 className="section-title">💸 Claim Details</h4>
-            <textarea
-              value={activeTicket.claim?.desc ?? ''}
-              onChange={(e) =>
-                setTicketsData((prev) => prev.map((t) => (t.id === selectedId ? { ...t, claim: { ...(t.claim || {}), desc: e.target.value } } : t)))
-              }
-              placeholder="Claim summary..."
-              style={{ width: '100%', minHeight: 56, padding: 10, borderRadius: 8, border: '1px solid #e6eef2' }}
-            />
-            <div className="comparison-grid" style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div className="c-label">Citizen Reported</div>
-                <input
-                  value={citizenVal ?? ''}
-                  onChange={(e) => setCitizenVal(e.target.value)}
-                  placeholder="e.g. 5.2 kg"
-                  style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #eee' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div className="c-label">Collector Recorded</div>
-                <input
-                  value={collectorVal ?? ''}
-                  onChange={(e) => setCollectorVal(e.target.value)}
-                  placeholder="e.g. 3.1 kg"
-                  style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #eee' }}
-                />
-              </div>
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <button className="btn-outline" onClick={handleSaveClaim}>
-                Save Claim
-              </button>
-            </div>
-          </div>
-
-          {/* Evidence */}
-          {activeTicket.hasEvidence && (
-            <div className="section-block">
-              <h4 className="section-title">🖼️ Evidence Comparison</h4>
-              <div className="evidence-grid">
-                <div className="evidence-item">
-                  <span className="ev-label">Citizen's Photo</span>
-                  <div className="img-placeholder">Citizen evidence</div>
+              {/* Collector & Assignment */}
+              {detail.collectorId && (
+                <div className="section-block">
+                  <h4 className="section-title">🚛 Collector & Assignment</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <InfoItem label="Collector" value={detail.collectorName || 'Unknown'} />
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Warning Points</div>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: warningLevel(detail.collectorWarningCount || 0).color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}>
+                        ⚠️ {warningLevel(detail.collectorWarningCount || 0).label}
+                        <span style={{
+                          display: 'inline-block',
+                          width: 60,
+                          height: 6,
+                          borderRadius: 3,
+                          background: '#e5e7eb',
+                          position: 'relative',
+                          overflow: 'hidden',
+                        }}>
+                          <span style={{
+                            display: 'block',
+                            width: `${Math.min(((detail.collectorWarningCount || 0) / 4) * 100, 100)}%`,
+                            height: '100%',
+                            borderRadius: 3,
+                            background: warningLevel(detail.collectorWarningCount || 0).color,
+                          }} />
+                        </span>
+                      </div>
+                    </div>
+                    <InfoItem label="Assignment Status" value={detail.assignmentStatus || 'N/A'} />
+                    <InfoItem label="Assigned At" value={detail.assignedAt ? new Date(detail.assignedAt).toLocaleString() : 'N/A'} />
+                    <InfoItem label="Started At" value={detail.startedAt ? new Date(detail.startedAt).toLocaleString() : 'N/A'} />
+                    <InfoItem label="Arrived At" value={detail.arrivedAt ? new Date(detail.arrivedAt).toLocaleString() : 'N/A'} />
+                    <InfoItem label="Confirmed At" value={detail.confirmedAt ? new Date(detail.confirmedAt).toLocaleString() : 'N/A'} />
+                  </div>
+                  {detail.confirmationNote && (
+                    <div style={{ ...boxStyle, marginTop: 10 }}>
+                      <strong>Collector's Note:</strong> {detail.confirmationNote}
+                    </div>
+                  )}
                 </div>
-                <div className="evidence-item">
-                  <span className="ev-label">Collector's Photo</span>
-                  <div className="img-placeholder">Collector evidence</div>
-                </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* Communication History */}
-          <div className="section-block">
-            <h4 className="section-title">💬 Communication History</h4>
-            <div className="chat-list" style={{ maxHeight: 220, overflowY: 'auto', padding: 8, borderRadius: 8, background: '#fbfdfc' }}>
-              {(chatMessages && chatMessages.length > 0) ? (
-                chatMessages.map((msg, i) => (
-                  <div key={i} className="chat-item" style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
-                    <div className={`chat-avatar ${msg.color || ''}`} style={{ width: 36, height: 36, borderRadius: 18, background: '#e6f4ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {msg.avatar || msg.sender?.[0] || 'U'}
+              {/* Evidence Comparison - 3-way */}
+              {(detail.feedbackImageUrl || detail.confirmationBeforeImageUrl || detail.confirmationAfterImageUrl) && (
+                <div className="section-block">
+                  <h4 className="section-title">🖼️ Evidence Comparison</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#dc2626', marginBottom: 4, fontWeight: 600 }}>
+                        📸 Citizen's Complaint
+                      </div>
+                      {detail.feedbackImageUrl ? (
+                        <img src={buildFileUrl(detail.feedbackImageUrl)} alt="Citizen Evidence"
+                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '2px solid #fca5a5' }} />
+                      ) : (
+                        <div style={placeholderStyle}>No photo</div>
+                      )}
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{msg.sender || 'User'} <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: 8 }}>{msg.time}</span></div>
-                      <div style={{ marginTop: 4 }}>{msg.text}</div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>📸 Before Collection</div>
+                      {detail.confirmationBeforeImageUrl ? (
+                        <img src={buildFileUrl(detail.confirmationBeforeImageUrl)} alt="Before"
+                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }} />
+                      ) : (
+                        <div style={placeholderStyle}>No photo</div>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, fontWeight: 600 }}>📸 After Collection</div>
+                      {detail.confirmationAfterImageUrl ? (
+                        <img src={buildFileUrl(detail.confirmationAfterImageUrl)} alt="After"
+                          style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }} />
+                      ) : (
+                        <div style={placeholderStyle}>No photo</div>
+                      )}
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-gray italic">No messages yet.</p>
+                  <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef3c7', borderRadius: 6, fontSize: 12, color: '#92400e' }}>
+                    💡 Compare the citizen's current photo with the collector's "after" photo to verify the collection was genuine.
+                  </div>
+                </div>
               )}
+
+              <div className="divider" />
+
+              {/* Resolution Actions */}
+              {detail.status === 'Pending' && (
+                <div className="section-block">
+                  <h4 className="section-title">⚖️ Resolution</h4>
+
+                  <textarea
+                    value={adminNote}
+                    onChange={(e) => setAdminNote(e.target.value)}
+                    placeholder="Enter resolution reason (required)..."
+                    rows={2}
+                    style={{
+                      width: '100%',
+                      padding: 10,
+                      borderRadius: 8,
+                      border: '1px solid #e2e8f0',
+                      fontSize: 13,
+                      marginBottom: 14,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {/* Warn button */}
+                    <button
+                      onClick={() => handleResolve('warn')}
+                      disabled={resolving}
+                      style={{
+                        ...actionBtnBase,
+                        background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                        flex: 1,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>🟡</span>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>Warn Collector</div>
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>+1 warning point</div>
+                      </div>
+                    </button>
+
+                    {/* Redo button */}
+                    <button
+                      onClick={() => handleResolve('reassign')}
+                      disabled={resolving}
+                      style={{
+                        ...actionBtnBase,
+                        background: 'linear-gradient(135deg, #fb923c, #ea580c)',
+                        flex: 1,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>🟠</span>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>Force Redo</div>
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>+2 pts & Re-clean</div>
+                      </div>
+                    </button>
+
+                    {/* Reject button */}
+                    <button
+                      onClick={handleReject}
+                      disabled={resolving}
+                      style={{
+                        ...actionBtnBase,
+                        background: 'linear-gradient(135deg, #94a3b8, #64748b)',
+                        flex: 1,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>❌</span>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>Reject</div>
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>Invalid complaint</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop: 10, padding: '8px 12px', background: '#fef2f2', borderRadius: 6, fontSize: 12, color: '#991b1b' }}>
+                    ⚠️ Collector auto-deactivated at 4 warning points. Current: <strong>{detail.collectorWarningCount || 0}/4</strong>
+                  </div>
+                </div>
+              )}
+
+              {detail.status !== 'Pending' && (
+                <div style={{ padding: '14px 16px', background: '#f1f5f9', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
+                  This complaint has been <strong>{detail.status?.toLowerCase()}</strong>.
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+              Select a complaint to view details
             </div>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Write a message..."
-                style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e6eef2' }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSendMessage();
-                }}
-              />
-              <button className="btn-primary" onClick={handleSendMessage}>
-                Send
-              </button>
-            </div>
-          </div>
-
-          <div className="divider"></div>
-
-          {/* Actions */}
-          <div className="detail-actions">
-            <button className="btn-outline" onClick={() => handleApprove(activeTicket.id)}>
-              ✅ Approve
-            </button>
-
-            <button className="btn-outline red" onClick={() => handleReject(activeTicket.id)}>
-              ❌ Reject
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
+};
+
+const InfoItem = ({ label, value, color }) => (
+  <div>
+    <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>{label}</div>
+    <div style={{ fontSize: 13, fontWeight: 600, color: color || '#1f2937' }}>{value}</div>
+  </div>
+);
+
+const boxStyle = {
+  padding: 14,
+  backgroundColor: '#f9fafb',
+  borderRadius: 8,
+  fontSize: 14,
+  lineHeight: 1.6,
+  color: '#1f2937',
+};
+
+const placeholderStyle = {
+  width: '100%',
+  height: 160,
+  borderRadius: 8,
+  background: '#f1f5f9',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#94a3b8',
+  border: '1px dashed #d1d5db',
+};
+
+const actionBtnBase = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  padding: '12px 16px',
+  borderRadius: 10,
+  border: 'none',
+  color: '#fff',
+  cursor: 'pointer',
+  fontSize: 13,
+  textAlign: 'left',
+  transition: 'transform 0.1s, opacity 0.15s',
+  minWidth: 150,
 };
 
 export default Disputes;

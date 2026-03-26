@@ -10,7 +10,7 @@ const normalizeWasteReport = (report) => ({
   latitude: Number(report.latitude ?? report.Latitude ?? 0),
   longitude: Number(report.longitude ?? report.Longitude ?? 0),
   description: report.description ?? report.Description ?? "",
-  status: report.status ?? report.Status ?? "",
+  status: String(report.status ?? report.Status ?? "").trim(),
   createdAt: report.createdAt ?? report.CreatedAt ?? null,
 });
 
@@ -122,6 +122,11 @@ const wasteReportService = {
         }))
       : [];
   },
+  cancelByEnterprise: async (reportId) => {
+    const response = await api.put(`/waste-reports/${reportId}/enterprise-cancel`);
+    return response.data;
+  },
+
 };
 
 export default wasteReportService;

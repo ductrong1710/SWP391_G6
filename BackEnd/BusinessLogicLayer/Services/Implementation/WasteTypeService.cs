@@ -20,7 +20,7 @@ namespace BusinessLogicLayer.Services.Implementation
 
             if (onlyActive)
             {
-                return allWasteTypes.Where(wt => wt.IsActive == true).ToList();
+                return allWasteTypes.Where(wt => wt.IsActive).ToList();
             }
 
             return allWasteTypes;
@@ -36,15 +36,20 @@ namespace BusinessLogicLayer.Services.Implementation
             if (string.IsNullOrWhiteSpace(dto.Name))
                 throw new ArgumentException("Name is required");
 
-            if (await _uow.WasteTypes.NameExistsAsync(dto.Name))
+            if (dto.RewardPoints < 0)
+                throw new ArgumentException("Reward points must be greater than or equal to 0");
+
+            var normalizedName = dto.Name.Trim();
+
+            if (await _uow.WasteTypes.NameExistsAsync(normalizedName))
                 throw new InvalidOperationException("WasteType name already exists");
 
             var entity = new Wastetype
             {
-                Name = dto.Name,
-                Description = dto.Description,
-                RewardPoints = dto.RewardPoints, 
-                IsActive = true                  
+                Name = normalizedName,
+                Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
+                RewardPoints = dto.RewardPoints,
+                IsActive = true
             };
 
             await _uow.WasteTypes.AddAsync(entity);
@@ -58,15 +63,20 @@ namespace BusinessLogicLayer.Services.Implementation
             if (string.IsNullOrWhiteSpace(dto.Name))
                 throw new ArgumentException("Name is required");
 
+            if (dto.RewardPoints < 0)
+                throw new ArgumentException("Reward points must be greater than or equal to 0");
+
             var existing = await _uow.WasteTypes.GetByIdAsync(id);
             if (existing == null)
                 throw new InvalidOperationException("WasteType not found");
 
-            if (await _uow.WasteTypes.NameExistsAsync(dto.Name, id))
+            var normalizedName = dto.Name.Trim();
+
+            if (await _uow.WasteTypes.NameExistsAsync(normalizedName, id))
                 throw new InvalidOperationException("WasteType name already exists");
 
-            existing.Name = dto.Name;
-            existing.Description = dto.Description;
+            existing.Name = normalizedName;
+            existing.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
             existing.RewardPoints = dto.RewardPoints;
 
             if (dto.IsActive.HasValue)
@@ -83,7 +93,8 @@ namespace BusinessLogicLayer.Services.Implementation
         public async Task DeleteAsync(int id)
         {
             var existing = await _uow.WasteTypes.GetByIdAsync(id);
-            if (existing == null) throw new InvalidOperationException("WasteType not found");
+            if (existing == null)
+                throw new InvalidOperationException("WasteType not found");
 
             existing.IsActive = false;
             _uow.WasteTypes.Update(existing);
@@ -91,4 +102,3 @@ namespace BusinessLogicLayer.Services.Implementation
         }
     }
 }
-
