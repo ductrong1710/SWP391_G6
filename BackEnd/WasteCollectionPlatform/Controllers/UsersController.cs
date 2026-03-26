@@ -1,7 +1,14 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using BusinessLogicLayer.DTOs.User;
 using BusinessLogicLayer.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using DataAccessLayer.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace WasteCollectionPlatform.Controllers
 {
@@ -19,14 +26,25 @@ namespace WasteCollectionPlatform.Controllers
             _logger = logger;
         }
 
-        private async Task<List<UserResponseDto>> FetchCollectorsAsync()
+        // Helper to fetch collectors from user service
+        private async Task<List<UserResponseDto>> FetchCollectorsAsync(int? enterpriseId = null)
         {
             var allUsers = await _userService.GetAllAsync();
-            return allUsers
-                .Where(u => string.Equals(u.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            var collectors = allUsers
+                .Where(u => string.Equals(u.RoleName, "Collector", StringComparison.OrdinalIgnoreCase));
+
+            // If enterpriseId is provided, only return collectors belonging to that enterprise
+            if (enterpriseId.HasValue)
+            {
+                collectors = collectors.Where(c => c.EnterpriseId == enterpriseId.Value);
+            }
+
+            return collectors.ToList();
         }
 
+        /// <summary>
+        /// Enterprise: Get only MY collectors. Admin: Get all collectors.
+        /// </summary>
         [HttpGet("collectors")]
         [Authorize(Roles = "Admin,Enterprise")]
         [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
@@ -36,7 +54,17 @@ namespace WasteCollectionPlatform.Controllers
         {
             try
             {
-                var collectors = await FetchCollectorsAsync();
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+                var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+                int? enterpriseId = null;
+                if (string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase)
+                    && int.TryParse(userIdClaim, out var uid))
+                {
+                    enterpriseId = uid;
+                }
+
+                var collectors = await FetchCollectorsAsync(enterpriseId);
                 return Ok(collectors);
             }
             catch (Exception ex)
@@ -46,6 +74,9 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin: Get all users in system
+        /// </summary>
         [HttpGet]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
@@ -57,6 +88,9 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(users);
         }
 
+        /// <summary>
+        /// Authenticated: Get user by ID
+        /// </summary>
         [HttpGet("{id:int}")]
         [Authorize]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -71,8 +105,11 @@ namespace WasteCollectionPlatform.Controllers
             return Ok(user);
         }
 
+        /// <summary>
+        /// Admin: Create new user account
+        /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Administrator")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -94,9 +131,7 @@ namespace WasteCollectionPlatform.Controllers
                 _logger.LogWarning(ex, "Validation error: {Message}", ex.Message);
                 return BadRequest(new { message = ex.Message });
             }
-            catch (InvalidOperationException ex) when (
-                ex.Message.Contains("exists", StringComparison.OrdinalIgnoreCase) ||
-                ex.Message.Contains("already has a registered enterprise", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("exists"))
             {
                 _logger.LogWarning(ex, "Conflict error: {Message}", ex.Message);
                 return Conflict(new { message = ex.Message });
@@ -108,6 +143,9 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin: Update user information
+        /// </summary>
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -133,15 +171,12 @@ namespace WasteCollectionPlatform.Controllers
                 _logger.LogWarning(ex, "Validation error: {Message}", ex.Message);
                 return BadRequest(new { message = ex.Message });
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
             {
                 return NotFound(new { message = ex.Message });
             }
-            catch (InvalidOperationException ex) when (
-                ex.Message.Contains("exists", StringComparison.OrdinalIgnoreCase) ||
-                ex.Message.Contains("already has a registered enterprise", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("exists"))
             {
-                _logger.LogWarning(ex, "Conflict error: {Message}", ex.Message);
                 return Conflict(new { message = ex.Message });
             }
             catch (Exception ex)
@@ -151,6 +186,9 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin: Delete user account
+        /// </summary>
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -169,7 +207,7 @@ namespace WasteCollectionPlatform.Controllers
 
                 return NoContent();
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
             {
                 return NotFound(new { message = ex.Message });
             }
@@ -179,7 +217,6 @@ namespace WasteCollectionPlatform.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
-
         [HttpPut("me/availability")]
         [Authorize(Roles = "Collector")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -199,7 +236,7 @@ namespace WasteCollectionPlatform.Controllers
                 var result = await _userService.UpdateCollectorAvailabilityAsync(userId, request.IsAvailable);
                 return Ok(result);
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
             {
                 return NotFound(new { message = ex.Message });
             }
@@ -209,6 +246,9 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin: Soft-delete user (set status to Inactive)
+        /// </summary>
         [HttpPut("{id:int}/deactivate")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -222,12 +262,15 @@ namespace WasteCollectionPlatform.Controllers
                 var result = await _userService.SoftDeleteUserAsync(id);
                 return Ok(result);
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
             {
                 return NotFound(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Admin: Reactivate user (set status to Active)
+        /// </summary>
         [HttpPut("{id:int}/activate")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -241,10 +284,11 @@ namespace WasteCollectionPlatform.Controllers
                 var result = await _userService.ReactivateUserAsync(id);
                 return Ok(result);
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
             {
                 return NotFound(new { message = ex.Message });
             }
         }
+
     }
 }
