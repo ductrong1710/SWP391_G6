@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import assignmentService from "../services/assignmentService";
 import userService from "../services/userService";
 import wasteReportService from "../services/wasteReportService";
@@ -73,7 +74,9 @@ const useDispatchData = () => {
   const handleReportAction = useCallback(
     async (reportId, action) => {
       if (!reportId) {
-        setError("Invalid report id.");
+        const message = "Invalid report id.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
@@ -82,31 +85,35 @@ const useDispatchData = () => {
         setError("");
         setSuccess("");
 
-        // Re-check latest status from server before action to avoid stale UI
         const latest = await wasteReportService.getReportById(reportId);
         const latestStatus = String(latest?.status || "").trim().toLowerCase();
 
         if (latestStatus !== "pending") {
-          setError(
-            `Report #${reportId} is ${latest?.status || "Unknown"}, not Pending.`
-          );
+          const message = `Report #${reportId} is ${latest?.status || "Unknown"}, not Pending.`;
+          setError(message);
+          toast.error(message);
           await fetchData(true);
           return;
         }
 
         if (action === "accept") {
           await wasteReportService.acceptReport(reportId);
-          setSuccess(`Accepted report #${reportId}.`);
+          const message = `Accepted report #${reportId}.`;
+          setSuccess(message);
+          toast.success(message);
         } else {
           await wasteReportService.rejectReport(reportId);
-          setSuccess(`Rejected report #${reportId}.`);
+          const message = `Rejected report #${reportId}.`;
+          setSuccess(message);
+          toast.success(message);
         }
 
         await fetchData(true);
       } catch (actionError) {
-        setError(
-          actionError.response?.data?.message || "Unable to update report status."
-        );
+        const message =
+          actionError.response?.data?.message || "Unable to update report status.";
+        setError(message);
+        toast.error(message);
         await fetchData(true);
       } finally {
         setActionLoading(false);
@@ -120,7 +127,9 @@ const useDispatchData = () => {
       const collectorId = selectedCollectorMap[requestId];
 
       if (!collectorId) {
-        setError("Please select a collector before assigning.");
+        const message = "Please select a collector before assigning.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
@@ -130,15 +139,52 @@ const useDispatchData = () => {
         setSuccess("");
 
         await assignmentService.assignCollector({ requestId, collectorId });
-        setSuccess(`Assigned collector to request #${requestId}.`);
+
+        const message = `Assigned collector to request #${requestId}.`;
+        setSuccess(message);
+        toast.success(message);
+
         await fetchData(true);
       } catch (assignError) {
-        setError(assignError.response?.data?.message || "Assignment failed.");
+        const message =
+          assignError.response?.data?.message || "Assignment failed.";
+        setError(message);
+        toast.error(message);
       } finally {
         setActionLoading(false);
       }
     },
     [fetchData, selectedCollectorMap]
+  );
+
+  const handleEnterpriseCancel = useCallback(
+    async (reportId) => {
+      if (!window.confirm("Are you sure you want to cancel this report?")) {
+        return;
+      }
+
+      try {
+        setActionLoading(true);
+        setError("");
+        setSuccess("");
+
+        await wasteReportService.cancelByEnterprise(reportId);
+
+        const message = `Cancelled report #${reportId}.`;
+        setSuccess(message);
+        toast.success(message);
+
+        await fetchData(true);
+      } catch (err) {
+        const message =
+          err.response?.data?.message || "Failed to cancel report.";
+        setError(message);
+        toast.error(message);
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchData]
   );
 
   return {
@@ -160,6 +206,7 @@ const useDispatchData = () => {
     fetchData,
     handleReportAction,
     handleAssignCollector,
+    handleEnterpriseCancel,
   };
 };
 
