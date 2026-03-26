@@ -229,5 +229,114 @@ namespace WasteCollectionPlatform.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin: Soft-delete user (set status to Inactive)
+        /// </summary>
+        [HttpPut("{id:int}/deactivate")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeactivateUser(int id)
+        {
+            try
+            {
+                var result = await _userService.SoftDeleteUserAsync(id);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Admin: Reactivate user (set status to Active)
+        /// </summary>
+        [HttpPut("{id:int}/activate")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ActivateUser(int id)
+        {
+            try
+            {
+                var result = await _userService.ReactivateUserAsync(id);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+
+        /// <summary>
+/// Authenticated: User updates their own profile
+/// </summary>
+[HttpPut("me/profile")]
+[Authorize] // Yêu cầu phải đăng nhập (có Token) mới được gọi API này
+[ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status409Conflict)]
+public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProfileRequestDto request)
+{
+    // Lấy UserId từ Token của người đang đăng nhập
+    var userIdClaim = User.FindFirst("UserId")?.Value;
+    if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+    {
+        return Unauthorized(new { message = "Invalid or missing UserId claim" });
+    }
+
+    try
+    {
+        _logger.LogInformation("User {UserId} is updating their profile", userId);
+        
+        var result = await _userService.UpdateMyProfileAsync(userId, request);
+        return Ok(result);
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+    {
+        return NotFound(new { message = ex.Message });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("exists"))
+    {
+        return Conflict(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to update profile for user: {UserId}", userId);
+        return StatusCode(500, new { message = "Internal server error" });
+    }
+}
+
+/// <summary>
+        /// Authenticated: Get my own profile
+        /// </summary>
+        [HttpGet("me/profile")]
+        [Authorize]
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            // Lấy ID người dùng từ Token
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing UserId claim" });
+            }
+
+            // Gọi hàm có sẵn của hệ thống để lấy thông tin
+            var user = await _userService.GetByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(user);
+        }
+
     }
 }

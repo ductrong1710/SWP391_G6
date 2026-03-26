@@ -38,6 +38,19 @@ const userService = {
   const response = await api.put("/users/me/availability", { isAvailable });
   return normalizeUser(response.data);
   },
+
+
+  // --- THÊM 2 HÀM NÀY VÀO DÀNH CHO PROFILE CÁ NHÂN ---
+  getProfile: async () => {
+    const response = await api.get('/Users/me/profile');
+    return normalizeUser(response.data);
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await api.put('/Users/me/profile', profileData);
+    return normalizeUser(response.data);
+  },
+  // ---------------------------------------------------
 };
 
 export default userService;

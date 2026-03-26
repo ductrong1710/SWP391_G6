@@ -26,7 +26,6 @@ const normalizeUser = (user) => {
   };
 };
 
-
 const authService = {
   register: async (userData) => {
     const response = await api.post("/auth/register", {
@@ -57,6 +56,19 @@ const authService = {
       user: normalizedUser,
     };
   },
+
+  // ===============================================
+  // THÊM HÀM NÀY VÀO ĐỂ XỬ LÝ ĐỔI MẬT KHẨU
+  // ===============================================
+  
+  // Thêm hàm changePassword gọi api backend
+  changePassword: async (passwordData) => {
+    // passwordData truyền vào sẽ có dạng: { oldPassword, newPassword, confirmPassword }
+    // Khớp hoàn toàn với ChangePasswordDto trong backend
+    const response = await api.put("/auth/change-password", passwordData);
+    return response.data;
+  },
+  // ===============================================
 
   logout: () => {
     localStorage.removeItem("token");

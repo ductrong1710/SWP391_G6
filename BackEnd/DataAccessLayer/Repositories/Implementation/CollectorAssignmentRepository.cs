@@ -126,5 +126,10 @@ namespace DataAccessLayer.Repositories.Implementation
                 .OrderByDescending(x => x.AssignedAt)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Collectorassignment>> GetAllAsync()
+        {
+            return await _context.Collectorassignments.ToListAsync();
+        }
     }
 }

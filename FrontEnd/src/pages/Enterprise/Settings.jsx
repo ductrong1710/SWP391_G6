@@ -1,24 +1,33 @@
 import React, { useState } from "react";
+import authService from "../../services/authService";
 import SettingsTabs from "../../components/SettingsTabs";
 
 const Settings = () => {
   const [subTab, setSubTab] = useState("general");
+  const user = authService.getCurrentUser();
 
   return (
-    <div className="ent-settings-container fade-in">
-      <div className="ent-page-header">
-        <h2>Settings</h2>
-        <p className="text-gray">Manage your account preferences and security</p>
+    <div className="col-page-container fade-in">
+      <div className="col-page-header">
+        <div>
+          <h2>Settings</h2>
+          <p className="text-gray">Manage your account preferences and security</p>
+        </div>
       </div>
 
-      <SettingsTabs activeTab={subTab} onChange={setSubTab} />
+      {/* ĐÃ FIX: Ép z-index nổi lên trên cùng để không bị che khuất */}
+      <div style={{ position: "relative", zIndex: 10 }}>
+        <SettingsTabs activeTab={subTab} onChange={setSubTab} />
+      </div>
 
       {subTab === "general" && (
-        <div className="ent-card settings-card">
-          <h3 className="card-title">Profile Information</h3>
-          <p className="text-gray mb-6">Update your personal details and profile picture</p>
+        <div className="settings-card">
+          <div className="card-header-simple">
+            <h3>Profile Information</h3>
+            <p className="text-gray">Update your personal details and profile picture</p>
+          </div>
 
-          <div className="profile-photo-section">
+          <div className="profile-section">
             <div className="avatar-large">
               <span className="camera-icon">📷</span>
             </div>
@@ -31,51 +40,36 @@ const Settings = () => {
           <div className="form-grid">
             <div className="form-group">
               <label>Full Name</label>
-              <input type="text" className="form-input" defaultValue="GreenWaste Inc." />
+              <input type="text" className="form-input" defaultValue={user?.fullName || ""} />
             </div>
             <div className="form-group">
               <label>Email Address</label>
-              <input type="email" className="form-input" defaultValue="admin@greenwaste.com" />
-            </div>
-            <div className="form-group">
-              <label>Phone Number</label>
-              <input type="text" className="form-input" defaultValue="+1 (555) 000-0000" />
+              <input
+                type="email"
+                className="form-input"
+                defaultValue={user?.email || ""}
+                disabled
+                style={{ backgroundColor: "#f3f4f6" }}
+              />
             </div>
             <div className="form-group">
               <label>Account Type</label>
-              <input type="text" className="form-input disabled" value="Enterprise" disabled />
+              <input type="text" className="form-input disabled" value={user?.roleName || "Collector"} disabled />
             </div>
-            <div className="form-group full-width">
-              <label>Address</label>
-              <input type="text" className="form-input" placeholder="Enter your street address" />
+            <div className="form-actions">
+              <button className="btn-save">Save Changes</button>
             </div>
-            <div className="form-row-3">
-              <div className="form-group">
-                <label>City</label>
-                <input type="text" className="form-input" placeholder="City" />
-              </div>
-              <div className="form-group">
-                <label>State/Province</label>
-                <input type="text" className="form-input" placeholder="State" />
-              </div>
-              <div className="form-group">
-                <label>ZIP Code</label>
-                <input type="text" className="form-input" placeholder="ZIP" />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button className="btn-save">Save Changes</button>
           </div>
         </div>
       )}
 
       {subTab === "security" && (
         <div className="fade-in">
-          <div className="ent-card settings-card mb-6">
-            <h3 className="card-title">Change Password</h3>
-            <p className="text-gray mb-6">Update your password to keep your account secure</p>
+          <div className="settings-card mb-4">
+            <div className="card-header-simple">
+              <h3>Change Password</h3>
+              <p className="text-gray">Update your password to keep your account secure</p>
+            </div>
 
             <div className="form-group mb-4">
               <label>Current Password</label>
@@ -95,13 +89,15 @@ const Settings = () => {
             </div>
           </div>
 
-          <div className="ent-card settings-card">
-            <h3 className="card-title">Two-Factor Authentication</h3>
-            <p className="text-gray mb-6">Add an extra layer of security to your account</p>
+          <div className="settings-card">
+            <div className="card-header-simple">
+              <h3>Two-Factor Authentication</h3>
+              <p className="text-gray">Add an extra layer of security to your account</p>
+            </div>
 
             <div className="toggle-row">
               <div>
-                <div className="group-label" style={{ marginBottom: "4px" }}>Enable 2FA</div>
+                <div className="group-label">Enable 2FA</div>
                 <div className="text-desc">Require a verification code when signing in</div>
               </div>
               <label className="toggle-switch">
@@ -115,13 +111,15 @@ const Settings = () => {
 
       {subTab === "preferences" && (
         <div className="fade-in">
-          <div className="ent-card settings-card mb-6">
-            <h3 className="card-title">Notification Settings</h3>
-            <p className="text-gray mb-6">Choose how you want to receive notifications</p>
+          <div className="settings-card mb-4">
+            <div className="card-header-simple">
+              <h3>Notification Settings</h3>
+              <p className="text-gray">Choose how you want to receive notifications</p>
+            </div>
 
-            <div className="toggle-row mb-6" style={{ paddingBottom: "16px", borderBottom: "1px solid #f3f4f6" }}>
+            <div className="toggle-row mb-4 border-bottom">
               <div>
-                <div className="group-label" style={{ marginBottom: "4px" }}>🔔 Email Notifications</div>
+                <div className="group-label">🔔 Email Notifications</div>
                 <div className="text-desc">Receive updates and alerts via email</div>
               </div>
               <label className="toggle-switch">
@@ -132,7 +130,7 @@ const Settings = () => {
 
             <div className="toggle-row">
               <div>
-                <div className="group-label" style={{ marginBottom: "4px" }}>🔔 SMS Notifications</div>
+                <div className="group-label">📱 SMS Notifications</div>
                 <div className="text-desc">Receive urgent alerts via text message</div>
               </div>
               <label className="toggle-switch">
@@ -142,9 +140,11 @@ const Settings = () => {
             </div>
           </div>
 
-          <div className="ent-card settings-card">
-            <h3 className="card-title">Language & Region</h3>
-            <p className="text-gray mb-6">Set your preferred language and regional settings</p>
+          <div className="settings-card">
+            <div className="card-header-simple">
+              <h3>Language & Region</h3>
+              <p className="text-gray">Set your preferred language and regional settings</p>
+            </div>
 
             <div className="form-group mb-4">
               <label>Display Language</label>

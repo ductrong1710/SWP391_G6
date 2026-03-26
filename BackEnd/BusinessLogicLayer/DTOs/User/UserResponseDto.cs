@@ -3,6 +3,7 @@
     public class UserResponseDto
     {
         public int UserId { get; set; }
+        public int RoleId { get; set; }
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
@@ -11,6 +12,7 @@
         public DateTime? CreatedAt { get; set; }
         public bool IsAvailable { get; set; }
         public DateTime? AvailabilityUpdatedAt { get; set; }
-
+        public int? ManagedDistrictId { get; set; }
+        public int? EnterpriseId { get; set; }
     }
 }
