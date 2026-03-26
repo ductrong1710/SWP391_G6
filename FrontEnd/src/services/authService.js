@@ -26,6 +26,7 @@ const normalizeUser = (user) => {
   };
 };
 
+
 const authService = {
   register: async (userData) => {
     const response = await api.post("/auth/register", {
@@ -57,10 +58,13 @@ const authService = {
     };
   },
 
+<<<<<<< Updated upstream
   // ===============================================
   // THÊM HÀM NÀY VÀO ĐỂ XỬ LÝ ĐỔI MẬT KHẨU
   // ===============================================
   
+=======
+>>>>>>> Stashed changes
   // Thêm hàm changePassword gọi api backend
   changePassword: async (passwordData) => {
     // passwordData truyền vào sẽ có dạng: { oldPassword, newPassword, confirmPassword }
@@ -87,6 +91,22 @@ const authService = {
 
     const updatedUser = { ...currentUser, ...partialUser };
     localStorage.setItem("user", JSON.stringify(updatedUser));
+  },
+
+  // THÊM 2 HÀM MỚI VÀO ĐÂY:
+  forgotPassword: async (email) => {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  resetPassword: async (email, otp, password, confirmPassword) => {
+    const response = await api.post("/auth/reset-password", { 
+      email, 
+      otp, 
+      password, // Sửa lại tên biến cho chuẩn
+      confirmPassword // Thêm trường này
+    });
+    return response.data;
   },
 
   isAuthenticated: () => !!localStorage.getItem("token"),

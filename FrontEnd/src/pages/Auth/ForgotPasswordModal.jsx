@@ -206,4 +206,8 @@ onClick={onClose}
   );
 };
 
+<<<<<<< Updated upstream
 export default ForgotPasswordModal;
+=======
+export default ForgotPasswordModal;
+>>>>>>> Stashed changes
