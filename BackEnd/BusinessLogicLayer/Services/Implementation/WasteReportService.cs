@@ -95,6 +95,29 @@ namespace BusinessLogicLayer.Services.Implementation
             }
 
             var nowUtc = DateTime.UtcNow;
+
+            // --- Anti-Spam Rate Limiting ---
+            var userReports = await _uow.WasteReports.GetByUserIdAsync(userId);
+            
+            // 1. Daily Limit (max 5 reports per day)
+            var reportsToday = userReports.Count(r => r.CreatedAt.HasValue && r.CreatedAt.Value.Date == nowUtc.Date);
+            if (reportsToday >= 5)
+            {
+                throw new InvalidOperationException("You have reached the maximum limit of 5 waste reports per day. Thank you for your contributions!");
+            }
+
+            // 2. Cooldown Limit (2 minutes between reports)
+            var latestReport = userReports.FirstOrDefault(); // GetByUserIdAsync already sorts by CreatedAt DESC
+            if (latestReport != null && latestReport.CreatedAt.HasValue)
+            {
+                var timeSinceLastReport = nowUtc - latestReport.CreatedAt.Value;
+                if (timeSinceLastReport.TotalMinutes < 2)
+                {
+                    int waitSeconds = (int)(120 - timeSinceLastReport.TotalSeconds);
+                    throw new InvalidOperationException($"Please wait {waitSeconds} seconds before submitting another report.");
+                }
+            }
+
             var latDelta = 0.001m;
             var lonDelta = 0.001m;
 
