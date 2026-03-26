@@ -11,35 +11,27 @@ export const DISPATCH_FILTERS = [
   "All",
 ];
 
-const normalizeStatus = (status) => String(status || "").trim();
-
 export const mapCollectionRequestStatus = (request) => {
   if (request.assignmentStatus) {
-    return normalizeStatus(request.assignmentStatus);
+    return request.assignmentStatus;
   }
 
   if (request.status === "Pending") {
     return "Accepted";
   }
 
-  return normalizeStatus(request.status) || "Unknown";
+  return request.status || "Unknown";
 };
 
 export const buildDispatchItems = ({ pendingReports, collectionRequests }) => {
-  const reportItems = pendingReports
-    .filter((report) => {
-      const s = normalizeStatus(report.status).toLowerCase();
-      return s === "pending" || s === "rejected";
-    })
+  const pendingItems = pendingReports
+    .filter((report) => report.status === "Pending")
     .map((report) => ({
       kind: "report",
       id: report.reportId,
       reportId: report.reportId,
       requestId: null,
-      status:
-        normalizeStatus(report.status).toLowerCase() === "rejected"
-          ? "Rejected"
-          : "Pending",
+      status: report.status,
       wasteTypeName: report.wasteTypeNames.join(", "),
       description: report.description,
       latitude: report.latitude,
@@ -66,7 +58,7 @@ export const buildDispatchItems = ({ pendingReports, collectionRequests }) => {
     assignedCollectorName: request.assignedCollectorName,
   }));
 
-  return [...reportItems, ...requestItems].sort(
+  return [...pendingItems, ...requestItems].sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
 };

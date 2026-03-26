@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // Thêm useNavigate
 import { authService } from "../../services/authService";
 import NotificationBell from "../NotificationBell";
 import ProfileDropdown from "../ProfileDropdown";
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
 const EnterpriseHeader = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate(); // Khởi tạo hook chuyển trang
   const user = authService.getCurrentUser();
 
   const handleLogout = () => {
@@ -52,8 +53,17 @@ const EnterpriseHeader = () => {
           roleLabel={user?.roleName || "Enterprise"}
           open={showDropdown}
           onToggle={() => setShowDropdown((prev) => !prev)}
-          onProfile={() => setShowDropdown(false)}
-          onSettings={() => setShowDropdown(false)}
+          
+          // ĐÃ SỬA: Đóng dropdown VÀ điều hướng sang trang settings
+          onProfile={() => {
+            setShowDropdown(false);
+            navigate("/enterprise/settings"); 
+          }}
+          onSettings={() => {
+            setShowDropdown(false);
+            navigate("/enterprise/settings");
+          }}
+          
           onLogout={handleLogout}
           wrapperClassName="ent-profile-wrapper"
           triggerClassName="ent-profile"

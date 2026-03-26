@@ -44,13 +44,13 @@ const AssignedActions = ({ onStart, onDecline }) => {
       ) : (
         <div className="collector-action-grid">
           <button className="btn-start-trip" onClick={onStart}>
-            Start Trip
+            🚗 Start Trip
           </button>
           <button
-            className="btn-decline-trip"
+            className="btn-danger-soft"
             onClick={() => setShowDecline(true)}
           >
-            Decline Assignment
+            ✕ Decline
           </button>
         </div>
       )}

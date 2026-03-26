@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import "./App.css";
 
 import CitizenApp from "./pages/citizen/CitizenApp";
@@ -33,7 +31,6 @@ function App() {
 
   return (
     <div className="App">
-      <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
         {/* Public */}
         <Route path="/login" element={<Login />} />
