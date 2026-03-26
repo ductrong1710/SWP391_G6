@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import "./App.css";
+import ForgotPassword from "./pages/Auth/ForgotPassword";
 
 import CitizenApp from "./pages/citizen/CitizenApp";
 import EnterpriseApp from "./pages/Enterprise/EnterpriseApp";
@@ -21,9 +22,15 @@ function App() {
     const currentPath = window.location.pathname;
     const isAuth = authService.isAuthenticated();
 
-    if (!isAuth && currentPath !== "/login" && currentPath !== "/register") {
-      navigate("/login");
-    }
+  if (
+  !isAuth &&
+  currentPath !== "/login" &&
+  currentPath !== "/register" &&
+  currentPath !== "/forgot-password"
+) {
+  navigate("/login");
+}
+
     setLoading(false);
   }, [navigate]);
 
@@ -38,7 +45,7 @@ function App() {
         {/* Public */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         {/* Protected */}
         <Route
           path="/citizen/*"

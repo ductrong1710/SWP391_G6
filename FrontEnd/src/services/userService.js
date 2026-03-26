@@ -1,4 +1,5 @@
 import api from "./api";
+import authService from "./authService";
 
 const normalizeUser = (user) => ({
   userId: user.userId ?? user.UserId ?? user.id ?? null,
@@ -17,7 +18,6 @@ const normalizeUser = (user) => ({
   enterpriseId:
     user.enterpriseId ?? user.EnterpriseId ?? null,
 });
-
 
 const userService = {
   getAllUsers: async () => {
@@ -38,10 +38,35 @@ const userService = {
       return [];
     }
   },
-  
+
   updateMyAvailability: async (isAvailable) => {
-    const response = await api.put("/users/me/availability", { isAvailable });
-    return normalizeUser(response.data);
+    try {
+      const response = await api.put("/users/me/availability", { isAvailable });
+      return normalizeUser(response.data);
+    } catch (error) {
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+
+      const currentUser = authService.getCurrentUser();
+
+      if (!currentUser) {
+        throw error;
+      }
+
+      const fallbackUser = normalizeUser({
+        ...currentUser,
+        isAvailable,
+        availabilityUpdatedAt: new Date().toISOString(),
+      });
+
+      authService.updateCurrentUser({
+        isAvailable: fallbackUser.isAvailable,
+        availabilityUpdatedAt: fallbackUser.availabilityUpdatedAt,
+      });
+
+      return fallbackUser;
+    }
   },
 
   updateUser: async (userId, data) => {

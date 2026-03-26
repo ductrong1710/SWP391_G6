@@ -4,7 +4,28 @@ import SettingsTabs from "../../components/SettingsTabs";
 
 const Settings = () => {
   const [subTab, setSubTab] = useState("general");
+  const [preferences, setPreferences] = useState({
+    enable2FA: false,
+    emailNotifications: true,
+    smsNotifications: false,
+    language: "English (US)",
+  });
+
   const user = authService.getCurrentUser();
+
+  const handleToggle = (field) => (event) => {
+    setPreferences((prev) => ({
+      ...prev,
+      [field]: event.target.checked,
+    }));
+  };
+
+  const handleSelect = (field) => (event) => {
+    setPreferences((prev) => ({
+      ...prev,
+      [field]: event.target.value,
+    }));
+  };
 
   return (
     <div className="col-page-container fade-in">
@@ -39,6 +60,7 @@ const Settings = () => {
               <label>Full Name</label>
               <input type="text" className="form-input" defaultValue={user?.fullName || ""} />
             </div>
+
             <div className="form-group">
               <label>Email Address</label>
               <input
@@ -49,10 +71,17 @@ const Settings = () => {
                 style={{ backgroundColor: "#f3f4f6" }}
               />
             </div>
+
             <div className="form-group">
               <label>Account Type</label>
-              <input type="text" className="form-input disabled" value={user?.roleName || "Collector"} disabled />
+              <input
+                type="text"
+                className="form-input disabled"
+                value={user?.roleName || "Collector"}
+                disabled
+              />
             </div>
+
             <div className="form-actions">
               <button className="btn-save">Save Changes</button>
             </div>
@@ -72,10 +101,12 @@ const Settings = () => {
               <label>Current Password</label>
               <input type="password" className="form-input" placeholder="Enter current password" />
             </div>
+
             <div className="form-group mb-4">
               <label>New Password</label>
               <input type="password" className="form-input" placeholder="Enter new password" />
             </div>
+
             <div className="form-group mb-4">
               <label>Confirm New Password</label>
               <input type="password" className="form-input" placeholder="Confirm new password" />
@@ -97,9 +128,16 @@ const Settings = () => {
                 <div className="group-label">Enable 2FA</div>
                 <div className="text-desc">Require a verification code when signing in</div>
               </div>
-              <label className="toggle-switch">
-                <input type="checkbox" />
-                <span className="toggle-slider round"></span>
+
+              <label className="pref-switch" aria-label="Toggle 2FA">
+                <input
+                  type="checkbox"
+                  checked={preferences.enable2FA}
+                  onChange={handleToggle("enable2FA")}
+                />
+                <span className="pref-switch-track">
+                  <span className="pref-switch-thumb" />
+                </span>
               </label>
             </div>
           </div>
@@ -119,9 +157,16 @@ const Settings = () => {
                 <div className="group-label">🔔 Email Notifications</div>
                 <div className="text-desc">Receive updates and alerts via email</div>
               </div>
-              <label className="toggle-switch">
-                <input type="checkbox" defaultChecked />
-                <span className="toggle-slider round"></span>
+
+              <label className="pref-switch" aria-label="Toggle email notifications">
+                <input
+                  type="checkbox"
+                  checked={preferences.emailNotifications}
+                  onChange={handleToggle("emailNotifications")}
+                />
+                <span className="pref-switch-track">
+                  <span className="pref-switch-thumb" />
+                </span>
               </label>
             </div>
 
@@ -130,9 +175,16 @@ const Settings = () => {
                 <div className="group-label">📱 SMS Notifications</div>
                 <div className="text-desc">Receive urgent alerts via text message</div>
               </div>
-              <label className="toggle-switch">
-                <input type="checkbox" />
-                <span className="toggle-slider round"></span>
+
+              <label className="pref-switch" aria-label="Toggle SMS notifications">
+                <input
+                  type="checkbox"
+                  checked={preferences.smsNotifications}
+                  onChange={handleToggle("smsNotifications")}
+                />
+                <span className="pref-switch-track">
+                  <span className="pref-switch-thumb" />
+                </span>
               </label>
             </div>
           </div>
@@ -145,7 +197,11 @@ const Settings = () => {
 
             <div className="form-group mb-4">
               <label>Display Language</label>
-              <select className="form-input">
+              <select
+                className="form-input"
+                value={preferences.language}
+                onChange={handleSelect("language")}
+              >
                 <option>English (US)</option>
                 <option>Vietnamese</option>
                 <option>French</option>

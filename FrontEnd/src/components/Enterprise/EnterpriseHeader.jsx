@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { path: "/enterprise/dashboard", label: "Dashboard", icon: "📊" },
   { path: "/enterprise/dispatch", label: "Dispatch", icon: "📋" },
   { path: "/enterprise/rules", label: "Rules", icon: "⚙️" },
-  { path: "/enterprise/analytics", label: "Analytics", icon: "📈" },
 ];
 
 const EnterpriseHeader = () => {
