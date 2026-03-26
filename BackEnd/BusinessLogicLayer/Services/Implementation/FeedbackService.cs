@@ -35,6 +35,11 @@ namespace BusinessLogicLayer.Services.Implementation
             if (hasPending)
                 throw new InvalidOperationException("A complaint for this report is already pending review. Please wait for admin resolution before submitting a new one.");
 
+            if (report.Status != "Collected" && report.Status != "Completed")
+            {
+                throw new InvalidOperationException("Complaints can only be submitted after the collector has marked this report as Collected or Completed.");
+            }
+
             var feedback = new Feedback
             {
                 UserId = userId,
@@ -132,7 +137,7 @@ namespace BusinessLogicLayer.Services.Implementation
                         detail.AssignmentStatus = assignment.Status;
                         detail.CollectorId = assignment.AssignedCollector;
                         detail.CollectorName = collector?.FullName;
-                        detail.CollectorWarningCount = collector?.WarningCount ?? 0;
+                        detail.CollectorWarningCount = collector?.CollectorProfile?.WarningCount ?? 0;
                         detail.AssignedAt = assignment.AssignedAt;
                         detail.StartedAt = assignment.StartedAt;
                         detail.ArrivedAt = assignment.ArrivedAt;
@@ -187,22 +192,38 @@ namespace BusinessLogicLayer.Services.Implementation
 
                             if (action == "reassign")
                             {
-                                // Revert report status: Collected → Accepted
-                                if (report.Status == "Collected")
+                                // ---- NEW REDO LOGIC ----
+                                // 1. Revert report status: Collected/Completed → Accepted
+                                if (report.Status == "Collected" || report.Status == "Completed")
                                 {
                                     report.Status = "Accepted";
                                     _uow.WasteReports.Update(report);
                                 }
 
-                                // Cancel assignment
-                                assignment.Status = "Cancelled";
+                                // 2. Keep the assignment but revert it to "Assigned" so they have to start over
+                                assignment.Status = "Assigned";
+                                assignment.StartedAt = null;
+                                assignment.ArrivedAt = null;
+                                assignment.BeforeImageUrl = null;
                                 _uow.CollectorAssignments.Update(assignment);
 
-                                // Reset collection request status so enterprise can reassign
-                                collectionRequest.Status = "Pending";
+                                // 3. Revert Collection Request status to Assigned
+                                collectionRequest.Status = "Assigned";
                                 _uow.CollectionRequests.Update(collectionRequest);
 
-                                // Reverse previously awarded citizen points for this report
+                                // 4. Delete the old Confirmation and Details if they exist
+                                var confirmation = await _uow.CollectionConfirmations.GetByAssignmentIdAsync(assignment.AssignmentId);
+                                if (confirmation != null)
+                                {
+                                    var details = await _uow.CollectionDetails.FindAsync(d => d.ConfirmationId == confirmation.ConfirmationId);
+                                    foreach (var d in details)
+                                    {
+                                        _uow.CollectionDetails.Remove(d);
+                                    }
+                                    _uow.CollectionConfirmations.Remove(confirmation);
+                                }
+
+                                // 5. Reverse previously awarded citizen points for this report
                                 var allTx = await _uow.RewardTransactions.GetAllAsync();
                                 var earnedTx = allTx
                                     .Where(t => t.ReportId == report.ReportId && t.Type == "Earned")
@@ -232,7 +253,7 @@ namespace BusinessLogicLayer.Services.Implementation
                                         await _uow.Notifications.AddAsync(new Notification
                                         {
                                             UserId = citizen.UserId,
-                                            Content = $"Your {totalEarned} reward points for report #{report.ReportId} have been reversed due to a valid complaint. The report will be reassigned.",
+                                            Content = $"Your {totalEarned} reward points for report #{report.ReportId} have been reversed due to a valid complaint. The collector has been forced to re-clean the area.",
                                             IsRead = false,
                                             CreatedAt = now
                                         });
@@ -248,14 +269,14 @@ namespace BusinessLogicLayer.Services.Implementation
             if (collectorId.HasValue)
             {
                 var collector = await _uow.Users.GetByIdAsync(collectorId.Value);
-                if (collector != null)
+                if (collector?.CollectorProfile != null)
                 {
                     int points = action == "reassign" ? ReassignPoints : WarnPoints;
-                    collector.WarningCount += points;
 
-                    // Auto-deactivate if >= threshold
+                    collector.CollectorProfile.WarningCount += points;
+
                     bool autoDeactivated = false;
-                    if (collector.WarningCount >= WarningThreshold)
+                    if (collector.CollectorProfile.WarningCount >= WarningThreshold)
                     {
                         collector.Status = "Inactive";
                         autoDeactivated = true;
@@ -263,10 +284,9 @@ namespace BusinessLogicLayer.Services.Implementation
 
                     _uow.Users.Update(collector);
 
-                    // Notify collector
                     string collectorMsg = action == "reassign"
-                        ? $"You received a warning (+{points} pts, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Your assignment has been cancelled due to a valid citizen complaint."
-                        : $"You received a warning (+{points} pt, total: {collector.WarningCount}/{WarningThreshold}) for report #{reportId}. Reason: {dto.AdminNote}";
+                        ? $"URGENT: You received a warning (+{points} pts, total: {collector.CollectorProfile.WarningCount}/{WarningThreshold}) for report #{reportId}. Your collection was rejected due to a valid complaint. You MUST return to the location and re-clean the area."
+                        : $"You received a warning (+{points} pt, total: {collector.CollectorProfile.WarningCount}/{WarningThreshold}) for report #{reportId}. Reason: {dto.AdminNote}";
 
                     if (autoDeactivated)
                     {
@@ -289,7 +309,7 @@ namespace BusinessLogicLayer.Services.Implementation
                 await _uow.Notifications.AddAsync(new Notification
                 {
                     UserId = enterpriseId.Value,
-                    Content = $"Report #{reportId} needs to be reassigned to a new collector. The previous assignment was cancelled due to a valid citizen complaint.",
+                    Content = $"WARNING: Collector assigned to Report #{reportId} failed to clean properly. The assignment has been forced to REDO. Please monitor their progress.",
                     IsRead = false,
                     CreatedAt = now
                 });

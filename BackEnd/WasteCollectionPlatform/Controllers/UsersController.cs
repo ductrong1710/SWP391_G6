@@ -27,16 +27,23 @@ namespace WasteCollectionPlatform.Controllers
         }
 
         // Helper to fetch collectors from user service
-        private async Task<List<UserResponseDto>> FetchCollectorsAsync()
+        private async Task<List<UserResponseDto>> FetchCollectorsAsync(int? enterpriseId = null)
         {
             var allUsers = await _userService.GetAllAsync();
-            return allUsers
-                .Where(u => string.Equals(u.RoleName, "Collector", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            var collectors = allUsers
+                .Where(u => string.Equals(u.RoleName, "Collector", StringComparison.OrdinalIgnoreCase));
+
+            // If enterpriseId is provided, only return collectors belonging to that enterprise
+            if (enterpriseId.HasValue)
+            {
+                collectors = collectors.Where(c => c.EnterpriseId == enterpriseId.Value);
+            }
+
+            return collectors.ToList();
         }
 
         /// <summary>
-        /// Enterprise/Admin: Get all collectors (roleId = 3) for task assignment
+        /// Enterprise: Get only MY collectors. Admin: Get all collectors.
         /// </summary>
         [HttpGet("collectors")]
         [Authorize(Roles = "Admin,Enterprise")]
@@ -47,7 +54,17 @@ namespace WasteCollectionPlatform.Controllers
         {
             try
             {
-                var collectors = await FetchCollectorsAsync();
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+                var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+                int? enterpriseId = null;
+                if (string.Equals(roleClaim, "Enterprise", StringComparison.OrdinalIgnoreCase)
+                    && int.TryParse(userIdClaim, out var uid))
+                {
+                    enterpriseId = uid;
+                }
+
+                var collectors = await FetchCollectorsAsync(enterpriseId);
                 return Ok(collectors);
             }
             catch (Exception ex)

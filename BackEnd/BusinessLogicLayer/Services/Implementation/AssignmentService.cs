@@ -3,6 +3,7 @@ using BusinessLogicLayer.Services.Interface;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 
+
 namespace BusinessLogicLayer.Services.Implementation
 {
     public class AssignmentService : IAssignmentService
@@ -44,10 +45,22 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new ArgumentException("Selected user is not a Collector");
             }
-            if (!collector.IsAvailable)
+            if (collector.CollectorProfile == null)
+            {
+                throw new InvalidOperationException("Collector profile not found");
+            }
+
+            if (collector.CollectorProfile.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException(
+                    "This collector cannot receive the job because they are not in your managed area.");
+            }
+
+            if (!collector.CollectorProfile.IsAvailable)
             {
                 throw new InvalidOperationException("Collector is currently offline and cannot receive new assignments");
             }
+
 
             var openAssignments = await _uow.CollectorAssignments.CountOpenAssignmentsByCollectorAsync(dto.CollectorId);
             if (openAssignments >= MaxOpenAssignmentsPerCollector)
@@ -155,10 +168,21 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 throw new InvalidOperationException("New collector is the same as current collector");
             }
-            if (!newCollector.IsAvailable)
+            if (newCollector.CollectorProfile == null)
+            {
+                throw new InvalidOperationException("Collector profile not found");
+            }
+
+            if (newCollector.CollectorProfile.EnterpriseId != enterpriseId)
+            {
+                throw new UnauthorizedAccessException("You can only reassign to collectors from your own enterprise");
+            }
+
+            if (!newCollector.CollectorProfile.IsAvailable)
             {
                 throw new InvalidOperationException("Collector is currently offline and cannot receive new assignments");
             }
+
 
             // Update assignment
             assignment.AssignedCollector = dto.NewCollectorId;
