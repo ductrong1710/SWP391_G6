@@ -5,14 +5,12 @@ import './Admin.css';
 import Overview from './Overview';
 import Users from './Users'; 
 import Disputes from './Disputes';
-import System from './System';
 import Settings from './Settings';
 
 const TAB_COMPONENTS = {
   overview: Overview,
   users: Users,
   disputes: Disputes,
-  system: System,
   settings: Settings,
 };
 

@@ -2,11 +2,6 @@ using DataAccessLayer.Data;
 using DataAccessLayer.Models;
 using DataAccessLayer.Repositories.Interface;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DataAccessLayer.Repositories.Implementation
 {
@@ -23,6 +18,8 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             return await _context.Users
                 .Include(u => u.Role)
+                .Include(u => u.CollectorProfile)
+                .Include(u => u.EnterpriseProfile)
                 .FirstOrDefaultAsync(u => u.UserId == id);
         }
 
@@ -30,6 +27,8 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             return await _context.Users
                 .Include(u => u.Role)
+                .Include(u => u.CollectorProfile)
+                .Include(u => u.EnterpriseProfile)
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 
@@ -52,6 +51,8 @@ namespace DataAccessLayer.Repositories.Implementation
         {
             return await _context.Users
                 .Include(u => u.Role)
+                .Include(u => u.CollectorProfile)
+                .Include(u => u.EnterpriseProfile)
                 .ToListAsync();
         }
 
@@ -76,10 +77,13 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Users
                 .AnyAsync(u => u.Phone == phone && u.UserId != excludeUserId);
         }
+
         public async Task<IEnumerable<User>> GetUsersByRoleAsync(string roleName)
         {
             return await _context.Users
                 .Include(u => u.Role)
+                .Include(u => u.CollectorProfile)
+                .Include(u => u.EnterpriseProfile)
                 .Where(u => u.Role != null && u.Role.RoleName == roleName)
                 .ToListAsync();
         }
