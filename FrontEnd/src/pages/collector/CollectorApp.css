@@ -41,16 +41,32 @@
   font-size: 18px;
 }
 
+.col-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .col-logo-icon {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: #10b981;
   color: white;
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
 }
+
+.col-logo-text {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1;
+}
+
 
 .col-nav {
   display: flex;
@@ -60,20 +76,27 @@
 .col-nav-item {
   border: none;
   background: transparent;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 19px;
+  font-weight: 700;
   color: #64748b;
   cursor: pointer;
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
+  line-height: 1;
 }
+
+
 
 .col-nav-item.active {
   background: #d1fae5;
   color: #059669;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.14);
 }
+
+
 
 .col-header-actions {
   display: flex;
@@ -1276,4 +1299,77 @@ input:checked + .toggle-slider:before {
 .leaflet-top,
 .leaflet-bottom {
   z-index: 10 !important;
+}
+
+/* Container căn chỉnh chữ Online và nút gạt */
+.status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Khoảng cách giữa chữ và nút */
+}
+
+/* Chỉnh màu chữ Online cho hợp với nút */
+.status-label.text-green {
+  color: #16b364; /* Bạn có thể đổi mã màu tùy style guide của project */
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Kích thước của toàn bộ nút gạt */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+/* Ẩn checkbox mặc định của HTML */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Background của nút gạt */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc; /* Màu khi offline */
+  transition: 0.3s;
+}
+
+/* Cục tròn màu trắng bên trong */
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Tạo bóng nhẹ cho cục tròn giống ảnh */
+}
+
+/* Màu background khi nút được BẬT (Online) */
+input:checked + .slider {
+  background-color: #22c55e; /* Màu xanh lá giống ảnh của bạn */
+}
+
+/* Dịch chuyển cục tròn khi BẬT */
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+/* Bo tròn góc cho nút gạt */
+.slider.round {
+  border-radius: 24px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
 }

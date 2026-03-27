@@ -26,7 +26,6 @@ const normalizeUser = (user) => {
   };
 };
 
-
 const authService = {
   register: async (userData) => {
     const response = await api.post("/auth/register", {

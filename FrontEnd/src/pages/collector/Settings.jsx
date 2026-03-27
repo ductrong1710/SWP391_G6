@@ -81,6 +81,20 @@ const ProfileSettings = () => {
     }
   };
 
+  const handleToggle = (field) => (event) => {
+    setPreferences((prev) => ({
+      ...prev,
+      [field]: event.target.checked,
+    }));
+  };
+
+  const handleSelect = (field) => (event) => {
+    setPreferences((prev) => ({
+      ...prev,
+      [field]: event.target.value,
+    }));
+  };
+
   return (
     <div className="tab-pane">
       <h3 className="pane-title">Profile Information</h3>

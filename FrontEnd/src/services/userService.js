@@ -1,4 +1,5 @@
 import api from "./api";
+import authService from "./authService";
 
 const normalizeUser = (user) => ({
   userId: user.userId ?? user.UserId ?? user.id ?? null,
@@ -12,7 +13,6 @@ const normalizeUser = (user) => ({
   availabilityUpdatedAt:
     user.availabilityUpdatedAt ?? user.AvailabilityUpdatedAt ?? null,
 });
-
 
 const userService = {
   getAllUsers: async () => {
@@ -33,7 +33,7 @@ const userService = {
       return [];
     }
   },
-  
+
   updateMyAvailability: async (isAvailable) => {
   const response = await api.put("/users/me/availability", { isAvailable });
   return normalizeUser(response.data);

@@ -22,6 +22,7 @@ const EnterpriseApp = () => {
       <main className="main-content">
         <Routes>
           <Route path="/" element={<Navigate to="/enterprise/dashboard" replace />} />
+          <Route path="/analytics" element={<Navigate to="/enterprise/dashboard" replace />} />
           {ROUTE_CONFIG.map((route) => (
             <Route key={route.path} path={route.path} element={route.element} />
           ))}

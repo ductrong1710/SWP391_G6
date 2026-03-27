@@ -14,7 +14,7 @@ import {
   JOB_STATUS, } from "../../utils/collectorJob";
 import userService from "../../services/userService";
 import authService from "../../services/authService";
-
+// import "./ActiveJob.css";
 
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -240,7 +240,6 @@ const JobListPanel = ({ jobs, selectedJob, onSelect }) => (
   </div>
 );
 
-// ... code cũ ...
 const LocationMapSection = ({ job }) => {
   const mapCenter = getJobMapCenter(job);
   const hasCoordinates =
@@ -257,7 +256,6 @@ const LocationMapSection = ({ job }) => {
       </div>
 
       <div className="active-dispatch-map-panel">
-        {/* ĐÃ THÊM className="low-z-index-map" VÀO DÒNG DƯỚI ĐÂY */}
         <MapContainer
           key={`${mapCenter[0]}-${mapCenter[1]}`}
           center={mapCenter}
@@ -268,7 +266,6 @@ const LocationMapSection = ({ job }) => {
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {hasCoordinates && (
             <Marker position={mapCenter}>
-// ... code cũ ...
               <Popup>
                 <strong>Job #{job.assignmentId}</strong>
                 <br />
@@ -503,9 +500,8 @@ const DetailsPanel = ({
 };
 
 const ActiveJob = () => {
-  const [isOnline, setIsOnline] = useState(
-  authService.getCurrentUser()?.isAvailable ?? true
-  );
+  // Đã sửa: Luôn đặt trạng thái ban đầu là true (Online)
+  const [isOnline, setIsOnline] = useState(true);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
 
   const {
@@ -520,6 +516,27 @@ const ActiveJob = () => {
     declineJob,
     reportIssue,
   } = useActiveJob();
+
+  // Đã thêm: Đồng bộ trạng thái Online lên server ngay khi vào trang
+  useEffect(() => {
+    const forceOnlineOnLoad = async () => {
+      try {
+        const currentUser = authService.getCurrentUser();
+        // Cập nhật lên server nếu trước đó đang offline
+        if (currentUser && !currentUser.isAvailable) {
+          const updatedUser = await userService.updateMyAvailability(true);
+          authService.updateCurrentUser({
+            isAvailable: true,
+            availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi khi tự động bật Online:", err);
+      }
+    };
+
+    forceOnlineOnLoad();
+  }, []);
 
   useEffect(() => {
     if (!jobs.length) {

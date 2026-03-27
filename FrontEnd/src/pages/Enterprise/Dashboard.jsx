@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import wasteReportService from "../../services/wasteReportService";
+import assignmentService from "../../services/assignmentService";
+import userService from "../../services/userService";
+import authService from "../../services/authService";
 import "./Dashboard.css";
+
+const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
-    totalCollected: 0,
-    carbonSaved: 0,
-    activeCollectors: 0,
-    revenue: 0,
-    monthlyGrowth: 0,
+    totalCollectedKg: 0,
+    totalRequests: 0,
+    completedRequests: 0,
   });
   const [wasteDistribution, setWasteDistribution] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
@@ -21,102 +23,181 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [timeFilter]);
 
+  const getDateRange = () => {
+    const now = new Date();
+    const start = new Date(now);
+
+    if (timeFilter === "This Week") {
+      start.setDate(now.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      return { start, end: now };
+    }
+
+    if (timeFilter === "This Month") {
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      return { start, end: now };
+    }
+
+    start.setMonth(now.getMonth() - 11, 1);
+    start.setHours(0, 0, 0, 0);
+    return { start, end: now };
+  };
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const allReports = await wasteReportService.getAllReports();
-      const acceptedReports = allReports.filter((r) => r.status === "Accepted");
 
-      // Calculate statistics
-      const totalWeight = acceptedReports.length * 12.5; // Mock: 12.5kg per report
-      const carbonSaved = totalWeight * 0.8; // Mock: 0.8kg CO2 per kg waste
-      const revenue = acceptedReports.length * 150; // Mock: $150 per report
+      const currentUser = authService.getCurrentUser();
 
-      // Calculate growth
-      const lastMonthReports = acceptedReports.filter((r) => {
-        const date = new Date(r.createdAt);
-        const now = new Date();
-        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        return (
-          date >= lastMonth &&
-          date < new Date(now.getFullYear(), now.getMonth(), 1)
-        );
+      const [requests] = await Promise.all([
+        assignmentService.getCollectionRequests(),
+        userService.getCollectors(),
+      ]);
+
+      const { start, end } = getDateRange();
+
+      const filteredRequests = requests.filter((item) => {
+        const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
+        if (!rawDate) return false;
+        const date = new Date(rawDate);
+        return date >= start && date <= end;
       });
 
-      const currentMonthReports = acceptedReports.filter((r) => {
-        const date = new Date(r.createdAt);
-        const now = new Date();
-        return (
-          date.getMonth() === now.getMonth() &&
-          date.getFullYear() === now.getFullYear()
-        );
-      });
+      const completedItems = filteredRequests.filter(
+        (item) =>
+          String(item.status).toLowerCase() === "completed" ||
+          String(item.assignmentStatus).toLowerCase() === "completed"
+      );
 
-      const growth =
-        lastMonthReports.length > 0
-          ? (
-              ((currentMonthReports.length - lastMonthReports.length) /
-                lastMonthReports.length) *
-              100
-            ).toFixed(1)
-          : 0;
+      const totalCollectedKg = completedItems.reduce((sum, item) => {
+        return sum + Number(item.totalCollectedWeight || 0);
+      }, 0);
 
       setStats({
-        totalCollected: totalWeight.toFixed(1),
-        carbonSaved: carbonSaved.toFixed(0),
-        activeCollectors: 24, // Mock
-        revenue: revenue,
-        monthlyGrowth: growth,
+        totalCollectedKg,
+        totalRequests: filteredRequests.length,
+        completedRequests: completedItems.length,
       });
 
-      // Waste type distribution
-      const wasteTypes = {};
-      acceptedReports.forEach((report) => {
-        const typeName = report.wastetype?.name || "Other";
-        wasteTypes[typeName] = (wasteTypes[typeName] || 0) + 1;
+      const wasteTypeCounts = {};
+      filteredRequests.forEach((item) => {
+        const types = String(item.wasteTypeName || "Other")
+          .split(",")
+          .map((type) => type.trim())
+          .filter(Boolean);
+
+        if (!types.length) {
+          wasteTypeCounts.Other = (wasteTypeCounts.Other || 0) + 1;
+          return;
+        }
+
+        types.forEach((type) => {
+          wasteTypeCounts[type] = (wasteTypeCounts[type] || 0) + 1;
+        });
       });
 
-      const total = Object.values(wasteTypes).reduce((a, b) => a + b, 0) || 1;
-      const distribution = Object.entries(wasteTypes).map(([name, count]) => ({
+      const totalWaste = Object.values(wasteTypeCounts).reduce(
+        (sum, value) => sum + value,
+        0
+      );
+
+      const distribution = Object.entries(wasteTypeCounts).map(([name, count]) => ({
         name,
         count,
-        percentage: ((count / total) * 100).toFixed(0),
+        percentage: totalWaste > 0 ? ((count / totalWaste) * 100).toFixed(0) : "0",
       }));
 
       setWasteDistribution(distribution);
 
-      // Collection trend (last 30 days)
-      const last30Days = Array.from({ length: 30 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (29 - i));
-        return date.toISOString().split("T")[0];
-      });
+      if (timeFilter === "This Year") {
+        const now = new Date();
+        const monthlyData = Array.from({ length: 12 }, (_, index) => {
+          const month = index;
+          const count = filteredRequests.filter((item) => {
+            const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
+            if (!rawDate) return false;
+            const date = new Date(rawDate);
+            return (
+              date.getMonth() === month && date.getFullYear() === now.getFullYear()
+            );
+          }).length;
 
-      const trendData = last30Days.map((date) => {
-        const count = acceptedReports.filter((r) =>
-          r.createdAt.startsWith(date)
-        ).length;
-        return { date, count };
-      });
+          return {
+            label: new Date(now.getFullYear(), month, 1).toLocaleString("en-US", {
+              month: "short",
+            }),
+            count,
+          };
+        });
 
-      setCollectionTrend(trendData);
+        setCollectionTrend(monthlyData);
+      } else {
+        const days =
+          timeFilter === "This Week"
+            ? 7
+            : new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
 
-      // Recent transactions
-      const recent = acceptedReports
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        const dailyData = Array.from({ length: days }, (_, index) => {
+          const date = new Date(end);
+          date.setDate(
+            timeFilter === "This Week"
+              ? end.getDate() - (days - 1 - index)
+              : index + 1
+          );
+
+          const label =
+            timeFilter === "This Week"
+              ? date.toLocaleString("en-US", { weekday: "short" })
+              : String(index + 1);
+
+          const count = filteredRequests.filter((item) => {
+            const rawDate = item.reportCreatedAt || item.createdAt || item.assignedAt;
+            if (!rawDate) return false;
+            const itemDate = new Date(rawDate);
+
+            return (
+              itemDate.getDate() === date.getDate() &&
+              itemDate.getMonth() === date.getMonth() &&
+              itemDate.getFullYear() === date.getFullYear()
+            );
+          }).length;
+
+          return { label, count };
+        });
+
+        setCollectionTrend(dailyData);
+      }
+
+      const recent = [...filteredRequests]
+        .sort((a, b) => {
+          const dateA = new Date(a.reportCreatedAt || a.createdAt || a.assignedAt || 0);
+          const dateB = new Date(b.reportCreatedAt || b.createdAt || b.assignedAt || 0);
+          return dateB - dateA;
+        })
         .slice(0, 5)
-        .map((r) => ({
-          id: r.wastereportId,
-          userName: r.user?.username || "Unknown User",
-          weight: (Math.random() * 15 + 5).toFixed(1),
-          wasteType: r.wastetype?.name || "Unknown",
-          time: new Date(r.createdAt).toLocaleString(),
-          txnId: `TXN-2026-${String(r.wastereportId).padStart(4, "0")}`,
+        .map((item) => ({
+          id: item.requestId,
+          userName: item.assignedCollectorName || "Unassigned Collector",
+          requestId: `REQ-${String(item.requestId).padStart(4, "0")}`,
+          wasteType: item.wasteTypeName || "Unknown",
+          status: item.assignmentStatus || item.status || "Unknown",
+          time: new Date(
+            item.reportCreatedAt || item.createdAt || item.assignedAt
+          ).toLocaleString(),
         }));
 
       setRecentTransactions(recent);
-    } catch (err) {
-      console.error("Error fetching dashboard data:", err);
+    } catch (error) {
+      console.error("Error fetching enterprise dashboard:", error);
+      setStats({
+        totalCollectedKg: 0,
+        totalRequests: 0,
+        completedRequests: 0,
+      });
+      setWasteDistribution([]);
+      setRecentTransactions([]);
+      setCollectionTrend([]);
     } finally {
       setLoading(false);
     }
@@ -132,7 +213,7 @@ const Dashboard = () => {
         <div className="stat-value">{value}</div>
         <div
           className="stat-change"
-          style={{ color: change.startsWith("+") ? "#10b981" : "#ef4444" }}
+          style={{ color: change.startsWith("-") ? "#ef4444" : "#10b981" }}
         >
           {change}
         </div>
@@ -149,18 +230,21 @@ const Dashboard = () => {
     );
   }
 
+  const maxCount = Math.max(...collectionTrend.map((item) => item.count), 1);
+
   return (
     <div className="dashboard-container">
-      {/* HEADER */}
       <div className="dashboard-header">
         <div>
           <h1>Enterprise Dashboard</h1>
-          <p>Business overview and performance metrics</p>
+          <p>Overview from requests assigned within your enterprise</p>
         </div>
+
         <div className="header-actions">
           <Link to="/enterprise/dispatch" className="btn-primary">
             📋 Dispatch Console
           </Link>
+
           <select
             className="time-filter"
             value={timeFilter}
@@ -173,97 +257,74 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* STATS GRID */}
       <div className="stats-grid">
         <StatCard
           icon="♻️"
           title="Total Collected"
-          value={`${stats.totalCollected} tons`}
-          change={`+${stats.monthlyGrowth}% vs last month`}
+          value={`${stats.totalCollectedKg.toFixed(1)} kg`}
+          change="Collected waste"
           color="#10b981"
         />
         <StatCard
-          icon="🌱"
-          title="Carbon Saved"
-          value={`${stats.carbonSaved} kg CO₂`}
-          change="+8.3% vs last month"
+          icon="📦"
+          title="Total Requests"
+          value={stats.totalRequests}
+          change="All requests"
           color="#3b82f6"
         />
         <StatCard
-          icon="👥"
-          title="Active Collectors"
-          value={stats.activeCollectors}
-          change="+2 this week"
+          icon="✅"
+          title="Completed Requests"
+          value={stats.completedRequests}
+          change="Finished requests"
           color="#f59e0b"
-        />
-        <StatCard
-          icon="💰"
-          title="Revenue"
-          value={`$${stats.revenue.toLocaleString()}`}
-          change="+15.2% vs last month"
-          color="#8b5cf6"
         />
       </div>
 
-      {/* CHARTS ROW */}
       <div className="charts-row">
-        {/* COLLECTION TRENDS */}
         <div className="chart-card">
-          <h3>Collection Trends (Last 30 Days)</h3>
+          <h3>Request Trends</h3>
           <div className="trend-chart">
             <div className="chart-bars">
-              {collectionTrend.map((item, i) => {
-                const maxCount =
-                  Math.max(...collectionTrend.map((d) => d.count)) || 1;
+              {collectionTrend.map((item, index) => {
                 const height = (item.count / maxCount) * 100;
                 return (
                   <div
-                    key={i}
+                    key={`${item.label}-${index}`}
                     className="chart-bar"
                     style={{ height: `${height}%` }}
-                    title={`${item.date}: ${item.count} reports`}
+                    title={`${item.label}: ${item.count} requests`}
                   />
                 );
               })}
             </div>
             <div className="chart-labels">
-              <span>{collectionTrend[0]?.date || "Jan 1"}</span>
-              <span>
-                {collectionTrend[Math.floor(collectionTrend.length / 3)]
-                  ?.date || "Jan 10"}
-              </span>
-              <span>
-                {collectionTrend[Math.floor((collectionTrend.length * 2) / 3)]
-                  ?.date || "Jan 20"}
-              </span>
-              <span>
-                {collectionTrend[collectionTrend.length - 1]?.date || "Feb 1"}
-              </span>
+              {collectionTrend.map((item, index) => {
+                const shouldShow =
+                  index === 0 ||
+                  index === collectionTrend.length - 1 ||
+                  index === Math.floor(collectionTrend.length / 2);
+
+                return shouldShow ? <span key={item.label}>{item.label}</span> : null;
+              })}
             </div>
           </div>
         </div>
 
-        {/* WASTE DISTRIBUTION */}
         <div className="chart-card waste-distribution">
           <h3>Waste Type Distribution</h3>
           <div className="donut-chart-container">
             <div className="donut-chart">
-              {/* Donut chart visualization */}
               <svg width="200" height="200" viewBox="0 0 200 200">
-                {wasteDistribution.map((item, i) => {
-                  const colors = [
-                    "#10b981",
-                    "#3b82f6",
-                    "#f59e0b",
-                    "#ef4444",
-                    "#8b5cf6",
-                  ];
+                {wasteDistribution.map((item, index) => {
                   const startAngle = wasteDistribution
-                    .slice(0, i)
+                    .slice(0, index)
                     .reduce(
-                      (sum, d) => sum + (parseFloat(d.percentage) / 100) * 360,
+                      (sum, current) =>
+                        sum + (parseFloat(current.percentage) / 100) * 360,
                       0
                     );
+
                   const angle = (parseFloat(item.percentage) / 100) * 360;
                   const endAngle = startAngle + angle;
 
@@ -280,9 +341,9 @@ const Dashboard = () => {
 
                   return (
                     <path
-                      key={i}
+                      key={item.name}
                       d={`M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                      fill={colors[i % colors.length]}
+                      fill={COLORS[index % COLORS.length]}
                     />
                   );
                 })}
@@ -290,33 +351,24 @@ const Dashboard = () => {
               </svg>
             </div>
           </div>
+
           <div className="waste-legend">
-            {wasteDistribution.slice(0, 5).map((item, i) => {
-              const colors = [
-                "#10b981",
-                "#3b82f6",
-                "#f59e0b",
-                "#ef4444",
-                "#8b5cf6",
-              ];
-              return (
-                <div key={i} className="legend-item">
-                  <div
-                    className="legend-dot"
-                    style={{ backgroundColor: colors[i] }}
-                  />
-                  <span className="legend-label">{item.name}</span>
-                  <span className="legend-value">{item.percentage}%</span>
-                </div>
-              );
-            })}
+            {wasteDistribution.slice(0, 5).map((item, index) => (
+              <div key={item.name} className="legend-item">
+                <div
+                  className="legend-dot"
+                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                />
+                <span className="legend-label">{item.name}</span>
+                <span className="legend-value">{item.percentage}%</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* RECENT TRANSACTIONS */}
       <div className="transactions-card">
-        <h3>Recent Completed Transactions</h3>
+        <h3>Recent Assigned Requests</h3>
         <div className="transactions-list">
           {recentTransactions.length > 0 ? (
             recentTransactions.map((transaction) => (
@@ -324,25 +376,33 @@ const Dashboard = () => {
                 <div className="transaction-info">
                   <div className="transaction-icon">♻️</div>
                   <div>
-                    <div className="transaction-name">
-                      {transaction.userName}
-                    </div>
-                    <div className="transaction-id">{transaction.txnId}</div>
+                    <div className="transaction-name">{transaction.userName}</div>
+                    <div className="transaction-id">{transaction.requestId}</div>
                   </div>
                 </div>
+
                 <div className="transaction-details">
-                  <div className="transaction-weight">
-                    {transaction.weight} kg
-                  </div>
-                  <div className="transaction-type">
-                    {transaction.wasteType}
-                  </div>
-                </div>
+  <span
+    className={`transaction-status-badge ${
+      String(transaction.status).toLowerCase() === "completed"
+        ? "completed"
+        : "default"
+    }`}
+  >
+    {transaction.status}
+  </span>
+
+  <div className="transaction-type-pill">
+    {transaction.wasteType}
+  </div>
+</div>
+
+
                 <div className="transaction-time">{transaction.time}</div>
               </div>
             ))
           ) : (
-            <div className="no-data">Chưa có giao dịch nào</div>
+            <div className="no-data">Chưa có dữ liệu request</div>
           )}
         </div>
       </div>
