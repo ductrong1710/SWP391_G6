@@ -14,7 +14,7 @@ import {
   JOB_STATUS, } from "../../utils/collectorJob";
 import userService from "../../services/userService";
 import authService from "../../services/authService";
-// import "./ActiveJob.css";
+// import "./CollectorApp.css";
 
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -109,25 +109,83 @@ const EmptyState = () => (
 );
 
 const StatusToggle = ({ isOnline, onToggle }) => (
-  <div className="status-toggle">
-    <span className={`status-label ${isOnline ? "text-green" : "text-gray"}`}>
+  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+    <span
+      style={{
+        fontSize: "14px",
+        fontWeight: "600",
+        transition: "color 0.3s ease",
+        color: isOnline ? "#10b981" : "#64748b",
+      }}
+    >
       {isOnline ? "Online" : "Offline"}
     </span>
-    <label className="switch">
-      <input type="checkbox" checked={isOnline} onChange={onToggle} />
-      <span className="slider round" />
+    
+    <label
+      style={{
+        position: "relative",
+        display: "inline-block",
+        width: "48px",
+        height: "26px",
+        flexShrink: 0,
+        cursor: "pointer",
+        margin: 0
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={isOnline}
+        onChange={onToggle}
+        style={{ 
+          opacity: 0, 
+          width: 0, 
+          height: 0, 
+          margin: 0, 
+          position: "absolute" 
+        }}
+      />
+      {/* Background của nút */}
+      <span
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: isOnline ? "#10b981" : "#e2e8f0",
+          borderRadius: "34px",
+          transition: "background-color 0.3s ease",
+        }}
+      >
+        {/* Cục tròn màu trắng */}
+        <span
+          style={{
+            position: "absolute",
+            height: "20px",
+            width: "20px",
+            left: "3px",
+            bottom: "3px",
+            backgroundColor: "white",
+            borderRadius: "50%",
+            transition: "transform 0.3s ease",
+            transform: isOnline ? "translateX(22px)" : "translateX(0)",
+            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)",
+          }}
+        />
+      </span>
     </label>
   </div>
 );
 
-const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIssue }) => {
+const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIssue, imagePreview, onFileChange }) => {
   if (job?.status === JOB_STATUS.ASSIGNED) {
   return <AssignedActions onStart={onStart} onDecline={onDecline} />;
   }
   if (job?.status === JOB_STATUS.ON_THE_WAY) {
     return (
       <>
-        <OnTheWayActions onArrived={onArrived} />
+        <OnTheWayActions 
+          onArrived={onArrived} 
+          imagePreview={imagePreview} 
+          onFileChange={onFileChange} 
+        />
         <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
           <div className="card-header-simple">
             <h3>Issue Handling</h3>
@@ -146,7 +204,12 @@ const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIss
   if (job?.status === JOB_STATUS.ARRIVED) {
     return (
       <>
-        <ArrivedActions job={job} onComplete={onComplete} />
+        <ArrivedActions 
+          job={job} 
+          onComplete={onComplete} 
+          imagePreview={imagePreview} 
+          onFileChange={onFileChange} 
+        />
         <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
           <div className="card-header-simple">
             <h3>Issue Handling</h3>
@@ -462,6 +525,8 @@ const DetailsPanel = ({
   onComplete,
   onDecline,
   onReportIssue,
+  imagePreview,
+  onFileChange
 }) => {
   if (!job) {
     return (
@@ -493,6 +558,8 @@ const DetailsPanel = ({
           onComplete={onComplete}
           onDecline={onDecline}
           onReportIssue={onReportIssue}
+          imagePreview={imagePreview}
+          onFileChange={onFileChange}
         />
       </div>
     </div>
@@ -500,9 +567,9 @@ const DetailsPanel = ({
 };
 
 const ActiveJob = () => {
-  // Đã sửa: Luôn đặt trạng thái ban đầu là true (Online)
   const [isOnline, setIsOnline] = useState(true);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null); // Trạng thái ảnh xem trước
 
   const {
     jobs,
@@ -517,12 +584,10 @@ const ActiveJob = () => {
     reportIssue,
   } = useActiveJob();
 
-  // Đã thêm: Đồng bộ trạng thái Online lên server ngay khi vào trang
   useEffect(() => {
     const forceOnlineOnLoad = async () => {
       try {
         const currentUser = authService.getCurrentUser();
-        // Cập nhật lên server nếu trước đó đang offline
         if (currentUser && !currentUser.isAvailable) {
           const updatedUser = await userService.updateMyAvailability(true);
           authService.updateCurrentUser({
@@ -549,9 +614,28 @@ const ActiveJob = () => {
     }
   }, [jobs, currentJob, selectedAssignmentId]);
 
+  // Xóa ảnh xem trước khi người dùng chuyển sang Job khác
+  useEffect(() => {
+    setImagePreview(null);
+  }, [selectedAssignmentId]);
+
   const selectedJob = useMemo(() => {
     return jobs.find((job) => job.assignmentId === selectedAssignmentId) || currentJob || null;
   }, [jobs, selectedAssignmentId, currentJob]);
+
+  // Hàm xử lý file để tạo ảnh xem trước
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
+  };
 
   const withErrorHandler = useCallback(
     (fn) => async (...args) => {
@@ -664,6 +748,8 @@ const ActiveJob = () => {
               declineJob(selectedJob.assignmentId, reason)
             )}
             onReportIssue={handleReportIssue(selectedJob)}
+            imagePreview={imagePreview}
+            onFileChange={handleFileChange}
           />
         </div>
       )}
