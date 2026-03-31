@@ -47,8 +47,8 @@ namespace DataAccessLayer.Repositories.Implementation
                 .Include(x => x.Report)
                     .ThenInclude(r => r.WasteTypes) 
                 .Include(x => x.Report.SubmittedByNavigation)
-                .Include(x => x.Collectorassignments)
-                     .ThenInclude(a => a.AssignedCollectorNavigation)
+                .Include(x => x.Collectorassignments.Where(a => a.Status == "Assigned"))
+                    .ThenInclude(a => a.AssignedCollectorNavigation)
                 .Where(x => x.EnterpriseId == enterpriseId)
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
@@ -75,8 +75,8 @@ namespace DataAccessLayer.Repositories.Implementation
                 .Include(x => x.Report)
                     .ThenInclude(r => r.WasteTypes) 
                 .Include(x => x.Report.SubmittedByNavigation)
-                .Include(x => x.Collectorassignments)
-                     .ThenInclude(a => a.AssignedCollectorNavigation)
+                .Include(x => x.Collectorassignments.Where(a => a.Status == "Assigned"))
+                    .ThenInclude(a => a.AssignedCollectorNavigation)
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
         }

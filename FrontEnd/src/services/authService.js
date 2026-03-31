@@ -57,20 +57,14 @@ const authService = {
     };
   },
 
-  forgotPassword: async (email) => {
-    const response = await api.post("/auth/forgot-password", { email });
+  // Thêm hàm changePassword gọi api backend
+  changePassword: async (passwordData) => {
+    // passwordData truyền vào sẽ có dạng: { oldPassword, newPassword, confirmPassword }
+    // Khớp hoàn toàn với ChangePasswordDto trong backend
+    const response = await api.put("/auth/change-password", passwordData);
     return response.data;
   },
-
-  resetPassword: async ({ email, otp, newPassword, confirmPassword }) => {
-    const response = await api.post("/auth/reset-password", {
-      email,
-      otp,
-      newPassword,
-      confirmPassword,
-    });
-    return response.data;
-  },
+  // ===============================================
 
   logout: () => {
     localStorage.removeItem("token");
@@ -89,6 +83,22 @@ const authService = {
 
     const updatedUser = { ...currentUser, ...partialUser };
     localStorage.setItem("user", JSON.stringify(updatedUser));
+  },
+
+  // THÊM 2 HÀM MỚI VÀO ĐÂY:
+  forgotPassword: async (email) => {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  resetPassword: async (email, otp, NewPassword, confirmPassword) => {
+    const response = await api.post("/auth/reset-password", { 
+      email: email, 
+      otp: otp, 
+      newPassword: NewPassword, // Ép về chuẩn camelCase để C# dễ map data
+      confirmPassword: confirmPassword 
+    });
+    return response.data;
   },
 
   isAuthenticated: () => !!localStorage.getItem("token"),

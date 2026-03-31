@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 import "./Auth.css";
 
 const Login = () => {
@@ -11,7 +12,8 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // Dòng cũ của bạn
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false); // Thêm dòng này
 
   const handleChange = (e) => {
     setFormData({
@@ -136,10 +138,16 @@ const Login = () => {
             <div className="form-group">
               <div className="password-label-row">
                 <label htmlFor="password">Password</label>
-                <span className="forgot-link" onClick={() => navigate("/forgot-password")}>
-  Forgot password?
-</span>
+                
 
+                {/* Thay bằng đoạn này: */}
+                <span
+                  className="forgot-link"
+                  onClick={() => setIsForgotModalOpen(true)}
+                  style={{ cursor: "pointer" }}
+                >
+                  Forgot password?
+                </span>
               </div>
               <div className="password-input-wrapper">
                 <input
@@ -177,6 +185,9 @@ const Login = () => {
           </div>
         </div>
       </div>
+      {isForgotModalOpen && (
+        <ForgotPasswordModal onClose={() => setIsForgotModalOpen(false)} />
+      )}
     </div>
   );
 };

@@ -6,17 +6,12 @@ const normalizeUser = (user) => ({
   fullName: user.fullName ?? user.FullName ?? "",
   email: user.email ?? user.Email ?? "",
   phone: user.phone ?? user.Phone ?? "",
-  roleId: user.roleId ?? user.RoleId ?? 0,
   roleName: user.roleName ?? user.RoleName ?? "",
   status: user.status ?? user.Status ?? "",
   createdAt: user.createdAt ?? user.CreatedAt ?? null,
   isAvailable: Boolean(user.isAvailable ?? user.IsAvailable ?? false),
   availabilityUpdatedAt:
     user.availabilityUpdatedAt ?? user.AvailabilityUpdatedAt ?? null,
-  managedDistrictId:
-    user.managedDistrictId ?? user.ManagedDistrictId ?? null,
-  enterpriseId:
-    user.enterpriseId ?? user.EnterpriseId ?? null,
 });
 
 const userService = {
@@ -40,54 +35,33 @@ const userService = {
   },
 
   updateMyAvailability: async (isAvailable) => {
-    try {
-      const response = await api.put("/users/me/availability", { isAvailable });
-      return normalizeUser(response.data);
-    } catch (error) {
-      if (error?.response?.status !== 404) {
-        throw error;
-      }
-
-      const currentUser = authService.getCurrentUser();
-
-      if (!currentUser) {
-        throw error;
-      }
-
-      const fallbackUser = normalizeUser({
-        ...currentUser,
-        isAvailable,
-        availabilityUpdatedAt: new Date().toISOString(),
-      });
-
-      authService.updateCurrentUser({
-        isAvailable: fallbackUser.isAvailable,
-        availabilityUpdatedAt: fallbackUser.availabilityUpdatedAt,
-      });
-
-      return fallbackUser;
-    }
+  const response = await api.put("/users/me/availability", { isAvailable });
+  return normalizeUser(response.data);
   },
 
-  updateUser: async (userId, data) => {
-    const response = await api.put(`/users/${userId}`, data);
+  updateProfile: async (profileData) => {
+    const response = await api.put('/Users/me/profile', profileData);
+    return response.data;
+  },
+
+  // Thêm hàm này vào dưới hàm updateProfile lúc nãy
+  getProfile: async () => {
+    const response = await api.get('/Users/me/profile');
+    return response.data;
+  },
+
+
+  // --- THÊM 2 HÀM NÀY VÀO DÀNH CHO PROFILE CÁ NHÂN ---
+  getProfile: async () => {
+    const response = await api.get('/Users/me/profile');
     return normalizeUser(response.data);
   },
 
-  deactivateUser: async (userId) => {
-    const response = await api.put(`/users/${userId}/deactivate`);
+  updateProfile: async (profileData) => {
+    const response = await api.put('/Users/me/profile', profileData);
     return normalizeUser(response.data);
   },
-
-  activateUser: async (userId) => {
-    const response = await api.put(`/users/${userId}/activate`);
-    return normalizeUser(response.data);
-  },
-
-  createUser: async (data) => {
-    const response = await api.post("/users", data);
-    return normalizeUser(response.data);
-  },
+  // ---------------------------------------------------
 };
 
 export default userService;

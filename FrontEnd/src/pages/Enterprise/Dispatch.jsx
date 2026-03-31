@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
 import useDispatchData from "../../hooks/useDispatchData";
-import assignmentService from "../../services/assignmentService";
 import { buildFileUrl } from "../../services/api";
 import {
   DISPATCH_FILTERS,
@@ -22,8 +21,6 @@ L.Marker.prototype.options.icon = L.icon({
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
-
-const CANCELABLE_REQUEST_STATUSES = ["Accepted", "Assigned", "OnTheWay", "Arrived"];
 
 const Dispatch = () => {
   const {
@@ -43,38 +40,9 @@ const Dispatch = () => {
     fetchData,
     handleReportAction,
     handleAssignCollector,
-    handleEnterpriseCancel,
   } = useDispatchData();
 
-  const [cancelledCollectorIds, setCancelledCollectorIds] = useState([]);
-
-  useEffect(() => {
-    const loadCancelledCollectors = async () => {
-      if (selectedItem?.kind === "request" && selectedItem?.requestId) {
-        try {
-          const history = await assignmentService.getAssignmentHistory(
-            selectedItem.requestId
-          );
-          const cancelledIds = history
-            .filter((a) => (a.status || a.Status) === "Cancelled")
-            .map((a) => a.assignedCollector || a.AssignedCollector);
-          setCancelledCollectorIds([...new Set(cancelledIds)]);
-        } catch {
-          setCancelledCollectorIds([]);
-        }
-      } else {
-        setCancelledCollectorIds([]);
-      }
-    };
-
-    loadCancelledCollectors();
-  }, [selectedItem?.requestId, selectedItem?.kind]);
-
   const mapCenter = getDispatchMapCenter(selectedItem, DEFAULT_CENTER);
-
-  const canCancelSelectedRequest =
-    selectedItem?.kind === "request" &&
-    CANCELABLE_REQUEST_STATUSES.includes(selectedItem.status);
 
   return (
     <div className="dispatch-container">
@@ -140,9 +108,7 @@ const Dispatch = () => {
                   >
                     <div className="request-header">
                       <div className="user-info">
-                        <div className="user-avatar">
-                          {item.kind === "report" ? "R" : "C"}
-                        </div>
+                        <div className="user-avatar">{item.kind === "report" ? "R" : "C"}</div>
                         <div>
                           <div className="user-name">
                             {item.kind === "report"
@@ -162,9 +128,7 @@ const Dispatch = () => {
                         {getDispatchItemAgeLabel(item.createdAt)}
                       </div>
                       <div className="detail-item">
-                        <span
-                          className={`status-tag status-${String(item.status).toLowerCase()}`}
-                        >
+                        <span className={`status-tag status-${String(item.status).toLowerCase()}`}>
                           {item.status}
                         </span>
                       </div>
@@ -231,37 +195,28 @@ const Dispatch = () => {
                     <label>Report ID:</label>
                     <p className="detail-value">#{selectedItem.reportId}</p>
                   </div>
-
                   {selectedItem.requestId && (
                     <div className="detail-section">
                       <label>Request ID:</label>
                       <p className="detail-value">#{selectedItem.requestId}</p>
                     </div>
                   )}
-
                   <div className="detail-section">
                     <label>Status:</label>
-                    <p
-                      className={`detail-value status-${String(selectedItem.status).toLowerCase()}`}
-                    >
+                    <p className={`detail-value status-${String(selectedItem.status).toLowerCase()}`}>
                       {selectedItem.status}
                     </p>
                   </div>
-
                   <div className="detail-section full-width">
                     <label>Waste Type:</label>
-                    <p className="detail-value">
-                      {selectedItem.wasteTypeName || "Waste"}
-                    </p>
+                    <p className="detail-value">{selectedItem.wasteTypeName || "Waste"}</p>
                   </div>
-
                   <div className="detail-section full-width">
                     <label>Description:</label>
                     <p className="detail-value">
                       {selectedItem.description || "No description"}
                     </p>
                   </div>
-
                   <div className="detail-section full-width">
                     <label>Image:</label>
                     {selectedItem.imageUrl ? (
@@ -276,165 +231,71 @@ const Dispatch = () => {
                   </div>
                 </div>
 
-                {canCancelSelectedRequest && (
+                {selectedItem.kind === "request" && selectedItem.status === "Accepted" && (
                   <div
+                    className="assignment-box"
                     style={{
-                      marginTop: 16,
-                      display: "flex",
-                      justifyContent: "flex-end",
+                      marginTop: 20,
+                      padding: 15,
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 8,
                     }}
                   >
-                    <button
-                      className="btn-reject"
-                      disabled={actionLoading}
-                      onClick={() => handleEnterpriseCancel(selectedItem.reportId)}
-                    >
-                      Cancel Report
-                    </button>
-                  </div>
-                )}
-
-                {selectedItem.kind === "request" &&
-                  (selectedItem.status === "Accepted" ||
-                    selectedItem.status === "Pending") && (
-                    <div
-                      className="assignment-box"
+                    <h3
                       style={{
-                        marginTop: 20,
-                        padding: 15,
-                        backgroundColor: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 8,
+                        marginTop: 0,
+                        marginBottom: 10,
+                        fontSize: 16,
+                        color: "#1e293b",
                       }}
                     >
-                      <h3
+                      Assign Collector
+                    </h3>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <select
                         style={{
-                          marginTop: 0,
-                          marginBottom: 10,
-                          fontSize: 16,
-                          color: "#1e293b",
+                          flex: 1,
+                          padding: 10,
+                          borderRadius: 6,
+                          border: "1px solid #cbd5e1",
+                          fontSize: 14,
                         }}
+                        value={selectedCollectorMap[selectedItem.requestId] || ""}
+                        onChange={(event) =>
+                          setSelectedCollectorMap((prev) => ({
+                            ...prev,
+                            [selectedItem.requestId]: Number(event.target.value),
+                          }))
+                        }
                       >
-                        Assign Collector
-                      </h3>
-
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <select
-                          style={{
-                            flex: 1,
-                            padding: 10,
-                            borderRadius: 6,
-                            border: `1px solid ${
-                              cancelledCollectorIds.includes(
-                                selectedCollectorMap[selectedItem.requestId]
-                              )
-                                ? "#ef4444"
-                                : "#cbd5e1"
-                            }`,
-                            fontSize: 14,
-                          }}
-                          value={selectedCollectorMap[selectedItem.requestId] || ""}
-                          onChange={(event) =>
-                            setSelectedCollectorMap((prev) => ({
-                              ...prev,
-                              [selectedItem.requestId]: Number(event.target.value),
-                            }))
-                          }
-                        >
-                          <option value="">-- Select a collector to assign --</option>
-                          {collectors.map((collector) => {
-                            const isCancelled = cancelledCollectorIds.includes(
-                              collector.userId
-                            );
-
-                            return (
-                              <option
-                                key={collector.userId}
-                                value={collector.userId}
-                                style={isCancelled ? { color: "#ef4444" } : {}}
-                              >
-                                {isCancelled ? "⚠️ " : ""}
-                                {collector.fullName} - {collector.email}
-                                {isCancelled ? " (Previously removed)" : ""}
-                              </option>
-                            );
-                          })}
-                        </select>
-
-                        <button
-                          style={{
-                            padding: "10px 20px",
-                            backgroundColor: cancelledCollectorIds.includes(
-                              selectedCollectorMap[selectedItem.requestId]
-                            )
-                              ? "#94a3b8"
-                              : "#3b82f6",
-                            color: "white",
-                            border: "none",
-                            borderRadius: 6,
-                            fontWeight: "bold",
-                            cursor:
-                              actionLoading ||
-                              cancelledCollectorIds.includes(
-                                selectedCollectorMap[selectedItem.requestId]
-                              )
-                                ? "not-allowed"
-                                : "pointer",
-                          }}
-                          disabled={
-                            actionLoading ||
-                            !selectedCollectorMap[selectedItem.requestId] ||
-                            cancelledCollectorIds.includes(
-                              selectedCollectorMap[selectedItem.requestId]
-                            )
-                          }
-                          onClick={() => handleAssignCollector(selectedItem.requestId)}
-                        >
-                          Assign Job
-                        </button>
-                      </div>
-
-                      {cancelledCollectorIds.includes(
-                        selectedCollectorMap[selectedItem.requestId]
-                      ) && (
-                        <div
-                          style={{
-                            marginTop: 10,
-                            padding: "10px 14px",
-                            backgroundColor: "#fef2f2",
-                            border: "1px solid #fecaca",
-                            borderRadius: 6,
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 8,
-                          }}
-                        >
-                          <span style={{ fontSize: 18 }}>🚫</span>
-                          <div>
-                            <div
-                              style={{
-                                fontWeight: 700,
-                                color: "#dc2626",
-                                fontSize: 13,
-                              }}
-                            >
-                              Cannot assign this collector
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: "#991b1b",
-                                marginTop: 2,
-                              }}
-                            >
-                              This collector was previously removed from this request due
-                              to a citizen complaint. Please select a different collector.
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                        <option value="">-- Select a collector to assign --</option>
+                        {collectors.map((collector) => (
+                          <option key={collector.userId} value={collector.userId}>
+                            {collector.fullName} - {collector.email}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        style={{
+                          padding: "10px 20px",
+                          backgroundColor: "#3b82f6",
+                          color: "white",
+                          border: "none",
+                          borderRadius: 6,
+                          fontWeight: "bold",
+                          cursor: actionLoading ? "not-allowed" : "pointer",
+                        }}
+                        disabled={
+                          actionLoading || !selectedCollectorMap[selectedItem.requestId]
+                        }
+                        onClick={() => handleAssignCollector(selectedItem.requestId)}
+                      >
+                        Assign Job
+                      </button>
                     </div>
-                  )}
+                  </div>
+                )}
               </div>
             )}
           </div>

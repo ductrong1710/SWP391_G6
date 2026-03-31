@@ -13,6 +13,7 @@ namespace BusinessLogicLayer.Services.Interface
         Task<UserResponseDto> UpdateCollectorAvailabilityAsync(int userId, bool isAvailable);
         Task<UserResponseDto> SoftDeleteUserAsync(int id);
         Task<UserResponseDto> ReactivateUserAsync(int id);
+        Task<UserResponseDto> UpdateMyProfileAsync(int userId, UpdateProfileRequestDto request);
 
     }
 }

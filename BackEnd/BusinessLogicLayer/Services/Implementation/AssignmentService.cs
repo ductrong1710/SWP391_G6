@@ -52,8 +52,7 @@ namespace BusinessLogicLayer.Services.Implementation
 
             if (collector.CollectorProfile.EnterpriseId != enterpriseId)
             {
-                throw new UnauthorizedAccessException(
-                    "This collector cannot receive the job because they are not in your managed area.");
+                throw new UnauthorizedAccessException("You can only assign collectors from your own enterprise");
             }
 
             if (!collector.CollectorProfile.IsAvailable)

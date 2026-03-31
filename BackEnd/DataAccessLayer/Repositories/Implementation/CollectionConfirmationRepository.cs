@@ -24,10 +24,5 @@ namespace DataAccessLayer.Repositories.Implementation
             return await _context.Collectionconfirmations
                 .FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         }
-
-        public void Remove(Collectionconfirmation entity)
-        {
-            _context.Collectionconfirmations.Remove(entity);
-        }
     }
 }

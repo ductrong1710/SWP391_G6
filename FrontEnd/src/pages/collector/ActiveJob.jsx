@@ -8,13 +8,13 @@ import ArrivedActions from "../../components/collector/ArrivedActions";
 import AssignedActions from "../../components/collector/AssignedActions";
 import OnTheWayActions from "../../components/collector/OnTheWayActions";
 import useActiveJob from "../../hooks/useActiveJob";
-import {
+import {  
   COLLECTION_ISSUE_TYPES,
   getStatusMeta,
-  JOB_STATUS,
-} from "../../utils/collectorJob";
+  JOB_STATUS, } from "../../utils/collectorJob";
 import userService from "../../services/userService";
 import authService from "../../services/authService";
+// import "./CollectorApp.css";
 
 const DEFAULT_CENTER = [10.7769, 106.7009];
 
@@ -35,10 +35,8 @@ const formatDateTime = (value) => {
 };
 
 const formatLocation = (job) => {
-  const hasLat =
-    typeof job?.latitude === "number" && !Number.isNaN(job.latitude);
-  const hasLng =
-    typeof job?.longitude === "number" && !Number.isNaN(job.longitude);
+  const hasLat = typeof job?.latitude === "number" && !Number.isNaN(job.latitude);
+  const hasLng = typeof job?.longitude === "number" && !Number.isNaN(job.longitude);
 
   if (hasLat && hasLng && job.latitude !== 0 && job.longitude !== 0) {
     return `${job.latitude}, ${job.longitude}`;
@@ -106,64 +104,93 @@ const EmptyState = () => (
   <div className="settings-card empty-state-card active-dispatch-empty fade-in">
     <div className="empty-icon">-</div>
     <p className="empty-title">No active assignments</p>
-    <p className="text-sm text-gray">
-      Assigned and in-progress jobs will appear here.
-    </p>
+    <p className="text-sm text-gray">Assigned and in-progress jobs will appear here.</p>
   </div>
 );
 
 const StatusToggle = ({ isOnline, onToggle }) => (
-  <div className="status-toggle status-toggle-compact">
-    <div className="status-toggle-info">
-      <span className="status-toggle-title">Collector Status</span>
-      <span className={`status-toggle-badge ${isOnline ? "online" : "offline"}`}>
-        <span className="status-dot" />
-        {isOnline ? "Online" : "Offline"}
+  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+    <span
+      style={{
+        fontSize: "14px",
+        fontWeight: "600",
+        transition: "color 0.3s ease",
+        color: isOnline ? "#10b981" : "#64748b",
+      }}
+    >
+      {isOnline ? "Online" : "Offline"}
+    </span>
+    
+    <label
+      style={{
+        position: "relative",
+        display: "inline-block",
+        width: "48px",
+        height: "26px",
+        flexShrink: 0,
+        cursor: "pointer",
+        margin: 0
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={isOnline}
+        onChange={onToggle}
+        style={{ 
+          opacity: 0, 
+          width: 0, 
+          height: 0, 
+          margin: 0, 
+          position: "absolute" 
+        }}
+      />
+      {/* Background của nút */}
+      <span
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: isOnline ? "#10b981" : "#e2e8f0",
+          borderRadius: "34px",
+          transition: "background-color 0.3s ease",
+        }}
+      >
+        {/* Cục tròn màu trắng */}
+        <span
+          style={{
+            position: "absolute",
+            height: "20px",
+            width: "20px",
+            left: "3px",
+            bottom: "3px",
+            backgroundColor: "white",
+            borderRadius: "50%",
+            transition: "transform 0.3s ease",
+            transform: isOnline ? "translateX(22px)" : "translateX(0)",
+            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)",
+          }}
+        />
       </span>
-    </div>
-
-    <label className="status-switch" aria-label="Toggle collector availability">
-      <input type="checkbox" checked={isOnline} onChange={onToggle} />
-      <span className="status-switch-slider" />
     </label>
   </div>
 );
 
-const ActionBar = ({
-  job,
-  onStart,
-  onArrived,
-  onComplete,
-  onDecline,
-  onReportIssue,
-}) => {
+const ActionBar = ({ job, onStart, onArrived, onComplete, onDecline, onReportIssue, imagePreview, onFileChange }) => {
   if (job?.status === JOB_STATUS.ASSIGNED) {
-    return (
-      <div className="bottom-action-bar">
-        <button className="btn-start-trip" onClick={onStart}>
-          Start Trip
-        </button>
-
-        <button className="btn-decline-trip" onClick={onDecline}>
-          Decline Assignment
-        </button>
-      </div>
-    );
+  return <AssignedActions onStart={onStart} onDecline={onDecline} />;
   }
-
   if (job?.status === JOB_STATUS.ON_THE_WAY) {
     return (
       <>
-        <OnTheWayActions onArrived={onArrived} />
-        <div
-          className="settings-card action-card fade-in"
-          style={{ marginTop: 16 }}
-        >
+        <OnTheWayActions 
+          onArrived={onArrived} 
+          imagePreview={imagePreview} 
+          onFileChange={onFileChange} 
+        />
+        <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
           <div className="card-header-simple">
             <h3>Issue Handling</h3>
             <p className="text-gray">
-              Report a problem so the enterprise can review and reassign if
-              needed.
+              Report a problem so the enterprise can review and reassign if needed.
             </p>
           </div>
           <button className="btn-danger-soft" onClick={onReportIssue}>
@@ -177,16 +204,17 @@ const ActionBar = ({
   if (job?.status === JOB_STATUS.ARRIVED) {
     return (
       <>
-        <ArrivedActions job={job} onComplete={onComplete} />
-        <div
-          className="settings-card action-card fade-in"
-          style={{ marginTop: 16 }}
-        >
+        <ArrivedActions 
+          job={job} 
+          onComplete={onComplete} 
+          imagePreview={imagePreview} 
+          onFileChange={onFileChange} 
+        />
+        <div className="settings-card action-card fade-in" style={{ marginTop: 16 }}>
           <div className="card-header-simple">
             <h3>Issue Handling</h3>
             <p className="text-gray">
-              If this pickup cannot be completed, send the issue back for
-              reassignment.
+              If this pickup cannot be completed, send the issue back for reassignment.
             </p>
           </div>
           <button className="btn-danger-soft" onClick={onReportIssue}>
@@ -206,8 +234,7 @@ const ActionBar = ({
         <div className="card-header-simple">
           <h3>Awaiting Enterprise Action</h3>
           <p className="text-gray">
-            This job has been flagged with an issue. Please wait for update or
-            reassignment.
+            This job has been flagged with an issue. Please wait for update or reassignment.
           </p>
         </div>
       </div>
@@ -227,16 +254,11 @@ const JobListItem = ({ job, selected, onSelect }) => {
     >
       <div className="active-dispatch-item-header">
         <div className="active-dispatch-avatar">
-          {job?.status === JOB_STATUS.ON_THE_WAY ||
-          job?.status === JOB_STATUS.ARRIVED
-            ? "A"
-            : "J"}
+          {job?.status === JOB_STATUS.ON_THE_WAY || job?.status === JOB_STATUS.ARRIVED ? "A" : "J"}
         </div>
 
         <div className="active-dispatch-item-main">
-          <div className="active-dispatch-item-title">
-            Job #{job.assignmentId}
-          </div>
+          <div className="active-dispatch-item-title">Job #{job.assignmentId}</div>
           <div className="active-dispatch-item-subtitle">
             {job.wasteTypeName || "Waste"}
           </div>
@@ -301,6 +323,7 @@ const LocationMapSection = ({ job }) => {
           key={`${mapCenter[0]}-${mapCenter[1]}`}
           center={mapCenter}
           zoom={15}
+          className="low-z-index-map" 
           style={{ height: "100%", borderRadius: 8 }}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -316,6 +339,31 @@ const LocationMapSection = ({ job }) => {
             </Marker>
           )}
         </MapContainer>
+      </div>
+    </div>
+  );
+};
+
+const DetailHeader = ({ job }) => {
+  const statusMeta = getStatusMeta(job?.status);
+
+  return (
+    <div className="active-dispatch-detail-hero">
+      <div>
+        <div className="active-dispatch-eyebrow">Collector Assignment</div>
+        <div className="active-dispatch-title-row">
+          <h2>Job #{job.assignmentId}</h2>
+          <span className={`collector-badge ${statusMeta.className}`}>
+            {statusMeta.label}
+          </span>
+        </div>
+        <p className="text-gray">
+          Request #{job.requestId} • Report #{job.reportId}
+        </p>
+      </div>
+
+      <div className="hc-right">
+        <span className="badge-waste">{job.wasteTypeName || "Waste"}</span>
       </div>
     </div>
   );
@@ -385,10 +433,7 @@ const WasteTypesSection = ({ job }) => {
       ) : (
         <div className="active-dispatch-chip-grid">
           {wasteTypes.map((item) => (
-            <div
-              className="active-dispatch-chip"
-              key={`${job.assignmentId}-${item.wasteTypeId}`}
-            >
+            <div className="active-dispatch-chip" key={`${job.assignmentId}-${item.wasteTypeId}`}>
               {item.wasteTypeName || item.name || "Unknown"}
             </div>
           ))}
@@ -407,9 +452,7 @@ const NotesSection = ({ job }) => {
     <div className="settings-card active-dispatch-section">
       <div className="card-header-simple">
         <h3>Notes</h3>
-        <p className="text-gray">
-          Primary request note and additional notes when available.
-        </p>
+        <p className="text-gray">Primary request note and additional notes when available.</p>
       </div>
 
       <div className="active-dispatch-note-stack">
@@ -453,21 +496,15 @@ const EvidenceSection = ({ job }) => (
     <div className="details-grid active-dispatch-details-grid">
       <div className="detail-section">
         <label>Before Photo</label>
-        <p className="detail-value">
-          {job.beforeImageUrl ? "Available" : "Missing"}
-        </p>
+        <p className="detail-value">{job.beforeImageUrl ? "Available" : "Missing"}</p>
       </div>
       <div className="detail-section">
         <label>After Photo</label>
-        <p className="detail-value">
-          {job.afterImageUrl ? "Available" : "Missing"}
-        </p>
+        <p className="detail-value">{job.afterImageUrl ? "Available" : "Missing"}</p>
       </div>
       <div className="detail-section">
         <label>Issue Image</label>
-        <p className="detail-value">
-          {job.issueImageUrl ? "Available" : "Missing"}
-        </p>
+        <p className="detail-value">{job.issueImageUrl ? "Available" : "Missing"}</p>
       </div>
       <div className="detail-section">
         <label>Actual Weight</label>
@@ -475,9 +512,7 @@ const EvidenceSection = ({ job }) => (
       </div>
       <div className="detail-section full-width">
         <label>Collected Breakdown</label>
-        <p className="detail-value">
-          {job.collectedWasteSummary || "Not available"}
-        </p>
+        <p className="detail-value">{job.collectedWasteSummary || "Not available"}</p>
       </div>
     </div>
   </div>
@@ -490,15 +525,15 @@ const DetailsPanel = ({
   onComplete,
   onDecline,
   onReportIssue,
+  imagePreview,
+  onFileChange
 }) => {
   if (!job) {
     return (
       <div className="settings-card empty-state-card active-dispatch-empty">
         <div className="empty-icon">-</div>
         <p className="empty-title">Select a job</p>
-        <p className="text-sm text-gray">
-          Choose a job from the left panel to view details.
-        </p>
+        <p className="text-sm text-gray">Choose a job from the left panel to view details.</p>
       </div>
     );
   }
@@ -523,6 +558,8 @@ const DetailsPanel = ({
           onComplete={onComplete}
           onDecline={onDecline}
           onReportIssue={onReportIssue}
+          imagePreview={imagePreview}
+          onFileChange={onFileChange}
         />
       </div>
     </div>
@@ -530,13 +567,9 @@ const DetailsPanel = ({
 };
 
 const ActiveJob = () => {
-  const [isOnline, setIsOnline] = useState(
-    authService.getCurrentUser()?.isAvailable ?? true
-  );
+  const [isOnline, setIsOnline] = useState(true);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
-  const [declineModalOpen, setDeclineModalOpen] = useState(false);
-  const [declineReason, setDeclineReason] = useState("");
-  const [submittingDecline, setSubmittingDecline] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null); // Trạng thái ảnh xem trước
 
   const {
     jobs,
@@ -552,139 +585,116 @@ const ActiveJob = () => {
   } = useActiveJob();
 
   useEffect(() => {
+    const forceOnlineOnLoad = async () => {
+      try {
+        const currentUser = authService.getCurrentUser();
+        if (currentUser && !currentUser.isAvailable) {
+          const updatedUser = await userService.updateMyAvailability(true);
+          authService.updateCurrentUser({
+            isAvailable: true,
+            availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi khi tự động bật Online:", err);
+      }
+    };
+
+    forceOnlineOnLoad();
+  }, []);
+
+  useEffect(() => {
     if (!jobs.length) {
       setSelectedAssignmentId(null);
       return;
     }
 
-    if (
-      !selectedAssignmentId ||
-      !jobs.some((job) => job.assignmentId === selectedAssignmentId)
-    ) {
-      setSelectedAssignmentId(
-        currentJob?.assignmentId ?? jobs[0]?.assignmentId ?? null
-      );
+    if (!selectedAssignmentId || !jobs.some((job) => job.assignmentId === selectedAssignmentId)) {
+      setSelectedAssignmentId(currentJob?.assignmentId ?? jobs[0]?.assignmentId ?? null);
     }
   }, [jobs, currentJob, selectedAssignmentId]);
 
+  // Xóa ảnh xem trước khi người dùng chuyển sang Job khác
+  useEffect(() => {
+    setImagePreview(null);
+  }, [selectedAssignmentId]);
+
   const selectedJob = useMemo(() => {
-    return (
-      jobs.find((job) => job.assignmentId === selectedAssignmentId) ||
-      currentJob ||
-      null
-    );
+    return jobs.find((job) => job.assignmentId === selectedAssignmentId) || currentJob || null;
   }, [jobs, selectedAssignmentId, currentJob]);
+
+  // Hàm xử lý file để tạo ảnh xem trước
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
+  };
 
   const withErrorHandler = useCallback(
     (fn) => async (...args) => {
       try {
         await fn(...args);
       } catch (err) {
-        const message =
-          err?.response?.data?.message ||
-          err?.response?.data?.title ||
-          Object.values(err?.response?.data?.errors || {})
-            .flat()
-            .join(" ") ||
-          err?.message ||
-          "An error occurred.";
-
-        console.error("Action error:", err?.response?.data || err);
-        setError(message);
+        console.error("Action error:", err?.response?.data);
+        setError(err?.response?.data?.message || "An error occurred.");
       }
     },
     [setError]
   );
 
   const handleReportIssue = useCallback(
-    (job) =>
-      withErrorHandler(async () => {
-        const supportedTypes = COLLECTION_ISSUE_TYPES.map(
-          (item) => `${item.value} = ${item.label}`
-        ).join("\n");
+  (job) =>
+    withErrorHandler(async () => {
+      const supportedTypes = COLLECTION_ISSUE_TYPES.map(
+        (item) => `${item.value} = ${item.label}`
+      ).join("\n");
 
-        const issueType = window.prompt(
-          `Enter issue type:\n${supportedTypes}`,
-          "Other"
-        );
+      const issueType = window.prompt(
+        `Enter issue type:\n${supportedTypes}`,
+        "Other"
+      );
 
-        if (!issueType) return;
+      if (!issueType) return;
 
-        const isValidType = COLLECTION_ISSUE_TYPES.some(
-          (item) => item.value.toLowerCase() === issueType.trim().toLowerCase()
-        );
+      const isValidType = COLLECTION_ISSUE_TYPES.some(
+        (item) => item.value.toLowerCase() === issueType.trim().toLowerCase()
+      );
 
-        if (!isValidType) {
-          throw new Error("Invalid issue type.");
-        }
+      if (!isValidType) {
+        throw new Error("Invalid issue type.");
+      }
 
-        const description = window.prompt("Enter issue description:");
-        if (!description) return;
+      const description = window.prompt("Enter issue description:");
+      if (!description) return;
 
-        await reportIssue(
-          job.assignmentId,
-          issueType.trim(),
-          description.trim(),
-          null
-        );
-      }),
-    [reportIssue, withErrorHandler]
+      await reportIssue(job.assignmentId, issueType.trim(), description.trim(), null);
+    }),
+  [reportIssue, withErrorHandler]
   );
 
   const handleToggleAvailability = useCallback(async () => {
-    const nextValue = !isOnline;
-    setIsOnline(nextValue);
+  const nextValue = !isOnline;
+  setIsOnline(nextValue);
 
-    try {
-      const updatedUser = await userService.updateMyAvailability(nextValue);
-      authService.updateCurrentUser({
-        isAvailable: updatedUser.isAvailable,
-        availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
-      });
-    } catch (err) {
-      setIsOnline((prev) => !prev);
-      setError(err?.response?.data?.message || "Unable to update availability.");
-    }
-  }, [isOnline, setError]);
+  try {
+    const updatedUser = await userService.updateMyAvailability(nextValue);
+    authService.updateCurrentUser({
+      isAvailable: updatedUser.isAvailable,
+      availabilityUpdatedAt: updatedUser.availabilityUpdatedAt,
+    });
+  } catch (err) {
+    setIsOnline((prev) => !prev);
+    setError(err?.response?.data?.message || "Unable to update availability.");
+  }
+}, [isOnline, setError]);
 
-  const openDeclineModal = useCallback(() => {
-    setDeclineReason("");
-    setDeclineModalOpen(true);
-  }, []);
-
-  const closeDeclineModal = useCallback(() => {
-    if (submittingDecline) return;
-    setDeclineModalOpen(false);
-  }, [submittingDecline]);
-
-  const confirmDecline = useCallback(async () => {
-    const reason = declineReason.trim();
-
-    if (!reason) {
-      setError("Please enter a decline reason.");
-      return;
-    }
-
-    if (!selectedJob?.assignmentId) {
-      setError("No assignment selected.");
-      return;
-    }
-
-    try {
-      setSubmittingDecline(true);
-      await declineJob(selectedJob.assignmentId, reason);
-      setDeclineModalOpen(false);
-      setDeclineReason("");
-    } catch (err) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Unable to decline assignment.";
-      setError(message);
-    } finally {
-      setSubmittingDecline(false);
-    }
-  }, [declineReason, selectedJob, declineJob, setError]);
 
   if (loading) {
     return (
@@ -707,11 +717,12 @@ const ActiveJob = () => {
       <div className="col-page-header active-dispatch-header">
         <div>
           <h2>Active Job</h2>
-          <p className="text-gray">
-            Collector job queue and assignment details
-          </p>
+          <p className="text-gray">Collector job queue and assignment details</p>
         </div>
-        <StatusToggle isOnline={isOnline} onToggle={handleToggleAvailability} />
+        <StatusToggle
+          isOnline={isOnline}
+          onToggle={handleToggleAvailability}
+        />
       </div>
 
       {!jobs.length ? (
@@ -733,45 +744,13 @@ const ActiveJob = () => {
             onComplete={withErrorHandler((photo, weightsArray) =>
               completeJob(selectedJob.assignmentId, photo, weightsArray)
             )}
-            onDecline={openDeclineModal}
+            onDecline={withErrorHandler((reason) =>
+              declineJob(selectedJob.assignmentId, reason)
+            )}
             onReportIssue={handleReportIssue(selectedJob)}
+            imagePreview={imagePreview}
+            onFileChange={handleFileChange}
           />
-        </div>
-      )}
-
-      {declineModalOpen && (
-        <div className="decline-modal-backdrop" onClick={closeDeclineModal}>
-          <div className="decline-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Decline Assignment</h3>
-            <p className="text-gray">
-              Please provide a reason so the enterprise can reassign properly.
-            </p>
-
-            <textarea
-              className="form-input decline-reason-input"
-              rows={4}
-              placeholder="Enter decline reason..."
-              value={declineReason}
-              onChange={(e) => setDeclineReason(e.target.value)}
-            />
-
-            <div className="decline-modal-actions">
-              <button
-                className="btn-outline-map"
-                onClick={closeDeclineModal}
-                disabled={submittingDecline}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-danger-soft"
-                onClick={confirmDecline}
-                disabled={submittingDecline}
-              >
-                {submittingDecline ? "Submitting..." : "Confirm Decline"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

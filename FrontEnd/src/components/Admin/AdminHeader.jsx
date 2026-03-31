@@ -7,6 +7,7 @@ const MENU_ITEMS = [
   { id: "overview", label: "Overview", icon: "⊞" },
   { id: "users", label: "Users", icon: "👥" },
   { id: "disputes", label: "Disputes", icon: "⚠️" },
+  { id: "system", label: "System", icon: "⚙️" },
 ];
 
 const AdminHeader = ({ activeTab, setActiveTab }) => {

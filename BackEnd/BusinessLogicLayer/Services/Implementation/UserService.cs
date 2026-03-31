@@ -36,16 +36,10 @@ namespace BusinessLogicLayer.Services.Implementation
             if (role == null)
                 throw new InvalidOperationException("Role not found");
 
-            if (string.Equals(role.RoleName, "Enterprise", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(role.RoleName, "Enterprise", StringComparison.OrdinalIgnoreCase)
+                && !request.ManagedDistrictId.HasValue)
             {
-                if (!request.ManagedDistrictId.HasValue)
-                    throw new ArgumentException("ManagedDistrictId is required for Enterprise");
-
-                var districtAlreadyAssigned = await _db.EnterpriseProfiles
-                    .AnyAsync(x => x.ManagedDistrictId == request.ManagedDistrictId.Value);
-
-                if (districtAlreadyAssigned)
-                    throw new InvalidOperationException("This district already has a registered enterprise");
+                throw new ArgumentException("ManagedDistrictId is required for Enterprise");
             }
 
             if (string.Equals(role.RoleName, "Collector", StringComparison.OrdinalIgnoreCase)
@@ -142,14 +136,6 @@ namespace BusinessLogicLayer.Services.Implementation
             {
                 if (!request.ManagedDistrictId.HasValue)
                     throw new ArgumentException("ManagedDistrictId is required for Enterprise");
-
-                var districtAlreadyAssigned = await _db.EnterpriseProfiles
-                    .AnyAsync(x =>
-                        x.ManagedDistrictId == request.ManagedDistrictId.Value &&
-                        x.EnterpriseId != user.UserId);
-
-                if (districtAlreadyAssigned)
-                    throw new InvalidOperationException("This district already has a registered enterprise");
 
                 if (user.CollectorProfile != null)
                 {
@@ -319,6 +305,35 @@ namespace BusinessLogicLayer.Services.Implementation
             var updated = await _uow.Users.GetByIdAsync(userId);
             return MapToDto(updated!);
         }
+        public async Task<UserResponseDto> UpdateMyProfileAsync(int userId, UpdateProfileRequestDto request)
+{
+    // 1. Tìm user đang đăng nhập
+    var user = await _uow.Users.GetByIdAsync(userId);
+    if (user == null)
+        throw new InvalidOperationException("User not found");
+
+    // 2. Kiểm tra số điện thoại có bị trùng với người khác không
+    if (!string.IsNullOrWhiteSpace(request.Phone) && request.Phone != user.Phone)
+    {
+        if (await _uow.Users.PhoneExistsExceptAsync(request.Phone, userId))
+            throw new InvalidOperationException("Phone already exists");
+    }
+
+    // 3. Cập nhật các trường thông tin cho phép
+    if (!string.IsNullOrWhiteSpace(request.FullName))
+        user.FullName = request.FullName;
+
+    if (!string.IsNullOrWhiteSpace(request.Phone))
+        user.Phone = request.Phone;
+
+    // 4. Lưu vào Database
+    _uow.Users.Update(user);
+    await _uow.SaveChangesAsync();
+
+    // 5. Trả về thông tin mới nhất
+    var updated = await _uow.Users.GetByIdAsync(userId);
+    return MapToDto(updated!);
+}
 
         private static UserResponseDto MapToDto(User user)
         {
@@ -338,5 +353,6 @@ namespace BusinessLogicLayer.Services.Implementation
                 EnterpriseId = user.CollectorProfile?.EnterpriseId
             };
         }
+
     }
 }

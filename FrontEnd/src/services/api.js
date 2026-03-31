@@ -21,7 +21,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Kiểm tra xem URL của API vừa gọi có chứa chữ "/auth/login" không
+    const isLoginApi = error.config?.url?.includes("/auth/login");
+
+    // Nếu lỗi 401 và KHÔNG PHẢI đang gọi API login thì mới ép tải lại trang
+    if (error.response?.status === 401 && !isLoginApi) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";

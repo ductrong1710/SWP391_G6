@@ -38,14 +38,14 @@ namespace WasteCollectionPlatform.Controllers
 
             if (user == null)
             {
-                return Unauthorized(new { message = "Email hoặc mật khẩu không đúng." });
+                return Unauthorized(new { message = "Incorrect email or password." });
             }
 
             var token = _authService.GenerateJwtToken(user);
 
             return Ok(new
             {
-                message = "Đăng nhập thành công",
+                message = "Login successful",
                 token = token,
                 user = new { user.UserId, user.FullName, user.Email, user.RoleId }
             });
