@@ -232,22 +232,25 @@
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   border: none;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
-  font-size: 20px;
-  padding: 4px 8px;
-  color: #9ca3af;
-  transition: color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
+  transition: all 0.2s ease;
 }
 
 .toggle-password-btn:hover {
   color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
 }
+
 
 .btn-login {
   padding: 16px;

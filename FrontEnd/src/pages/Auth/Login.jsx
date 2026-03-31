@@ -4,6 +4,42 @@ import { authService } from "../../services/authService";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 import "./Auth.css";
 
+const EyeOpenIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="m3 3 18 18" />
+    <path d="M10.584 10.587a2 2 0 0 0 2.829 2.829" />
+    <path d="M9.363 5.365A10.744 10.744 0 0 1 12 5c4.768 0 8.852 2.95 10.438 7a10.523 10.523 0 0 1-4.172 5.54" />
+    <path d="M6.228 6.233A10.45 10.45 0 0 0 1.563 12a10.523 10.523 0 0 0 7.377 6.632" />
+  </svg>
+);
+
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -12,8 +48,8 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // Dòng cũ của bạn
-  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false); // Thêm dòng này
+  const [showPassword, setShowPassword] = useState(false);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -34,19 +70,15 @@ const Login = () => {
         formData.password
       );
 
-      // Navigate by role
       const user = response.user;
+
       if (user.roleId === 4) {
-        // Admin
         navigate("/admin");
       } else if (user.roleId === 2) {
-        // Enterprise
         navigate("/enterprise");
       } else if (user.roleId === 3) {
-        // Collector
         navigate("/collector");
       } else {
-        // Citizen (roleId = 1)
         navigate("/citizen");
       }
     } catch (err) {
@@ -59,10 +91,8 @@ const Login = () => {
 
   return (
     <div className="login-container">
-      {/* Left Side - Info Card */}
       <div className="login-left">
         <div className="info-card">
-          {/* Icons */}
           <div className="eco-icons">
             <div className="eco-icon">
               <div className="icon-box">🍃</div>
@@ -75,14 +105,12 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Main Title */}
           <h1 className="info-title">Together for a Greener Future</h1>
           <p className="info-description">
             Join our community in making waste recycling simple, rewarding, and
             impactful. Every action counts towards a sustainable planet.
           </p>
 
-          {/* Stats */}
           <div className="stats-container">
             <div className="stat-item">
               <div className="stat-value">50K+</div>
@@ -100,27 +128,21 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
       <div className="login-right">
         <div className="login-form-container">
-          {/* Logo & Brand */}
           <div className="login-brand">
             <div className="brand-icon">🍃</div>
             <span className="brand-name">EcoCollect</span>
           </div>
 
-          {/* Welcome Text */}
           <div className="welcome-text">
             <h2>Welcome back</h2>
             <p>Sign in to your account to continue your eco journey</p>
           </div>
 
-          {/* Error Alert */}
           {error && <div className="alert alert-error">❌ {error}</div>}
 
-          {/* Login Form */}
           <form onSubmit={handleSubmit} className="login-form">
-            {/* Email Input */}
             <div className="form-group">
               <label htmlFor="email">Email</label>
               <input
@@ -134,13 +156,9 @@ const Login = () => {
               />
             </div>
 
-            {/* Password Input */}
             <div className="form-group">
               <div className="password-label-row">
                 <label htmlFor="password">Password</label>
-                
-
-                {/* Thay bằng đoạn này: */}
                 <span
                   className="forgot-link"
                   onClick={() => setIsForgotModalOpen(true)}
@@ -149,6 +167,7 @@ const Login = () => {
                   Forgot password?
                 </span>
               </div>
+
               <div className="password-input-wrapper">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -165,18 +184,16 @@ const Login = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? "👁️" : "👁️‍🗨️"}
+                  {showPassword ? <EyeOffIcon /> : <EyeOpenIcon />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
             <button type="submit" className="btn-login" disabled={loading}>
               {loading ? "Logging in..." : "Log In"}
             </button>
           </form>
 
-          {/* Sign Up Link */}
           <div className="signup-link">
             Don't have an account?{" "}
             <span className="link-green" onClick={() => navigate("/register")}>
@@ -185,6 +202,7 @@ const Login = () => {
           </div>
         </div>
       </div>
+
       {isForgotModalOpen && (
         <ForgotPasswordModal onClose={() => setIsForgotModalOpen(false)} />
       )}

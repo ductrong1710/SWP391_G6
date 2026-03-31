@@ -45,10 +45,6 @@ const CollectorHeader = ({ activeTab, setActiveTab }) => {
             setActiveTab("settings");
             setShowDropdown(false);
           }}
-          onSettings={() => {
-            setActiveTab("settings");
-            setShowDropdown(false);
-          }}
           onLogout={handleLogout}
           wrapperClassName="col-profile-wrapper"
           triggerClassName="col-profile"

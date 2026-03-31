@@ -95,7 +95,6 @@ const CitizenHeader = ({ activeTab, setActiveTab }) => {
           open={showDropdown}
           onToggle={() => setShowDropdown((prev) => !prev)}
           onProfile={() => handleNavigation("settings")}
-          onSettings={() => handleNavigation("settings")}
           onLogout={handleLogout}
           wrapperClassName="user-dropdown-wrapper"
           triggerClassName="user-profile-trigger"

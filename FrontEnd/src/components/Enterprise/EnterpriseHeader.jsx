@@ -58,10 +58,6 @@ const EnterpriseHeader = () => {
             setShowDropdown(false);
             navigate("/enterprise/settings"); 
           }}
-          onSettings={() => {
-            setShowDropdown(false);
-            navigate("/enterprise/settings");
-          }}
           
           onLogout={handleLogout}
           wrapperClassName="ent-profile-wrapper"

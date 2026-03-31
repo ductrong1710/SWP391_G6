@@ -3,22 +3,109 @@ import SettingsTabs from "../../components/SettingsTabs";
 import authService from "../../services/authService";
 import userService from "../../services/userService";
 
-// ==========================================
-// 1. COMPONENT CẬP NHẬT THÔNG TIN (GENERAL)
-// ==========================================
+const ACCOUNT_TYPE = "Citizen";
+
+const EyeOpenIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="m3 3 18 18" />
+    <path d="M10.584 10.587a2 2 0 0 0 2.829 2.829" />
+    <path d="M9.363 5.365A10.744 10.744 0 0 1 12 5c4.768 0 8.852 2.95 10.438 7a10.523 10.523 0 0 1-4.172 5.54" />
+    <path d="M6.228 6.233A10.45 10.45 0 0 0 1.563 12a10.523 10.523 0 0 0 7.377 6.632" />
+  </svg>
+);
+
+const SwitchToggle = ({ checked, onChange, ariaLabel }) => {
+  const width = 56;
+  const height = 28;
+  const knobSize = 22;
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel || "toggle"}
+      onClick={() => onChange(!checked)}
+      style={{
+        border: "none",
+        padding: 0,
+        background: "transparent",
+        display: "inline-flex",
+        alignItems: "center",
+        cursor: "pointer",
+      }}
+    >
+      <span
+        style={{
+          width,
+          height,
+          borderRadius: height / 2,
+          display: "inline-block",
+          position: "relative",
+          cursor: "pointer",
+          transition: "background 200ms ease, box-shadow 200ms ease",
+          background: checked
+            ? "linear-gradient(90deg,#2dd4bf,#059669)"
+            : "#eef2f3",
+          boxShadow: checked ? "0 4px 10px rgba(37,150,100,0.12)" : "none",
+        }}
+      >
+        <span
+          style={{
+            width: knobSize,
+            height: knobSize,
+            borderRadius: "50%",
+            background: "#fff",
+            position: "absolute",
+            top: (height - knobSize) / 2,
+            left: checked ? width - knobSize - 3 : 3,
+            transition: "left 180ms ease, box-shadow 180ms ease",
+            boxShadow: "0 2px 6px rgba(16,24,40,0.12)",
+          }}
+        />
+      </span>
+    </button>
+  );
+};
+
 const ProfileSettings = () => {
-  // Đã xóa city, stateProvince, zipCode khỏi state cho gọn code
   const [profileData, setProfileData] = useState({
     fullName: "",
     email: "",
     phone: "",
-    address: "", 
+    address: "",
   });
 
   const [status, setStatus] = useState({ type: "", message: "" });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load dữ liệu từ Backend
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
@@ -27,12 +114,13 @@ const ProfileSettings = () => {
           fullName: userData.fullName || userData.FullName || "",
           email: userData.email || userData.Email || "",
           phone: userData.phone || userData.Phone || "",
-          address: "", // Nếu sau này có DB lưu địa chỉ thì map vào đây
+          address: userData.address || userData.Address || "",
         });
       } catch (error) {
-        console.error("Lỗi khi gọi API getProfile:", error);
+        console.error("Error calling getProfile:", error);
       }
     };
+
     fetchProfileData();
   }, []);
 
@@ -54,27 +142,31 @@ const ProfileSettings = () => {
         fullName: profileData.fullName,
         phone: profileData.phone,
       };
-      
+
       await userService.updateProfile(dataToSend);
-      
-      const currentUserString = localStorage.getItem('user');
+
+      const currentUserString = localStorage.getItem("user");
       if (currentUserString) {
         const currentUser = JSON.parse(currentUserString);
         currentUser.fullName = profileData.fullName;
         currentUser.phone = profileData.phone;
-        localStorage.setItem('user', JSON.stringify(currentUser));
+        localStorage.setItem("user", JSON.stringify(currentUser));
       }
-      
-      setStatus({ type: "success", message: "Update successful! The interface will reload..." });
+
+      setStatus({
+        type: "success",
+        message: "Profile updated successfully! The interface will reload...",
+      });
 
       setTimeout(() => {
         window.location.reload();
       }, 1500);
-
     } catch (error) {
-      setStatus({ 
-        type: "error", 
-        message: error.response?.data?.message || "An error occurred while updating the profile." 
+      setStatus({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "An error occurred while updating the profile.",
       });
     } finally {
       setIsLoading(false);
@@ -87,9 +179,21 @@ const ProfileSettings = () => {
       <p className="text-gray-sm">Update your personal details</p>
 
       {status.message && (
-        <div 
-          className={`alert ${status.type === "error" ? "alert-danger" : "alert-success"}`}
-          style={{ padding: '10px', marginBottom: '20px', borderRadius: '4px', backgroundColor: status.type === 'error' ? '#fee2e2' : '#dcfce7', color: status.type === 'error' ? '#991b1b' : '#166534', border: `1px solid ${status.type === 'error' ? '#f87171' : '#4ade80'}` }}
+        <div
+          className={`alert ${
+            status.type === "error" ? "alert-danger" : "alert-success"
+          }`}
+          style={{
+            padding: "10px",
+            marginBottom: "20px",
+            borderRadius: "4px",
+            backgroundColor:
+              status.type === "error" ? "#fee2e2" : "#dcfce7",
+            color: status.type === "error" ? "#991b1b" : "#166534",
+            border: `1px solid ${
+              status.type === "error" ? "#f87171" : "#4ade80"
+            }`,
+          }}
         >
           {status.message}
         </div>
@@ -99,34 +203,67 @@ const ProfileSettings = () => {
         <div className="form-grid">
           <div className="form-group">
             <label>Full Name</label>
-            <input type="text" name="fullName" value={profileData.fullName} onChange={handleChange} className="form-input" required />
+            <input
+              type="text"
+              name="fullName"
+              value={profileData.fullName}
+              onChange={handleChange}
+              className="form-input"
+              required
+            />
           </div>
+
           <div className="form-group">
             <label>Email Address</label>
-            <input type="email" name="email" value={profileData.email} onChange={handleChange} className="form-input" required disabled title="Email không được phép đổi" />
+            <input
+              type="email"
+              name="email"
+              value={profileData.email}
+              onChange={handleChange}
+              className="form-input"
+              required
+              disabled
+              title="Email cannot be changed"
+            />
           </div>
+
           <div className="form-group">
             <label>Phone Number</label>
-            <input type="text" name="phone" value={profileData.phone} onChange={handleChange} className="form-input" />
+            <input
+              type="text"
+              name="phone"
+              value={profileData.phone}
+              onChange={handleChange}
+              className="form-input"
+            />
           </div>
+
           <div className="form-group">
             <label>Account Type</label>
-            <input type="text" className="form-input bg-gray" value="Citizen" disabled />
+            <input
+              type="text"
+              className="form-input bg-gray"
+              value={ACCOUNT_TYPE}
+              disabled
+            />
           </div>
-          
-          {/* Ô Address vẫn được giữ lại theo hình ảnh của bạn */}
+
           <div className="form-group full-width">
             <label>Address</label>
-            <input type="text" name="address" value={profileData.address} onChange={handleChange} className="form-input" placeholder="Enter your street address" />
+            <input
+              type="text"
+              name="address"
+              value={profileData.address}
+              onChange={handleChange}
+              className="form-input"
+              placeholder="Enter your street address"
+            />
           </div>
-          
-          {/* ĐÃ XÓA: City, State/Province, ZIP Code ở đây */}
-          
         </div>
 
         <div className="form-actions" style={{ marginTop: "20px" }}>
           <button type="submit" className="btn-save" disabled={isLoading}>
-            {isLoading ? "Đang lưu..." : "Save Changes"}
+            {isLoading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>
@@ -134,12 +271,17 @@ const ProfileSettings = () => {
   );
 };
 
-// ==========================================
-// 2. COMPONENT ĐỔI MẬT KHẨU (SECURITY)
-// ==========================================
 const SecuritySettings = () => {
-  const [formData, setFormData] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
-  const [showPassword, setShowPassword] = useState({ oldPassword: false, newPassword: false, confirmPassword: false });
+  const [formData, setFormData] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPassword, setShowPassword] = useState({
+    oldPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  });
   const [status, setStatus] = useState({ type: "", message: "" });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -149,7 +291,10 @@ const SecuritySettings = () => {
   };
 
   const togglePasswordVisibility = (fieldName) => {
-    setShowPassword((prev) => ({ ...prev, [fieldName]: !prev[fieldName] }));
+    setShowPassword((prev) => ({
+      ...prev,
+      [fieldName]: !prev[fieldName],
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -169,10 +314,22 @@ const SecuritySettings = () => {
         confirmPassword: formData.confirmPassword,
       });
 
-      setStatus({ type: "success", message: response.message || "Password changed successfully!" });
-      setFormData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+      setStatus({
+        type: "success",
+        message: response.message || "Password changed successfully!",
+      });
+      setFormData({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
     } catch (error) {
-      setStatus({ type: "error", message: error.response?.data?.message || "An error occurred while changing the password." });
+      setStatus({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "An error occurred while changing the password.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -187,17 +344,34 @@ const SecuritySettings = () => {
   return (
     <div className="security-settings-section">
       <h3 className="pane-title">Change Password</h3>
-      <p className="text-gray-sm">Update your password to keep your account secure</p>
-      
+      <p className="text-gray-sm">
+        Update your password to keep your account secure
+      </p>
+
       {status.message && (
-        <div className={`alert ${status.type === "error" ? "alert-danger" : "alert-success"}`} style={{ padding: '10px', marginBottom: '20px', borderRadius: '4px', backgroundColor: status.type === 'error' ? '#fee2e2' : '#dcfce7', color: status.type === 'error' ? '#991b1b' : '#166534', border: `1px solid ${status.type === 'error' ? '#f87171' : '#4ade80'}` }}>
+        <div
+          className={`alert ${
+            status.type === "error" ? "alert-danger" : "alert-success"
+          }`}
+          style={{
+            padding: "10px",
+            marginBottom: "20px",
+            borderRadius: "4px",
+            backgroundColor:
+              status.type === "error" ? "#fee2e2" : "#dcfce7",
+            color: status.type === "error" ? "#991b1b" : "#166534",
+            border: `1px solid ${
+              status.type === "error" ? "#f87171" : "#4ade80"
+            }`,
+          }}
+        >
           {status.message}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        {inputFields.map((field, index) => (
-          <div className="form-group" key={index}>
+        {inputFields.map((field) => (
+          <div className="form-group" key={field.name}>
             <label>{field.label}</label>
             <div style={{ position: "relative" }}>
               <input
@@ -207,21 +381,46 @@ const SecuritySettings = () => {
                 onChange={handleChange}
                 required
                 className="form-input"
-                style={{ paddingRight: "40px", width: "100%" }}
+                style={{ paddingRight: "48px", width: "100%" }}
               />
               <button
                 type="button"
                 onClick={() => togglePasswordVisibility(field.name)}
-                style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                aria-label={
+                  showPassword[field.name]
+                    ? `Hide ${field.label.toLowerCase()}`
+                    : `Show ${field.label.toLowerCase()}`
+                }
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "transparent",
+                  color: "#64748b",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
               >
-                {showPassword[field.name] ? "👁️‍🗨️" : "👁️"} 
+                {showPassword[field.name] ? <EyeOffIcon /> : <EyeOpenIcon />}
               </button>
             </div>
           </div>
         ))}
-        <div className="form-actions" style={{ marginTop: "20px", marginBottom: "40px" }}>
+
+        <div
+          className="form-actions"
+          style={{ marginTop: "20px", marginBottom: "40px" }}
+        >
           <button type="submit" className="btn-save" disabled={isLoading}>
-            {isLoading ? "Đang xử lý..." : "Update Password"}
+            {isLoading ? "Processing..." : "Update Password"}
           </button>
         </div>
       </form>
@@ -229,61 +428,112 @@ const SecuritySettings = () => {
   );
 };
 
-// ==========================================
-// 3. COMPONENT CHÍNH QUẢN LÝ CÁC TABS
-// ==========================================
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("general");
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
 
   return (
     <div className="settings-container fade-in">
       <div className="settings-header">
         <h2>Settings</h2>
-        <p className="text-gray">Manage your account preferences and security</p>
+        <p className="text-gray">
+          Manage your account preferences and security
+        </p>
       </div>
 
       <SettingsTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      {/* TABS: GENERAL */}
       {activeTab === "general" && <ProfileSettings />}
 
-      {/* TABS: SECURITY */}
       {activeTab === "security" && (
         <div className="tab-pane">
           <SecuritySettings />
 
-          <hr style={{ border: "0", borderTop: "1px solid #e5e7eb", margin: "30px 0" }} />
+          <hr
+            style={{
+              border: "0",
+              borderTop: "1px solid #e5e7eb",
+              margin: "30px 0",
+            }}
+          />
 
           <h3 className="pane-title">Two-Factor Authentication</h3>
-          <p className="text-gray-sm">Add an extra layer of security to your account</p>
-          <div className="toggle-item">
+          <p className="text-gray-sm">
+            Add an extra layer of security to your account
+          </p>
+
+          <div
+            className="toggle-item"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              padding: "8px 0",
+            }}
+          >
             <div className="toggle-info">
-              <h4 style={{ fontSize: "14px", fontWeight: "600", margin: "0 0 4px 0" }}>Enable 2FA</h4>
-              <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>Require a verification code when signing in</p>
+              <h4
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  margin: "0 0 4px 0",
+                }}
+              >
+                Enable 2FA
+              </h4>
+              <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>
+                Require a verification code when signing in
+              </p>
             </div>
-            <label className="switch">
-              <input type="checkbox" />
-              <span className="slider round"></span>
-            </label>
+
+            <SwitchToggle
+              checked={twoFactorEnabled}
+              onChange={setTwoFactorEnabled}
+              ariaLabel="Enable 2FA"
+            />
           </div>
         </div>
       )}
 
-      {/* TABS: PREFERENCES */}
       {activeTab === "preferences" && (
         <div className="tab-pane">
           <h3 className="pane-title">Notification Settings</h3>
-          <p className="text-gray-sm">Choose how you want to receive notifications</p>
-          {/* ... (Các toggle switch của preferences) ... */}
-          <div className="toggle-item">
+          <p className="text-gray-sm">
+            Choose how you want to receive notifications
+          </p>
+
+          <div
+            className="toggle-item"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              padding: "8px 0",
+            }}
+          >
             <div className="toggle-info">
-              <h4 style={{ fontSize: "14px", fontWeight: "600", margin: "0 0 4px 0" }}>Email Notifications</h4>
-              <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>Receive updates and alerts via email</p>
+              <h4
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  margin: "0 0 4px 0",
+                }}
+              >
+                Email Notifications
+              </h4>
+              <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>
+                Receive updates and alerts via email
+              </p>
             </div>
-            <label className="switch">
-              <input type="checkbox" defaultChecked />
-              <span className="slider round"></span>
-            </label>
+
+            <SwitchToggle
+              checked={emailNotifications}
+              onChange={setEmailNotifications}
+              ariaLabel="Email notifications"
+            />
           </div>
         </div>
       )}

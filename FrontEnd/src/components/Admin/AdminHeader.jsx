@@ -49,10 +49,6 @@ const AdminHeader = ({ activeTab, setActiveTab }) => {
             setActiveTab("settings");
             setShowDropdown(false);
           }}
-          onSettings={() => {
-            setActiveTab("settings");
-            setShowDropdown(false);
-          }}
           onLogout={handleLogout}
           wrapperClassName="admin-profile-wrapper"
           triggerClassName="admin-profile"
